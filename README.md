@@ -13,7 +13,7 @@ Utilizamos una estructura de **Monorepo** para facilitar la gestión de los comp
 ├── /client             # Frontend: Interfaz de usuario (React/Vite/etc.)
 │   ├── /src
 │   │   ├── /components # Componentes reutilizables
-│   │   ├── /pages      # Pantallas principales (Ventas, Balance, etc.)
+│   │   ├── /pages      # Pantalla principal (Ventas, Balance, etc.)
 │   │   └── /services   # Lógica de conexión con la API
 │   └── package.json
 ├── /server             # Backend: Lógica de negocio y API
