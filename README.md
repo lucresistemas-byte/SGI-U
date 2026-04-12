@@ -109,6 +109,7 @@ Descripción: El frontend envía los datos de la transacción para su procesamie
 
 El proyecto utiliza una arquitectura de Monorepo para consolidar el código fuente y la documentación.
 
+```
 /sgi-u-monorepo
 ├── /frontend               # Proyecto Flutter (Dart)
 │   ├── /lib
@@ -139,8 +140,7 @@ El proyecto utiliza una arquitectura de Monorepo para consolidar el código fuen
 │
 ├── README.md               # Este documento
 └── .gitignore              # Gitignore global
-
----
+```
 
 ## 4. Guía de Supervivencia Git - Equipo SGI-U
 
