@@ -22,7 +22,7 @@ Todo desarrollo nuevo o corrección se realiza en una rama separada que **nace e
 * `feat/[numero-issue]-[descripcion-corta]`: Para nuevas funcionalidades.
 * `fix/[numero-issue]-[descripcion-corta]`: Para correcciones de errores.
 
-Ejemplos correctos: 
+Ejemplos correctos:
 * `feat/5-post-registro-venta`
 * `fix/12-calculo-subtotal-negativo`
 
@@ -41,16 +41,18 @@ Un commit debe documentar qué cambió y por qué. Utilizaremos el estándar de 
 
 Nadie fusiona (`merge`) su propio código directamente a `develop` ni a `main`.
 
-1.  Al finalizar una tarea, el desarrollador abre un Pull Request (PR) desde su rama hacia `develop`.
-2.  El PR debe describir la solución implementada y referenciar el issue correspondiente.
-3.  Es obligatorio que al menos un miembro del equipo, distinto al autor, revise el código, lo apruebe y ejecute el merge.
+1. Al finalizar una tarea, el desarrollador abre un Pull Request (PR) desde su rama hacia `develop`.
+2. El PR debe describir la solución implementada y referenciar el issue correspondiente.
+3. Es obligatorio que al menos un miembro del equipo, distinto al autor, revise el código, lo apruebe y ejecute el merge.
 
 ### 1.5. Sincronización Diaria
 
 Antes de crear una rama nueva o comenzar a programar, es obligatorio actualizar el entorno local para mitigar conflictos de integración:
 
+```bash
 git checkout develop
 git pull origin develop
+```
 
 ---
 
@@ -59,9 +61,11 @@ git pull origin develop
 Para garantizar el desarrollo en paralelo, el Frontend (Flutter) y el Backend (Spring Boot) se comunicarán estrictamente mediante los siguientes contratos JSON.
 
 ### Contrato 1: Catálogo de Productos
-Endpoint: `GET /api/productos`
+
+Endpoint: `GET /api/productos`  
 Descripción: El backend retorna la lista de productos disponibles.
 
+```json
 [
   {
     "codigo": "1001",
@@ -76,11 +80,14 @@ Descripción: El backend retorna la lista de productos disponibles.
     "stockActual": 15
   }
 ]
+```
 
 ### Contrato 2: Registro de Ticket de Venta
-Endpoint: `POST /api/ventas`
+
+Endpoint: `POST /api/ventas`  
 Descripción: El frontend envía los datos de la transacción para su procesamiento atómico.
 
+```json
 {
   "metodoPago": "EFECTIVO",
   "lineas": [
@@ -94,6 +101,7 @@ Descripción: El frontend envía los datos de la transacción para su procesamie
     }
   ]
 }
+```
 
 ---
 
@@ -132,6 +140,7 @@ El proyecto utiliza una arquitectura de Monorepo para consolidar el código fuen
 ├── README.md               # Este documento
 └── .gitignore              # Gitignore global
 
+---
 
 ## 4. Guía de Supervivencia Git - Equipo SGI-U
 
@@ -141,41 +150,49 @@ Esta guía detalla los comandos exactos y los procedimientos que utilizaremos d�
 
 Este es el proceso exacto que debes seguir cada vez que tomes una tarea del tablero (Issue).
 
-**Paso 1: Sincronizar tu entorno**
+**Paso 1: Sincronizar tu entorno**  
 Antes de escribir una sola línea de código, asegúrate de tener la última versión de Integración.
+
 ```bash
 git checkout develop
 git pull origin develop
 ```
 
-**Paso 2: Crear tu rama de trabajo
-Nombra la rama según la convención: tipo/numero-issue-descripcion.
+**Paso 2: Crear tu rama de trabajo**  
+Nombra la rama según la convención: `tipo/numero-issue-descripcion`.
+
 ```bash
 # Ejemplo: Tomaste la tarea #3 (Endpoint GET Catálogo)
 git checkout -b feat/3-endpoint-get-catalogo
 ```
 
-**Paso 3: Trabajar y registrar cambios (Commits)
+**Paso 3: Trabajar y registrar cambios (Commits)**  
 Haz commits pequeños y lógicos. Usa Conventional Commits.
+
 ```bash
 git add .
 git commit -m "feat: agrega controlador y servicio para obtener catálogo"
 ```
 
-**Paso 4: Subir tu trabajo
+**Paso 4: Subir tu trabajo**  
 Sube tu rama al repositorio remoto en GitHub.
+
 ```bash
 git push -u origin feat/3-endpoint-get-catalogo
 ```
 
-**Paso 5: Pull Request (PR)
-Ve a la interfaz web de GitHub y abre un PR de tu rama hacia develop. Asigna a un compañero como revisor. Una vez aprobado, se fusionará.
+**Paso 5: Pull Request (PR)**  
+Ve a la interfaz web de GitHub y abre un PR de tu rama hacia `develop`. Asigna a un compañero como revisor. Una vez aprobado, se fusionará.
+
+---
 
 ### 4.2. Resolución de Problemas (Escenarios Reales)
-**Escenario A: Conflictos de Merge
+
+**Escenario A: Conflictos de Merge**
 
 El problema: GitHub te informa que tu PR tiene conflictos y no se puede fusionar automáticamente. Esto ocurre porque alguien más modificó el mismo archivo que tú.
-La solución: Debes traer los cambios de develop a tu rama y resolver la colisión localmente en tu IDE (VS Code / IntelliJ).
+
+La solución: Debes traer los cambios de `develop` a tu rama y resolver la colisión localmente en tu IDE (VS Code / IntelliJ).
 
 ```bash
 # 1. Asegúrate de estar en tu rama
@@ -193,12 +210,16 @@ git add .
 git commit -m "fix: resuelve conflictos de merge con develop"
 git push origin feat/3-endpoint-get-catalogo
 ```
+
 El PR en GitHub se actualizará automáticamente y te permitirá hacer el merge.
 
-**Escenario B: Un Bug Urgente en Producción (Hotfix)
+---
 
-El problema: El código en main tiene un error crítico (ej. el sistema no calcula bien el total) y no podemos esperar a la próxima iteración de develop para arreglarlo.
-La solución: Creamos una rama tipo "hotfix" directamente desde main.
+**Escenario B: Un Bug Urgente en Producción (Hotfix)**
+
+El problema: El código en `main` tiene un error crítico (ej. el sistema no calcula bien el total) y no podemos esperar a la próxima iteración de `develop` para arreglarlo.
+
+La solución: Creamos una rama tipo "hotfix" directamente desde `main`.
 
 ```bash
 # 1. Ve a main y actualiza
@@ -213,11 +234,15 @@ git add .
 git commit -m "fix: corrige fallo crítico en cálculo del ticket"
 git push -u origin fix/error-calculo-total
 ```
-Abre un PR hacia main. Una vez aprobado y fusionado en main, es obligatorio hacer un PR desde main hacia develop para que el entorno de integración también tenga la corrección.
 
-**Escenario C: Escribí código en la rama equivocada
+Abre un PR hacia `main`. Una vez aprobado y fusionado en `main`, es obligatorio hacer un PR desde `main` hacia `develop` para que el entorno de integración también tenga la corrección.
 
-El problema: Empezaste a programar y te diste cuenta de que sigues en la rama develop, y no has hecho ningún commit todavía.
+---
+
+**Escenario C: Escribí código en la rama equivocada**
+
+El problema: Empezaste a programar y te diste cuenta de que sigues en la rama `develop`, y no has hecho ningún commit todavía.
+
 La solución: Mueve tus cambios a una rama nueva sin perder tu progreso.
 
 ```bash
@@ -229,9 +254,12 @@ git add .
 git commit -m "feat: inicia nueva tarea"
 ```
 
-## 4.3. Reglas de Oro
-Nunca hagas git push --force. Si crees que lo necesitas, consúltalo con el equipo primero.
+---
 
-No comitees código roto. Tu rama no tiene que estar terminada, pero al menos no debe romper la compilación del proyecto.
+### 4.3. Reglas de Oro
 
-Ignora lo innecesario. Respeta el archivo .gitignore. Nunca subas carpetas /target, /build, archivos .idea o contraseñas locales.
+> ⚠️ **Nunca hagas `git push --force`.** Si crees que lo necesitas, consúltalo con el equipo primero.
+
+> 🚫 **No comitees código roto.** Tu rama no tiene que estar terminada, pero al menos no debe romper la compilación del proyecto.
+
+> 📁 **Ignora lo innecesario.** Respeta el archivo `.gitignore`. Nunca subas carpetas `/target`, `/build`, archivos `.idea` o contraseñas locales.
