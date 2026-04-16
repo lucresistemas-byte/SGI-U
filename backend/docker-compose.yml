@@ -4,19 +4,38 @@ services:
     container_name: sgiu-mariadb
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MARIADB_DATABASE}
-      MYSQL_USER: ${MARIADB_USER}
-      MYSQL_PASSWORD: ${MARIADB_PASSWORD}
+      # Cambié estas a variables fijas para desarrollo, 
+      # o asegúrate de tener un archivo .env en la misma carpeta.
+      MYSQL_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MARIADB_DATABASE:-sgiu_db}
+      MYSQL_USER: ${MARIADB_USER:-user}
+      MYSQL_PASSWORD: ${MARIADB_PASSWORD:-pass}
     ports:
       - "3306:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -u root -p'tu_password_aqui'"]
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # --- AGREGAMOS EL SERVICIO DE SPRING BOOT ---
+  backend:
+    build: 
+      context: .  # Ruta a la carpeta donde está tu Dockerfile
+    container_name: sgiu-backend
+    ports:
+      - "8080:8080"
+    environment:
+      # IMPORTANTE: El host es 'mariadb' (el nombre del servicio de arriba)
+      - SPRING_DATASOURCE_URL=jdbc:mariadb://mariadb:3306/${MARIADB_DATABASE:-sgiu_db}
+      - SPRING_DATASOURCE_USERNAME=${MARIADB_USER:-user}
+      - SPRING_DATASOURCE_PASSWORD=${MARIADB_PASSWORD:-pass}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    depends_on:
+      mariadb:
+        condition: service_healthy # Espera a que el healthcheck de la DB pase
 
 volumes:
   mariadb_data:
