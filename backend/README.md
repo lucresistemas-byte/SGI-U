@@ -1,49 +1,127 @@
-# Infraestructura de Base de Datos - SGI-U
 
-Este repositorio contiene la configuración necesaria para desplegar una instancia de MariaDB mediante Docker Compose, garantizando un entorno de desarrollo aislado y persistente.
+# SGI-U Backend - Sistema de Gestión Integral
 
-## Requisitos del Sistema
+Backend desarrollado con Spring Boot 3.5.13 y Java 21. Provee una API REST para gestionar productos, inventario, ventas y movimientos financieros.
 
-* Docker Engine 20.10+
-* Docker Compose V2
-* Cliente SQL (ej. DBeaver, TablePlus o entorno de consola)
+## Características
 
-## Configuración de Variables de Entorno
+- Gestión de especificaciones de productos
+- Control de inventario en tiempo real
+- Procesamiento de ventas y pagos
+- Registro de movimientos financieros
+- Auditoría automática
+- Despliegue con Docker Compose
+- Base de datos H2 (testing) y MariaDB (desarrollo)
 
-El despliegue depende de un archivo `.env` ubicado en la raíz del proyecto. Este archivo no debe ser incluido en el control de versiones. Se deben definir las siguientes variables:
+## Requisitos Previos
 
-* MARIADB_ROOT_PASSWORD: Contraseña del superusuario root.
-* MARIADB_DATABASE: Nombre de la base de datos inicial.
-* MARIADB_USER: Nombre del usuario para la aplicación.
-* MARIADB_PASSWORD: Contraseña del usuario de la aplicación.
+- Java JDK 21
+- Maven 3.6+
+- Docker Engine 20.10+ y Docker Compose V2
 
-## Instrucciones de Despliegue
+## Configuración
 
-Para iniciar el contenedor en modo segundo plano (detached), ejecute:
+### Variables de Entorno (archivo `.env`)
 
+```
+MARIADB_ROOT_PASSWORD=Lucio1234
+MARIADB_DATABASE=sgiu_db
+MARIADB_USER=sgiu_user
+MARIADB_PASSWORD=sgiu_1234
+```
+
+> **Importante**: El archivo `.env` no debe versionarse.
+
+## Instalación y Ejecución
+
+### Opción A: Docker Compose (Recomendada)
+
+```bash
 docker compose up -d
+```
 
-### Gestión del Ciclo de Vida
+- Backend API: `http://localhost:8080`
+- MariaDB: `localhost:3306`
 
-* Detener servicios: docker compose stop
-* Detener y eliminar contenedores/redes: docker compose down
-* Eliminar contenedores y volúmenes de datos: docker compose down -v
-* Ver estado de salud del servicio: docker ps
+**Comandos útiles:**
 
-## Parámetros de Conexión
+| Acción | Comando |
+|--------|---------|
+| Ver estado | `docker compose ps` |
+| Detener | `docker compose stop` |
+| Ver logs | `docker compose logs -f backend` |
+| Eliminar (conservando datos) | `docker compose down` |
+| Eliminar todo | `docker compose down -v` |
 
-La base de datos es accesible a través de los siguientes parámetros:
+### Opción B: Maven Local
 
-* Host: localhost
-* Puerto: 3306
-* Motor: MariaDB 10.11
+```bash
+cd backend/sgiu/
+./mvnw clean package
+./mvnw spring-boot:run
+```
 
-## Estructura de Persistencia
+## Estructura del Proyecto
 
-Se ha configurado un volumen de Docker denominado 'mariadb_data' que mapea al directorio interno '/var/lib/mysql'. Esto asegura que la información de las tablas y registros permanezca disponible tras el reinicio o la recreación del contenedor.
+```
+backend/
+├── sgiu/
+│   ├── src/main/java/com/sgiu_group/sgiu/
+│   │   ├── config/
+│   │   ├── models/
+│   │   │   ├── entities/
+│   │   │   ├── base/
+│   │   │   └── audit/
+│   │   └── repositories/
+│   └── resources/
+│       ├── application.yml
+│       └── data.sql
+├── Dockerfile
+├── docker-compose.yml
+└── .env
+```
 
-## Monitoreo y Logs
+## Modelo de Datos
 
-Para auditar el comportamiento del servidor de base de datos o diagnosticar errores de conexión, utilice:
+| Entidad | Descripción |
+|---------|-------------|
+| `EspProducto` | Especificación técnica y precio de un producto |
+| `ArticuloStock` | Inventario disponible por producto |
+| `Venta` | Encabezado de una transacción de venta |
+| `LineaVenta` | Detalle de productos dentro de una venta |
+| `PagoVenta` | Pagos asociados a una venta |
+| `MovFinanciero` | Movimientos de caja/banco (ingresos y egresos) |
 
-docker logs -f sgiu-mariadb
+## Sistema de Auditoría
+
+Todas las entidades heredan de `BaseEntity`, que incluye `created_at` y `updated_at` gestionados automáticamente por JPA.
+
+## Datos Iniciales
+
+Se cargan automáticamente desde `data.sql` al iniciar:
+
+- 5 productos (`PROD-001` a `PROD-005`) con precios entre $75.25 y $320.00
+- Stock inicial entre 20 y 100 unidades por producto
+
+## Verificación Post-Instalación
+
+```bash
+# Health check
+curl -s http://localhost:8080/actuator/health
+
+# Listar productos
+curl -s http://localhost:8080/api/esp-productos
+```
+
+## Solución de Problemas
+
+| Síntoma | Solución |
+|---------|----------|
+| Error de conexión a BD | Verificar `docker compose ps mariadb` y credenciales en `.env` |
+| Puerto 8080 en uso | `lsof -i :8080` → `kill -9 <PID>` |
+| Datos no persisten | No usar `docker compose down -v` |
+| OutOfMemoryError en Maven | `export MAVEN_OPTS="-Xmx2g"` |
+
+---
+
+**Stack:** Spring Boot 3.5.13, Java 21, MariaDB 
