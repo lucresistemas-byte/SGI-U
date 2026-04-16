@@ -1,127 +1,125 @@
-
 # SGI-U Backend - Sistema de Gestión Integral
 
-Backend desarrollado con Spring Boot 3.5.13 y Java 21. Provee una API REST para gestionar productos, inventario, ventas y movimientos financieros.
+Backend robusto desarrollado con **Spring Boot 3.5.13** y **Java 21**. Esta API REST centraliza la lógica de negocio para la gestión de productos, inventario, ventas y movimientos financieros, optimizando las operaciones de emprendedores locales.
 
-## Características
+---
 
-- Gestión de especificaciones de productos
-- Control de inventario en tiempo real
-- Procesamiento de ventas y pagos
-- Registro de movimientos financieros
-- Auditoría automática
-- Despliegue con Docker Compose
-- Base de datos H2 (testing) y MariaDB (desarrollo)
+## Características Principales
 
-## Requisitos Previos
+* **Catálogo "Caja Negra":** Endpoint optimizado con cálculo de stock proyectado en tiempo real.
+* **Gestión de Inventario:** Control granular de existencias mediante `ArticuloStock`.
+* **Módulo Transaccional:** Procesamiento de ventas con múltiples líneas de detalle y registro de pagos.
+* **Flujo Financiero:** Seguimiento automático de ingresos y egresos vinculados a la caja.
+* **Auditoría Nativa:** Trazabilidad completa (`created_at`, `updated_at`) mediante **JPA Auditing**.
+* **Arquitectura:** Diseño por capas (Controller-Service-Repository) con uso de DTOs (Java Records).
 
-- Java JDK 21
-- Maven 3.6+
-- Docker Engine 20.10+ y Docker Compose V2
+---
 
-## Configuración
+## Stack Tecnológico
 
-### Variables de Entorno (archivo `.env`)
+* **Lenguaje:** Java 21 (LTS)
+* **Framework:** Spring Boot 3.5.13
+* **Persistencia:** Spring Data JPA + Hibernate
+* **Base de Datos:** MariaDB (Producción/Dev) & H2 (Testing)
+* **Contenedores:** Docker & Docker Compose
+* **Documentación/Salud:** Spring Boot Actuator
 
+---
+
+## Estructura del Proyecto
+
+```text
+backend/sgiu/
+├── src/main/java/com/sgiu_group/sgiu/
+│   ├── config/         # Seguridad, CORS y JPA Auditing
+│   ├── controllers/    # Endpoints REST
+│   ├── services/       # Lógica de negocio y transaccionalidad
+│   ├── repositories/   # Consultas JPA (Derivadas y @Query)
+│   └── models/
+│       ├── entities/   # Entidades del dominio
+│       ├── dtos/       # Data Transfer Objects (Records)
+│       └── base/       # Clases abstractas y auditoría
+└── src/main/resources/
+    ├── application.yml # Configuración de perfiles
+    └── data.sql        # Seed de datos (5 productos iniciales)
 ```
+
+---
+
+## Configuración y Despliegue
+
+### 1. Variables de Entorno
+Crea un archivo `.env` en la raíz del proyecto (basado en el ejemplo siguiente):
+
+```ini
 MARIADB_ROOT_PASSWORD=Lucio1234
 MARIADB_DATABASE=sgiu_db
 MARIADB_USER=sgiu_user
 MARIADB_PASSWORD=sgiu_1234
 ```
 
-> **Importante**: El archivo `.env` no debe versionarse.
-
-## Instalación y Ejecución
-
-### Opción A: Docker Compose (Recomendada)
+### 2. Ejecución con Docker (Recomendado)
+Levanta la infraestructura completa (BD + API) con un solo comando:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-- Backend API: `http://localhost:8080`
-- MariaDB: `localhost:3306`
+* **API:** `http://localhost:8080`
+* **BD:** `localhost:3306`
+* **CORS:** Habilitado para `http://localhost:5173` (Frontend default)
 
-**Comandos útiles:**
-
-| Acción | Comando |
-|--------|---------|
-| Ver estado | `docker compose ps` |
-| Detener | `docker compose stop` |
-| Ver logs | `docker compose logs -f backend` |
-| Eliminar (conservando datos) | `docker compose down` |
-| Eliminar todo | `docker compose down -v` |
-
-### Opción B: Maven Local
+### 3. Ejecución Local (Maven)
+Si prefieres correrlo sin Docker para desarrollo rápido:
 
 ```bash
-cd backend/sgiu/
-./mvnw clean package
-./mvnw spring-boot:run
+./mvnw clean spring-boot:run
 ```
-
-## Estructura del Proyecto
-
-```
-backend/
-├── sgiu/
-│   ├── src/main/java/com/sgiu_group/sgiu/
-│   │   ├── config/
-│   │   ├── models/
-│   │   │   ├── entities/
-│   │   │   ├── base/
-│   │   │   └── audit/
-│   │   └── repositories/
-│   └── resources/
-│       ├── application.yml
-│       └── data.sql
-├── Dockerfile
-├── docker-compose.yml
-└── .env
-```
-
-## Modelo de Datos
-
-| Entidad | Descripción |
-|---------|-------------|
-| `EspProducto` | Especificación técnica y precio de un producto |
-| `ArticuloStock` | Inventario disponible por producto |
-| `Venta` | Encabezado de una transacción de venta |
-| `LineaVenta` | Detalle de productos dentro de una venta |
-| `PagoVenta` | Pagos asociados a una venta |
-| `MovFinanciero` | Movimientos de caja/banco (ingresos y egresos) |
-
-## Sistema de Auditoría
-
-Todas las entidades heredan de `BaseEntity`, que incluye `created_at` y `updated_at` gestionados automáticamente por JPA.
-
-## Datos Iniciales
-
-Se cargan automáticamente desde `data.sql` al iniciar:
-
-- 5 productos (`PROD-001` a `PROD-005`) con precios entre $75.25 y $320.00
-- Stock inicial entre 20 y 100 unidades por producto
-
-## Verificación Post-Instalación
-
-```bash
-# Health check
-curl -s http://localhost:8080/actuator/health
-
-# Listar productos
-curl -s http://localhost:8080/api/esp-productos
-```
-
-## Solución de Problemas
-
-| Síntoma | Solución |
-|---------|----------|
-| Error de conexión a BD | Verificar `docker compose ps mariadb` y credenciales en `.env` |
-| Puerto 8080 en uso | `lsof -i :8080` → `kill -9 <PID>` |
-| Datos no persisten | No usar `docker compose down -v` |
-| OutOfMemoryError en Maven | `export MAVEN_OPTS="-Xmx2g"` |
 
 ---
 
-**Stack:** Spring Boot 3.5.13, Java 21, MariaDB 
+## API Reference - Catálogo
+
+### Obtener Productos (Caja Negra)
+Retorna el catálogo unificado con el stock actual calculado.
+
+`GET /api/productos`
+
+**Response Example (200 OK):**
+```json
+[
+  {
+    "codigo": "PROD-001",
+    "nombre": "Producto PROD-001",
+    "precioUnitario": 1500.0,
+    "stockActual": 25
+  }
+]
+```
+
+---
+
+## Verificación y Troubleshooting
+
+### Comandos de Verificación
+```bash
+# Health Check del Sistema
+curl -s http://localhost:8080/actuator/health
+
+# Listado rápido de productos
+curl -s http://localhost:8080/api/productos
+```
+
+### Solución de Problemas Comunes
+
+| Síntoma | Posible Causa | Solución |
+| :--- | :--- | :--- |
+| **Error de Conexión BD** | Contenedor MariaDB caído | `docker compose ps` y verificar logs. |
+| **SemanticException** | Error en HQL/JPQL | Revisar las rutas de los DTOs en las `@Query`. |
+| **Datos no persisten** | Volumen eliminado | Evitar `docker compose down -v` si deseas mantener la BD. |
+| **Error de Compilación** | Binarios antiguos | Ejecutar `./mvnw clean compile`. |
+
+---
+
+> [!NOTE]
+> **Datos iniciales:** Al iniciar, el sistema carga automáticamente 5 productos de prueba (`PROD-001` a `PROD-005`) con stock precargado para facilitar el testing del frontend.
