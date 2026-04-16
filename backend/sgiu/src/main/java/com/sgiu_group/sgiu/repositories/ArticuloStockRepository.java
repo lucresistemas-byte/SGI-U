@@ -9,4 +9,7 @@ import java.util.Optional;
 public interface ArticuloStockRepository extends JpaRepository<ArticuloStock, Long> {
 
     Optional<ArticuloStock> findByEspProducto(EspProducto espProducto);
+
+    // Nuevo: permite buscar el stock directamente usando el String del código
+    Optional<ArticuloStock> findByEspProducto_Codigo(String codigo);
 }
