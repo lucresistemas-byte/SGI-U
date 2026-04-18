@@ -32,6 +32,9 @@ public class VentaService {
     @Transactional
     public void procesarVenta(VentaRequestDTO request) {
         Venta venta = new Venta();
+        // Setear valores requeridos por PR #13 para evitar errores de nulidad
+        venta.setIdSesionCaja(0); // Valor por defecto temporal
+        venta.setCreadoPorUsuario(0); // Valor por defecto temporal
         BigDecimal totalAcumulado = BigDecimal.ZERO;
 
         for (LineaVentaDTO dto : request.lineas()) {
@@ -52,7 +55,7 @@ public class VentaService {
             BigDecimal precioUnitario = stock.getEspProducto().getPrecioUnitario();
             
             // Creamos la línea de venta
-            LineaVenta linea = new LineaVenta(venta, stock, dto.cantidad(), precioUnitario);
+            LineaVenta linea = new LineaVenta(venta, stock.getEspProducto(), dto.cantidad());
             venta.addLinea(linea);
 
             // Calculamos subtotal
@@ -63,7 +66,8 @@ public class VentaService {
         Venta ventaGuardada = ventaRepository.save(venta);
 
         // Registro de Pago
-        PagoVenta pago = new PagoVenta(ventaGuardada, totalAcumulado, request.metodoPago());
+        String metodoPagoStr = request.metodoPago() != null ? request.metodoPago().toString() : "EFECTIVO";
+        PagoVenta pago = new PagoVenta(ventaGuardada, totalAcumulado, metodoPagoStr);
         pagoRepository.save(pago);
 
         // Registro Financiero (Ingreso)
