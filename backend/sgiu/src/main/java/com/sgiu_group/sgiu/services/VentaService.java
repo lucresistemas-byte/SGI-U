@@ -3,6 +3,8 @@ package com.sgiu_group.sgiu.services;
 import com.sgiu_group.sgiu.models.dtos.VentaRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.LineaVentaDTO;
 import com.sgiu_group.sgiu.models.entities.*;
+import com.sgiu_group.sgiu.exceptions.ProductoNoEncontradoException;
+import com.sgiu_group.sgiu.exceptions.StockInsuficienteException;
 import com.sgiu_group.sgiu.repositories.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,11 +42,11 @@ public class VentaService {
         for (LineaVentaDTO dto : request.lineas()) {
             // Buscamos el stock directamente por el código del producto (RN05)
             ArticuloStock stock = stockRepository.findByEspProducto_Codigo(dto.codigoProducto())
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + dto.codigoProducto()));
+                .orElseThrow(() -> new ProductoNoEncontradoException("Producto no encontrado: " + dto.codigoProducto()));
 
             // RN02: Verificación de stock insuficiente
             if (stock.getCantidad() < dto.cantidad()) {
-                throw new RuntimeException("Stock insuficiente para: " + dto.codigoProducto());
+                throw new StockInsuficienteException("Stock insuficiente para: " + dto.codigoProducto());
             }
 
             // Descuento de inventario
