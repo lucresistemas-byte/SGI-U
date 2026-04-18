@@ -2,7 +2,6 @@ package com.sgiu_group.sgiu.models.entities;
 
 import com.sgiu_group.sgiu.models.base.BaseEntity;
 import jakarta.persistence.*;
-
 import java.math.BigDecimal;
 
 @Entity
@@ -10,29 +9,45 @@ import java.math.BigDecimal;
 public class LineaVenta extends BaseEntity {
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "venta_id", nullable = false,
+    @JoinColumn(name = "id_venta", nullable = false, 
                 foreignKey = @ForeignKey(name = "fk_linea_venta_venta"))
     private Venta venta;
 
+    // CORRECCIÓN: Relación con EspProducto (Catálogo) en lugar de ArticuloStock
     @ManyToOne(optional = false)
-    @JoinColumn(name = "articulo_id", nullable = false,
-                foreignKey = @ForeignKey(name = "fk_linea_venta_articulo"))
-    private ArticuloStock articulo;
+    @JoinColumn(name = "codigo_producto", nullable = false, 
+                foreignKey = @ForeignKey(name = "fk_linea_venta_producto"))
+    private EspProducto producto;
 
     @Column(nullable = false)
     private Integer cantidad;
 
+    // Campo agregado según el diagrama de datos
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal subtotal;
+
+    // El precio unitario se mantiene para persistir el valor histórico al momento de la venta
     @Column(name = "precio_unitario", nullable = false, precision = 10, scale = 2)
     private BigDecimal precioUnitario;
 
     public LineaVenta() {}
 
-    public LineaVenta(Venta venta, ArticuloStock articulo, Integer cantidad, BigDecimal precioUnitario) {
+    public LineaVenta(Venta venta, EspProducto producto, Integer cantidad) {
         this.venta = venta;
-        this.articulo = articulo;
+        this.producto = producto;
         this.cantidad = cantidad;
-        this.precioUnitario = precioUnitario;
+        this.precioUnitario = producto.getPrecioUnitario();
+        calcularSubtotal();
     }
+
+    // Método para asegurar que el subtotal siempre sea correcto
+    public void calcularSubtotal() {
+        if (this.precioUnitario != null && this.cantidad != null) {
+            this.subtotal = this.precioUnitario.multiply(new BigDecimal(this.cantidad));
+        }
+    }
+
+    // --- GETTERS Y SETTERS ---
 
     public Venta getVenta() {
         return venta;
@@ -42,12 +57,15 @@ public class LineaVenta extends BaseEntity {
         this.venta = venta;
     }
 
-    public ArticuloStock getArticulo() {
-        return articulo;
+    public EspProducto getProducto() {
+        return producto;
     }
 
-    public void setArticulo(ArticuloStock articulo) {
-        this.articulo = articulo;
+    public void setProducto(EspProducto producto) {
+        this.producto = producto;
+        if (producto != null) {
+            this.precioUnitario = producto.getPrecioUnitario();
+        }
     }
 
     public Integer getCantidad() {
@@ -59,6 +77,7 @@ public class LineaVenta extends BaseEntity {
             throw new IllegalArgumentException("La cantidad debe ser mayor a cero");
         }
         this.cantidad = cantidad;
+        calcularSubtotal();
     }
 
     public BigDecimal getPrecioUnitario() {
@@ -66,9 +85,13 @@ public class LineaVenta extends BaseEntity {
     }
 
     public void setPrecioUnitario(BigDecimal precioUnitario) {
-        if (precioUnitario.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("El precio no puede ser negativo");
-        }
         this.precioUnitario = precioUnitario;
+        calcularSubtotal();
     }
+
+    public BigDecimal getSubtotal() {
+        return subtotal;
+    }
+
+    // El subtotal no suele tener setter público directo para evitar inconsistencias
 }
