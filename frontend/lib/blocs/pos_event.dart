@@ -32,10 +32,21 @@ class RemoveFromCart extends PosEvent {
 }
 
 class SelectPaymentMethod extends PosEvent {
-  final String method; // "EFECTIVO" o "MERCADO_PAGO"
+  final String method;
   const SelectPaymentMethod(this.method);
   @override
   List<Object?> get props => [method];
 }
 
-class ConfirmSale extends PosEvent {}
+class ConfirmSale extends PosEvent {
+  const ConfirmSale();
+}
+
+// Nuevos eventos para limpiar mensajes
+class ClearError extends PosEvent {
+  const ClearError();
+}
+
+class ClearSuccess extends PosEvent {
+  const ClearSuccess();
+}

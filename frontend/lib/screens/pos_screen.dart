@@ -3,12 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/pos_bloc.dart';
 import '../blocs/pos_event.dart';
 import '../blocs/pos_state.dart';
-import '../widgets/product_card.dart';
-import '../widgets/cart_item.dart';
-import '../widgets/payment_method_selector.dart';
 import '../models/product.dart';
+
 class PosScreen extends StatelessWidget {
-  const PosScreen({Key? key}) : super(key: key);
+  const PosScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -20,27 +18,68 @@ class PosScreen extends StatelessWidget {
 }
 
 class PosView extends StatelessWidget {
-  const PosView({Key? key}) : super(key: key);
+  const PosView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: FractionallySizedBox(
-        widthFactor: 1.0,
-        heightFactor: 1.0,
-        child: Row(
-          children: const [
-            Expanded(flex: 7, child: LeftPanel()),
-            Expanded(flex: 3, child: RightPanel()),
-          ],
+    return BlocListener<PosBloc, PosState>(
+      listener: (context, state) {
+        if (state.errorMessage != null) {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('Error'),
+              content: Text(state.errorMessage!),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    context.read<PosBloc>().add(const ClearError());
+                    Navigator.pop(context);
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+        if (state.successMessage != null) {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('Éxito'),
+              content: Text(state.successMessage!),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    context.read<PosBloc>().add(const ClearSuccess());
+                    Navigator.pop(context);
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        body: FractionallySizedBox(
+          widthFactor: 1.0,
+          heightFactor: 1.0,
+          child: Row(
+            children: [
+              Expanded(flex: 7, child: LeftPanel()),
+              Expanded(flex: 3, child: RightPanel()),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+// ========== PANEL IZQUIERDO ==========
 class LeftPanel extends StatelessWidget {
-  const LeftPanel({Key? key}) : super(key: key);
+  const LeftPanel({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -48,14 +87,15 @@ class LeftPanel extends StatelessWidget {
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          // Barra de búsqueda + cantidad + botón Agregar
           const SearchAddBar(),
           const SizedBox(height: 16),
-          // Lista horizontal de productos rápidos
           SizedBox(
             height: 120,
             child: BlocBuilder<PosBloc, PosState>(
               builder: (context, state) {
+                if (state.isLoading && state.products.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
                 return ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: state.products.length,
@@ -73,7 +113,6 @@ class LeftPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          // Tabla del carrito
           const Expanded(child: CartTable()),
         ],
       ),
@@ -81,8 +120,9 @@ class LeftPanel extends StatelessWidget {
   }
 }
 
+// Barra de búsqueda + cantidad + botón Agregar
 class SearchAddBar extends StatefulWidget {
-  const SearchAddBar({Key? key}) : super(key: key);
+  const SearchAddBar({super.key});
 
   @override
   State<SearchAddBar> createState() => _SearchAddBarState();
@@ -174,8 +214,9 @@ class _SearchAddBarState extends State<SearchAddBar> {
   }
 }
 
+// Tabla del carrito
 class CartTable extends StatelessWidget {
-  const CartTable({Key? key}) : super(key: key);
+  const CartTable({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -184,71 +225,66 @@ class CartTable extends StatelessWidget {
         if (state.cart.isEmpty) {
           return const Center(child: Text('No hay productos agregados'));
         }
-        return Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text('Producto')),
-                    DataColumn(label: Text('Cantidad')),
-                    DataColumn(label: Text('Precio Unit.')),
-                    DataColumn(label: Text('Total')),
-                    DataColumn(label: Text('')),
-                  ],
-                  rows: state.cart.entries.map((entry) {
-                    final product = state.products.firstWhere(
-                          (p) => p.codigo == entry.key,
-                      orElse: () => Product(codigo: '', nombre: '', precioUnitario: 0, stockActual: 0),
-                    );
-                    return DataRow(cells: [
-                      DataCell(Text(product.nombre)),
-                      DataCell(
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.remove),
-                              onPressed: () {
-                                int newQty = entry.value - 1;
-                                if (newQty >= 0) {
-                                  context.read<PosBloc>().add(UpdateCartItemQuantity(product.codigo, newQty));
-                                }
-                              },
-                            ),
-                            Text(entry.value.toString()),
-                            IconButton(
-                              icon: const Icon(Icons.add),
-                              onPressed: () {
-                                context.read<PosBloc>().add(UpdateCartItemQuantity(product.codigo, entry.value + 1));
-                              },
-                            ),
-                          ],
-                        ),
+        return SingleChildScrollView(
+          child: DataTable(
+            columns: const [
+              DataColumn(label: Text('Producto')),
+              DataColumn(label: Text('Cantidad')),
+              DataColumn(label: Text('Precio Unit.')),
+              DataColumn(label: Text('Total')),
+              DataColumn(label: Text('')),
+            ],
+            rows: state.cart.entries.map((entry) {
+              final product = state.products.firstWhere(
+                    (p) => p.codigo == entry.key,
+                orElse: () => Product(codigo: '', nombre: '', precioUnitario: 0, stockActual: 0),
+              );
+              return DataRow(cells: [
+                DataCell(Text(product.nombre)),
+                DataCell(
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove),
+                        onPressed: () {
+                          int newQty = entry.value - 1;
+                          if (newQty >= 0) {
+                            context.read<PosBloc>().add(UpdateCartItemQuantity(product.codigo, newQty));
+                          }
+                        },
                       ),
-                      DataCell(Text('\$${product.precioUnitario.toStringAsFixed(2)}')),
-                      DataCell(Text('\$${(product.precioUnitario * entry.value).toStringAsFixed(2)}')),
-                      DataCell(
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () {
-                            context.read<PosBloc>().add(RemoveFromCart(product.codigo));
-                          },
-                        ),
+                      Text(entry.value.toString()),
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: () {
+                          context.read<PosBloc>().add(UpdateCartItemQuantity(product.codigo, entry.value + 1));
+                        },
                       ),
-                    ]);
-                  }).toList(),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          ],
+                DataCell(Text('\$${product.precioUnitario.toStringAsFixed(2)}')),
+                DataCell(Text('\$${(product.precioUnitario * entry.value).toStringAsFixed(2)}')),
+                DataCell(
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () {
+                      context.read<PosBloc>().add(RemoveFromCart(product.codigo));
+                    },
+                  ),
+                ),
+              ]);
+            }).toList(),
+          ),
         );
       },
     );
   }
 }
 
+// ========== PANEL DERECHO ==========
 class RightPanel extends StatelessWidget {
-  const RightPanel({Key? key}) : super(key: key);
+  const RightPanel({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -258,10 +294,8 @@ class RightPanel extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Selector de método de pago arriba a la derecha
           const PaymentMethodSelector(),
           const Spacer(),
-          // Total de la venta
           BlocBuilder<PosBloc, PosState>(
             builder: (context, state) {
               return Card(
@@ -282,7 +316,6 @@ class RightPanel extends StatelessWidget {
             },
           ),
           const SizedBox(height: 16),
-          // Botón Confirmar Cobro (grande, esquina inferior derecha)
           SizedBox(
             width: double.infinity,
             height: 70,
@@ -321,19 +354,7 @@ class RightPanel extends StatelessWidget {
                   );
                   return;
                 }
-                showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text('Funcionalidad en desarrollo'),
-                    content: const Text('Esta acción simulará el cobro en futuras iteraciones.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cerrar'),
-                      ),
-                    ],
-                  ),
-                );
+                context.read<PosBloc>().add(const ConfirmSale());
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
@@ -345,6 +366,75 @@ class RightPanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ========== WIDGETS AUXILIARES ==========
+class ProductCard extends StatelessWidget {
+  final Product product;
+  final Function(int quantity) onAdd;
+
+  const ProductCard({super.key, required this.product, required this.onAdd});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      child: InkWell(
+        onTap: () => onAdd(1),
+        child: SizedBox(
+          width: 120,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.inventory, size: 40),
+              const SizedBox(height: 8),
+              Text(product.nombre, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text('\$${product.precioUnitario.toStringAsFixed(2)}'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class PaymentMethodSelector extends StatelessWidget {
+  const PaymentMethodSelector({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<PosBloc, PosState>(
+      builder: (context, state) {
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              children: [
+                const Text('Método de pago', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                RadioListTile<String>(
+                  title: const Text('Efectivo'),
+                  value: 'EFECTIVO',
+                  groupValue: state.selectedPaymentMethod,
+                  onChanged: (value) {
+                    context.read<PosBloc>().add(SelectPaymentMethod(value!));
+                  },
+                ),
+                RadioListTile<String>(
+                  title: const Text('Mercado Pago'),
+                  value: 'MERCADO_PAGO',
+                  groupValue: state.selectedPaymentMethod,
+                  onChanged: (value) {
+                    context.read<PosBloc>().add(SelectPaymentMethod(value!));
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
