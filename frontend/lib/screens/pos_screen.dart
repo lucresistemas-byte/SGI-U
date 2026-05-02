@@ -4,6 +4,8 @@ import '../blocs/pos_bloc.dart';
 import '../blocs/pos_event.dart';
 import '../blocs/pos_state.dart';
 import '../models/product.dart';
+import '../widgets/product_card.dart';
+import '../widgets/payment_method_selector.dart';
 
 class PosScreen extends StatelessWidget {
   const PosScreen({super.key});
@@ -90,7 +92,7 @@ class LeftPanel extends StatelessWidget {
           const SearchAddBar(),
           const SizedBox(height: 16),
           SizedBox(
-            height: 120,
+            height: 200,
             child: BlocBuilder<PosBloc, PosState>(
               builder: (context, state) {
                 if (state.isLoading && state.products.isEmpty) {
@@ -104,7 +106,18 @@ class LeftPanel extends StatelessWidget {
                     return ProductCard(
                       product: product,
                       onAdd: (quantity) {
-                        context.read<PosBloc>().add(AddToCart(product.codigo, quantity));
+                        // FIX: Verificamos si la cantidad total en carrito superaría el stock
+                        final currentCartQty = state.cart[product.codigo] ?? 0;
+                        if (currentCartQty + quantity <= product.stockActual) {
+                          context.read<PosBloc>().add(AddToCart(product.codigo, quantity));
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Stock máximo alcanzado. Solo quedan ${product.stockActual} en stock.'),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
                       },
                     );
                   },
@@ -146,12 +159,8 @@ class _SearchAddBarState extends State<SearchAddBar> {
                   if (textEditingValue.text.isEmpty) return [];
                   return state.products
                       .where((product) =>
-                  product.nombre
-                      .toLowerCase()
-                      .contains(textEditingValue.text.toLowerCase()) ||
-                      product.codigo
-                          .toLowerCase()
-                          .contains(textEditingValue.text.toLowerCase()))
+                          product.nombre.toLowerCase().contains(textEditingValue.text.toLowerCase()) ||
+                          product.codigo.toLowerCase().contains(textEditingValue.text.toLowerCase()))
                       .map((product) => product.codigo)
                       .toList();
                 },
@@ -194,11 +203,22 @@ class _SearchAddBarState extends State<SearchAddBar> {
               onPressed: () {
                 final quantity = int.tryParse(_quantityController.text) ?? 1;
                 if (quantity <= 0) return;
+                
                 if (_selectedProductCode != null) {
-                  context.read<PosBloc>().add(AddToCart(_selectedProductCode!, quantity));
-                  _searchController.clear();
-                  setState(() => _selectedProductCode = null);
-                  _quantityController.text = '1';
+                  // FIX: Validamos stock al agregar por búsqueda
+                  final product = state.products.firstWhere((p) => p.codigo == _selectedProductCode);
+                  final currentCartQty = state.cart[_selectedProductCode] ?? 0;
+                  
+                  if (currentCartQty + quantity <= product.stockActual) {
+                    context.read<PosBloc>().add(AddToCart(_selectedProductCode!, quantity));
+                    _searchController.clear();
+                    setState(() => _selectedProductCode = null);
+                    _quantityController.text = '1';
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Stock insuficiente. Quedan ${product.stockActual} unidades.')),
+                    );
+                  }
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Seleccione un producto de la lista')),
@@ -236,7 +256,7 @@ class CartTable extends StatelessWidget {
             ],
             rows: state.cart.entries.map((entry) {
               final product = state.products.firstWhere(
-                    (p) => p.codigo == entry.key,
+                (p) => p.codigo == entry.key,
                 orElse: () => Product(codigo: '', nombre: '', precioUnitario: 0, stockActual: 0),
               );
               return DataRow(cells: [
@@ -254,10 +274,20 @@ class CartTable extends StatelessWidget {
                         },
                       ),
                       Text(entry.value.toString()),
+                      // FIX: Bloqueamos el botón "+" si superamos el stock
                       IconButton(
                         icon: const Icon(Icons.add),
                         onPressed: () {
-                          context.read<PosBloc>().add(UpdateCartItemQuantity(product.codigo, entry.value + 1));
+                          if (entry.value < product.stockActual) {
+                            context.read<PosBloc>().add(UpdateCartItemQuantity(product.codigo, entry.value + 1));
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('No hay más stock de ${product.nombre}'),
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          }
                         },
                       ),
                     ],
@@ -294,7 +324,7 @@ class RightPanel extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const PaymentMethodSelector(),
+          PaymentMethodSelector(),
           const Spacer(),
           BlocBuilder<PosBloc, PosState>(
             builder: (context, state) {
@@ -322,28 +352,13 @@ class RightPanel extends StatelessWidget {
             child: ElevatedButton(
               onPressed: () {
                 final state = context.read<PosBloc>().state;
-                if (state.selectedPaymentMethod == null) {
-                  showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text('Error'),
-                      content: const Text('Seleccione un método de pago'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('OK'),
-                        ),
-                      ],
-                    ),
-                  );
-                  return;
-                }
+                // FIX: Validamos PRIMERO que el carrito no esté vacío
                 if (state.cart.isEmpty) {
                   showDialog(
                     context: context,
                     builder: (_) => AlertDialog(
                       title: const Text('Carrito vacío'),
-                      content: const Text('Agregue productos antes de cobrar'),
+                      content: const Text('Agregue productos antes de cobrar.'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
@@ -354,6 +369,26 @@ class RightPanel extends StatelessWidget {
                   );
                   return;
                 }
+                
+                // Si el carrito tiene cosas, verificamos el método de pago
+                if (state.selectedPaymentMethod == null) {
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('Método de pago requerido'),
+                      content: const Text('Seleccione cómo va a abonar el cliente.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                  return;
+                }
+                
+                // Si todo está bien, disparamos la venta al backend
                 context.read<PosBloc>().add(const ConfirmSale());
               },
               style: ElevatedButton.styleFrom(
@@ -370,71 +405,3 @@ class RightPanel extends StatelessWidget {
   }
 }
 
-// ========== WIDGETS AUXILIARES ==========
-class ProductCard extends StatelessWidget {
-  final Product product;
-  final Function(int quantity) onAdd;
-
-  const ProductCard({super.key, required this.product, required this.onAdd});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      child: InkWell(
-        onTap: () => onAdd(1),
-        child: SizedBox(
-          width: 120,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.inventory, size: 40),
-              const SizedBox(height: 8),
-              Text(product.nombre, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text('\$${product.precioUnitario.toStringAsFixed(2)}'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class PaymentMethodSelector extends StatelessWidget {
-  const PaymentMethodSelector({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<PosBloc, PosState>(
-      builder: (context, state) {
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              children: [
-                const Text('Método de pago', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                RadioListTile<String>(
-                  title: const Text('Efectivo'),
-                  value: 'EFECTIVO',
-                  groupValue: state.selectedPaymentMethod,
-                  onChanged: (value) {
-                    context.read<PosBloc>().add(SelectPaymentMethod(value!));
-                  },
-                ),
-                RadioListTile<String>(
-                  title: const Text('Mercado Pago'),
-                  value: 'MERCADO_PAGO',
-                  groupValue: state.selectedPaymentMethod,
-                  onChanged: (value) {
-                    context.read<PosBloc>().add(SelectPaymentMethod(value!));
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
