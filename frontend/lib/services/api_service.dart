@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../models/product.dart'; // Para que reconozca la clase Product
 
 class ApiService {
   late Dio _dio;
@@ -6,7 +7,7 @@ class ApiService {
 
   ApiService() {
     // URL fija del backend (cámbiala si es necesario)
-    baseUrl = 'http://192.168.1.9:3000';
+    baseUrl = 'http://localhost:3000';
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 10),
@@ -51,6 +52,46 @@ class ApiService {
         throw Exception('Error al procesar la venta');
       }
       throw Exception('Error al procesar la venta: ${e.message}');
+    }
+  }
+
+// NUEVO: POST para crear un producto (BK-5) adaptado para Dio
+  Future<Product> createProduct(Map<String, dynamic> productData) async {
+    try {
+      // Dio ya sabe que tiene que mandarlo como JSON y usa tu baseUrl automáticamente
+      final response = await _dio.post(
+        '/api/productos',
+        data: productData,
+      );
+
+      if (response.statusCode == 201) {
+        return Product.fromJson(response.data); // Dio ya te devuelve un Map, no hace falta jsonDecode
+      } else {
+        throw Exception('Error al crear el producto: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) {
+        throw Exception('El código de producto ya existe.');
+      }
+      throw Exception('Error de red al crear el producto: ${e.message}');
+    }
+  }
+
+  // NUEVO: PUT para editar o archivar un producto (BK-6) adaptado para Dio
+  Future<Product> updateProduct(String codigo, Map<String, dynamic> productData) async {
+    try {
+      final response = await _dio.put(
+        '/api/productos/$codigo',
+        data: productData,
+      );
+
+      if (response.statusCode == 200) {
+        return Product.fromJson(response.data);
+      } else {
+        throw Exception('Error al actualizar el producto: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red al actualizar: ${e.message}');
     }
   }
 }

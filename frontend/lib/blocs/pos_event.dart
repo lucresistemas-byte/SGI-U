@@ -50,3 +50,20 @@ class ClearError extends PosEvent {
 class ClearSuccess extends PosEvent {
   const ClearSuccess();
 }
+
+// --- NUEVOS EVENTOS PARA EL CATÁLOGO (FT-5 y FT-6) ---
+
+class CreateProduct extends PosEvent {
+  final Map<String, dynamic> productData;
+  const CreateProduct(this.productData);
+  @override
+  List<Object?> get props => [productData];
+}
+
+class UpdateProduct extends PosEvent {
+  final String codigo;
+  final Map<String, dynamic> productData;
+  const UpdateProduct(this.codigo, this.productData);
+  @override
+  List<Object?> get props => [codigo, productData];
+}

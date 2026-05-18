@@ -7,21 +7,26 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface EspProductoRepository extends JpaRepository<EspProducto, Long> {
+
+    // NUEVO: Le enseñamos a Spring a buscar por el código de texto
+    Optional<EspProducto> findByCodigo(String codigo);
 
     @Query("""
            SELECT new com.sgiu_group.sgiu.models.dtos.ProductoCatalogoDTO(
                p.codigo, 
                p.nombre, 
                p.precioUnitario, 
-               COALESCE(SUM(s.cantidad), 0L)
+               COALESCE(SUM(s.cantidad), 0L),
+               p.activo
            )
            FROM EspProducto p
            LEFT JOIN ArticuloStock s ON s.espProducto = p
-           WHERE p.activo = true
-           GROUP BY p.codigo, p.nombre, p.precioUnitario
+           GROUP BY p.codigo, p.nombre, p.precioUnitario, p.activo
            """)
     List<ProductoCatalogoDTO> obtenerCatalogo();
+    // (Nota: le saqué el WHERE p.activo = true porque ahora Flutter se encarga de mostrar inactivos)
 }
