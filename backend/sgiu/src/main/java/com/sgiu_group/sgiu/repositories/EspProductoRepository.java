@@ -24,4 +24,5 @@ public interface EspProductoRepository extends JpaRepository<EspProducto, Long> 
            GROUP BY p.codigo, p.nombre, p.precioUnitario, p.activo
            """)
     List<ProductoCatalogoDTO> obtenerCatalogo();
+    boolean existsByCodigo(String codigo);
 }
