@@ -6,7 +6,7 @@ class ApiService {
 
   ApiService() {
     // URL fija del backend (cámbiala si es necesario)
-    baseUrl = 'http://localhost:8080';
+    baseUrl = 'http://192.168.1.9:3000';
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 10),
