@@ -16,12 +16,12 @@ public interface EspProductoRepository extends JpaRepository<EspProducto, Long> 
                p.codigo, 
                p.nombre, 
                p.precioUnitario, 
-               COALESCE(SUM(s.cantidad), 0L)
+               COALESCE(SUM(s.cantidad), 0L),
+               p.activo
            )
            FROM EspProducto p
            LEFT JOIN ArticuloStock s ON s.espProducto = p
-           WHERE p.activo = true
-           GROUP BY p.codigo, p.nombre, p.precioUnitario
+           GROUP BY p.codigo, p.nombre, p.precioUnitario, p.activo
            """)
     List<ProductoCatalogoDTO> obtenerCatalogo();
 }
