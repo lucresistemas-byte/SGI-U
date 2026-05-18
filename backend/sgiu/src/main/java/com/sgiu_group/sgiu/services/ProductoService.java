@@ -38,15 +38,48 @@ public class ProductoService {
 
         com.sgiu_group.sgiu.models.entities.ArticuloStock nuevoStock = new com.sgiu_group.sgiu.models.entities.ArticuloStock();
         nuevoStock.setEspProducto(nuevoProducto);
-        nuevoStock.setCantidad(dto.stockActual() != null ? dto.stockActual() : 0L);
+        // SOLUCIÓN: Convertimos el Long del DTO al Integer de la Entidad
+        nuevoStock.setCantidad(dto.stockActual() != null ? dto.stockActual().intValue() : 0);
         stockRepository.save(nuevoStock);
 
         return new ProductoCatalogoDTO(
                 nuevoProducto.getCodigo(),
                 nuevoProducto.getNombre(),
                 nuevoProducto.getPrecioUnitario(),
-                nuevoStock.getCantidad(),
+                // SOLUCIÓN: Convertimos el Integer de la Entidad al Long del DTO
+                Long.valueOf(nuevoStock.getCantidad()),
                 nuevoProducto.isActivo()
+        );
+    }
+
+    @Transactional
+    public ProductoCatalogoDTO actualizarProducto(String codigo, com.sgiu_group.sgiu.models.dtos.ProductoRequestDTO dto) {
+        com.sgiu_group.sgiu.models.entities.EspProducto productoExistente = productoRepository.findByCodigo(codigo)
+                .orElseThrow(() -> new IllegalArgumentException("No se encontró un producto con el código: " + codigo));
+
+        if (dto.nombre() != null) {
+            productoExistente.setNombre(dto.nombre());
+        }
+        if (dto.precioUnitario() != null) {
+            productoExistente.setPrecioUnitario(dto.precioUnitario());
+        }
+        if (dto.activo() != null) {
+            productoExistente.setActivo(dto.activo()); 
+        }
+
+        productoRepository.save(productoExistente);
+
+        // SOLUCIÓN: Traducimos el Integer a Long al buscar en la BD
+        Long stockActual = stockRepository.findByEspProducto(productoExistente)
+                .map(stock -> Long.valueOf(stock.getCantidad()))
+                .orElse(0L);
+
+        return new ProductoCatalogoDTO(
+                productoExistente.getCodigo(),
+                productoExistente.getNombre(),
+                productoExistente.getPrecioUnitario(),
+                stockActual,
+                productoExistente.isActivo()
         );
     }
 }

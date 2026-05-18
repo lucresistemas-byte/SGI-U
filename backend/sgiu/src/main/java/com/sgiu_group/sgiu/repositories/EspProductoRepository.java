@@ -25,4 +25,5 @@ public interface EspProductoRepository extends JpaRepository<EspProducto, Long> 
            """)
     List<ProductoCatalogoDTO> obtenerCatalogo();
     boolean existsByCodigo(String codigo);
+    java.util.Optional<com.sgiu_group.sgiu.models.entities.EspProducto> findByCodigo(String codigo);
 }

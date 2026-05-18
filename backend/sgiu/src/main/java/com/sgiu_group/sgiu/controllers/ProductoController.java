@@ -42,4 +42,20 @@ public class ProductoController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
     }
+
+    // NUEVO: Endpoint PUT para editar un producto específico (BK-6)
+    @org.springframework.web.bind.annotation.PutMapping("/{codigo}")
+    public ResponseEntity<?> actualizarProducto(
+            @org.springframework.web.bind.annotation.PathVariable String codigo,
+            @org.springframework.web.bind.annotation.RequestBody com.sgiu_group.sgiu.models.dtos.ProductoRequestDTO dto) {
+        try {
+            // Mandamos los datos al servicio
+            ProductoCatalogoDTO productoActualizado = productoService.actualizarProducto(codigo, dto);
+            // Si todo va bien, devolvemos un 200 (OK) con el producto modificado
+            return ResponseEntity.ok(productoActualizado);
+        } catch (IllegalArgumentException e) {
+            // Si el servicio no encontró el código, devolvemos un 404 (Not Found)
+            return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
 }
