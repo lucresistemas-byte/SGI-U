@@ -1,12 +1,13 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
-import '../models/product.dart'; // Para que reconozca la clase Product
+import '../models/product.dart';
 
 class ApiService {
   late Dio _dio;
   late String baseUrl;
+  String? _authToken;
 
   ApiService() {
-    // URL fija del backend (cámbiala si es necesario)
     baseUrl = 'http://localhost:3000';
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
@@ -14,8 +15,57 @@ class ApiService {
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
     ));
+
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        if (_authToken != null) {
+          options.headers['Authorization'] = 'Bearer $_authToken';
+        }
+        return handler.next(options);
+      },
+    ));
   }
 
+  void setAuthToken(String token) {
+    _authToken = token;
+  }
+
+  void clearAuthToken() {
+    _authToken = null;
+  }
+
+  // MÉTODO LOGIN CORREGIDO
+  Future<Map<String, dynamic>> login(String username, String password) async {
+    try {
+      final response = await _dio
+          .post('/api/auth/login', data: {
+        'username': username,
+        'password': password,
+      })
+          .timeout(const Duration(seconds: 10)); // Timeout adicional por seguridad
+
+      if (response.statusCode == 200) {
+        return response.data;
+      } else {
+        throw Exception('Credenciales incorrectas');
+      }
+    } on DioException catch (e) {
+      // Capturamos TODOS los errores de conexión, incluido el servidor apagado
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.connectionError) {
+        throw Exception('No se pudo conectar con el servidor. Verifique su conexión.');
+      }
+      if (e.response?.statusCode == 401) {
+        throw Exception('Usuario o contraseña incorrectos');
+      }
+      throw Exception('Error de conexión: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Tiempo de espera agotado. El servidor no responde.');
+    } catch (e) {
+      throw Exception('Error inesperado: $e');
+    }
+  }
   Future<List<dynamic>> getProducts() async {
     try {
       final response = await _dio.get('/api/productos');
