@@ -1,6 +1,7 @@
 package com.sgiu_group.sgiu.services;
 
 import com.sgiu_group.sgiu.models.dtos.ProductoCatalogoDTO;
+import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class ProductoService {
         return productoRepository.obtenerCatalogo();
     }
 
+<<<<<<< HEAD
     // 2. NUEVO: Agregamos todo el método de crearProducto justo debajo de la llave que cierra getCatalogo()
     @Transactional
     public ProductoCatalogoDTO crearProducto(com.sgiu_group.sgiu.models.dtos.ProductoRequestDTO dto) {
@@ -49,10 +51,29 @@ public class ProductoService {
                 // SOLUCIÓN: Convertimos el Integer de la Entidad al Long del DTO
                 Long.valueOf(nuevoStock.getCantidad()),
                 nuevoProducto.isActivo()
+=======
+    @Transactional
+    public ProductoCatalogoDTO crearProducto(ProductoCatalogoDTO dto) {
+        EspProducto nuevoProducto = new EspProducto();
+        
+        // ¡Magia de los records! Se llaman como la variable, sin el "get"
+        nuevoProducto.setCodigo(dto.codigo());
+        nuevoProducto.setNombre(dto.nombre());
+        nuevoProducto.setPrecioUnitario(dto.precioUnitario());
+        // No seteamos stock porque EspProducto no lleva stock
+        // No seteamos activo porque el constructor de EspProducto ya lo pone en true
+
+        productoRepository.save(nuevoProducto);
+
+        // Devolvemos el record inmutable
+        return new ProductoCatalogoDTO(
+            dto.codigo(), dto.nombre(), dto.precioUnitario(), 0L, true
+>>>>>>> origin/iteracion-2-frontend
         );
     }
 
     @Transactional
+<<<<<<< HEAD
     public ProductoCatalogoDTO actualizarProducto(String codigo, com.sgiu_group.sgiu.models.dtos.ProductoRequestDTO dto) {
         com.sgiu_group.sgiu.models.entities.EspProducto productoExistente = productoRepository.findByCodigo(codigo)
                 .orElseThrow(() -> new IllegalArgumentException("No se encontró un producto con el código: " + codigo));
@@ -80,6 +101,21 @@ public class ProductoService {
                 productoExistente.getPrecioUnitario(),
                 stockActual,
                 productoExistente.isActivo()
+=======
+    public ProductoCatalogoDTO actualizarProducto(String codigo, ProductoCatalogoDTO dto) {
+        // Usamos nuestro método nuevo findByCodigo
+        EspProducto productoExistente = productoRepository.findByCodigo(codigo)
+                .orElseThrow(() -> new RuntimeException("Error: Producto no encontrado con código " + codigo));
+
+        productoExistente.setNombre(dto.nombre());
+        productoExistente.setPrecioUnitario(dto.precioUnitario());
+        productoExistente.setActivo(dto.activo()); // Toggle de la baja lógica
+
+        productoRepository.save(productoExistente);
+
+        return new ProductoCatalogoDTO(
+            codigo, dto.nombre(), dto.precioUnitario(), dto.stockActual(), dto.activo()
+>>>>>>> origin/iteracion-2-frontend
         );
     }
 }

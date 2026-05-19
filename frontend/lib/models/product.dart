@@ -3,12 +3,14 @@ class Product {
   final String nombre;
   final double precioUnitario;
   final int stockActual;
+  final bool activo;
 
   Product({
     required this.codigo,
     required this.nombre,
     required this.precioUnitario,
     required this.stockActual,
+    this.activo = true,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -17,6 +19,7 @@ class Product {
       nombre: json['nombre'],
       precioUnitario: (json['precioUnitario'] as num).toDouble(),
       stockActual: json['stockActual'],
+      activo: json['activo'] ?? true,
     );
   }
 }
