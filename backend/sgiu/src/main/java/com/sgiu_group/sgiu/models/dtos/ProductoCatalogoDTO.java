@@ -7,13 +7,5 @@ public record ProductoCatalogoDTO(
     String nombre,
     BigDecimal precioUnitario,
     Long stockActual,
-<<<<<<< HEAD
-<<<<<<< HEAD
-    boolean activo
-=======
-    Boolean activo // <-- NUEVO: Fundamental para el frontend
->>>>>>> origin/iteracion-2-frontend
-=======
-    Boolean activo // <-- NUEVO: Fundamental para el frontend
->>>>>>> b8680ed (feat: agregar login)
+    Boolean activo
 ) {}
