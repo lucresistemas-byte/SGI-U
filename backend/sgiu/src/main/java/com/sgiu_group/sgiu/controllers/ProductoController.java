@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 <<<<<<< HEAD
+<<<<<<< HEAD
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,6 +17,9 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 =======
 import org.springframework.web.bind.annotation.*;
 >>>>>>> origin/iteracion-2-frontend
+=======
+import org.springframework.web.bind.annotation.*;
+>>>>>>> b8680ed (feat: agregar login)
 
 import java.util.List;
 
@@ -28,15 +32,20 @@ public class ProductoController {
     private final ProductoService productoService;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     // Este es el endpoint que ya tenías (BK-7)
 =======
     // 1. LISTAR (El que ya tenías)
 >>>>>>> origin/iteracion-2-frontend
+=======
+    // 1. LISTAR (El que ya tenías)
+>>>>>>> b8680ed (feat: agregar login)
     @GetMapping
     public ResponseEntity<List<ProductoCatalogoDTO>> listarProductos() {
         return ResponseEntity.ok(productoService.getCatalogo()); // Cambiá getCatalogo() si tu método se llama distinto
     }
 
+<<<<<<< HEAD
     // 2. CREAR (NUEVO)
     @PostMapping
     public ResponseEntity<ProductoCatalogoDTO> crearProducto(@RequestBody ProductoCatalogoDTO productoDTO) {
@@ -55,6 +64,10 @@ public class ProductoController {
 
     // Este es el NUEVO endpoint que agregamos (BK-5)
     @PostMapping
+=======
+    // Este es el NUEVO endpoint que agregamos (BK-5)
+    @PostMapping("/crear")
+>>>>>>> b8680ed (feat: agregar login)
     public ResponseEntity<?> crearProducto(@RequestBody ProductoRequestDTO dto) {
         try {
             // Llama al servicio que armamos en el paso anterior
@@ -68,10 +81,17 @@ public class ProductoController {
     }
 
     // NUEVO: Endpoint PUT para editar un producto específico (BK-6)
+<<<<<<< HEAD
     @org.springframework.web.bind.annotation.PutMapping("/{codigo}")
     public ResponseEntity<?> actualizarProducto(
             @org.springframework.web.bind.annotation.PathVariable String codigo,
             @org.springframework.web.bind.annotation.RequestBody com.sgiu_group.sgiu.models.dtos.ProductoRequestDTO dto) {
+=======
+    @PutMapping("/editar/{codigo}")
+    public ResponseEntity<?> actualizarProducto(
+            @PathVariable String codigo,
+            @RequestBody ProductoRequestDTO dto) {
+>>>>>>> b8680ed (feat: agregar login)
         try {
             // Mandamos los datos al servicio
             ProductoCatalogoDTO productoActualizado = productoService.actualizarProducto(codigo, dto);
@@ -79,7 +99,11 @@ public class ProductoController {
             return ResponseEntity.ok(productoActualizado);
         } catch (IllegalArgumentException e) {
             // Si el servicio no encontró el código, devolvemos un 404 (Not Found)
+<<<<<<< HEAD
             return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(e.getMessage());
+=======
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+>>>>>>> b8680ed (feat: agregar login)
         }
     }
 }

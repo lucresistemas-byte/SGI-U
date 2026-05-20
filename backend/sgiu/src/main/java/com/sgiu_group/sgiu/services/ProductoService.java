@@ -13,7 +13,11 @@ import java.util.List;
 public class ProductoService {
 
     private final EspProductoRepository productoRepository;
+<<<<<<< HEAD
     
+=======
+     
+>>>>>>> b8680ed (feat: agregar login)
     // 1. NUEVO: Agregamos el repositorio de stock acá abajo del otro
     private final com.sgiu_group.sgiu.repositories.ArticuloStockRepository stockRepository;
 
@@ -23,7 +27,10 @@ public class ProductoService {
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     // 2. NUEVO: Agregamos todo el método de crearProducto justo debajo de la llave que cierra getCatalogo()
+=======
+>>>>>>> b8680ed (feat: agregar login)
     @Transactional
     public ProductoCatalogoDTO crearProducto(com.sgiu_group.sgiu.models.dtos.ProductoRequestDTO dto) {
         if (productoRepository.existsByCodigo(dto.codigo())) {
@@ -51,6 +58,7 @@ public class ProductoService {
                 // SOLUCIÓN: Convertimos el Integer de la Entidad al Long del DTO
                 Long.valueOf(nuevoStock.getCantidad()),
                 nuevoProducto.isActivo()
+<<<<<<< HEAD
 =======
     @Transactional
     public ProductoCatalogoDTO crearProducto(ProductoCatalogoDTO dto) {
@@ -69,11 +77,16 @@ public class ProductoService {
         return new ProductoCatalogoDTO(
             dto.codigo(), dto.nombre(), dto.precioUnitario(), 0L, true
 >>>>>>> origin/iteracion-2-frontend
+=======
+>>>>>>> b8680ed (feat: agregar login)
         );
     }
 
     @Transactional
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> b8680ed (feat: agregar login)
     public ProductoCatalogoDTO actualizarProducto(String codigo, com.sgiu_group.sgiu.models.dtos.ProductoRequestDTO dto) {
         com.sgiu_group.sgiu.models.entities.EspProducto productoExistente = productoRepository.findByCodigo(codigo)
                 .orElseThrow(() -> new IllegalArgumentException("No se encontró un producto con el código: " + codigo));
@@ -101,6 +114,7 @@ public class ProductoService {
                 productoExistente.getPrecioUnitario(),
                 stockActual,
                 productoExistente.isActivo()
+<<<<<<< HEAD
 =======
     public ProductoCatalogoDTO actualizarProducto(String codigo, ProductoCatalogoDTO dto) {
         // Usamos nuestro método nuevo findByCodigo
@@ -116,6 +130,8 @@ public class ProductoService {
         return new ProductoCatalogoDTO(
             codigo, dto.nombre(), dto.precioUnitario(), dto.stockActual(), dto.activo()
 >>>>>>> origin/iteracion-2-frontend
+=======
+>>>>>>> b8680ed (feat: agregar login)
         );
     }
 }
