@@ -34,7 +34,7 @@ class ApiService {
     _authToken = null;
   }
 
-  // MÉTODO LOGIN CORREGIDO
+  // METODO LOGIN CORREGIDO
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
       final response = await _dio
@@ -108,39 +108,34 @@ class ApiService {
 // NUEVO: POST para crear un producto (BK-5) adaptado para Dio
   Future<Product> createProduct(Map<String, dynamic> productData) async {
     try {
-      // Dio ya sabe que tiene que mandarlo como JSON y usa tu baseUrl automáticamente
-      final response = await _dio.post(
-        '/api/productos',
-        data: productData,
-      );
-
+      final response = await _dio.post('/api/productos', data: productData);
       if (response.statusCode == 201) {
-        return Product.fromJson(response.data); // Dio ya te devuelve un Map, no hace falta jsonDecode
+        return Product.fromJson(response.data);
       } else {
-        throw Exception('Error al crear el producto: ${response.statusCode}');
+        throw Exception('Error al crear el producto');
       }
     } on DioException catch (e) {
       if (e.response?.statusCode == 409) {
+        // FIX #1: Código duplicado
         throw Exception('El código de producto ya existe.');
       }
       throw Exception('Error de red al crear el producto: ${e.message}');
     }
   }
 
-  // NUEVO: PUT para editar o archivar un producto (BK-6) adaptado para Dio
   Future<Product> updateProduct(String codigo, Map<String, dynamic> productData) async {
     try {
-      final response = await _dio.put(
-        '/api/productos/$codigo',
-        data: productData,
-      );
-
+      final response = await _dio.put('/api/productos/$codigo', data: productData);
       if (response.statusCode == 200) {
         return Product.fromJson(response.data);
       } else {
-        throw Exception('Error al actualizar el producto: ${response.statusCode}');
+        throw Exception('Error al actualizar el producto');
       }
     } on DioException catch (e) {
+      // Manejar 422 o 409 si corresponde
+      if (e.response?.statusCode == 422) {
+        throw Exception('Datos inválidos: verifique el precio o el stock.');
+      }
       throw Exception('Error de red al actualizar: ${e.message}');
     }
   }
