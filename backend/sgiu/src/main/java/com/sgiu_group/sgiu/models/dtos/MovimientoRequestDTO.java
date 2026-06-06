@@ -16,6 +16,5 @@ public record MovimientoRequestDTO(
     String metodoPago,
     String categoria,
     String descripcion,
-    @NotNull(message = "La fecha y hora es obligatoria.")
     LocalDateTime fechaHora
 ) {}
