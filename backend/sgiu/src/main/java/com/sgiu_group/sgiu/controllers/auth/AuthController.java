@@ -1,5 +1,6 @@
 package com.sgiu_group.sgiu.controllers.auth;
 
+import com.sgiu_group.sgiu.models.dtos.LoginRequestDTO;
 import com.sgiu_group.sgiu.models.entities.EspUsuario;
 import com.sgiu_group.sgiu.repositories.EspUsuarioRepository;
 import com.sgiu_group.sgiu.security.JwtUtil;
@@ -39,30 +40,6 @@ public class AuthController {
     private PasswordEncoder passwordEncoder;
 
     /**
-     * Clase interna para representar una solicitud de login.
-     */
-    public static class LoginRequest {
-        private String username;
-        private String password;
-
-        public String getUsername() {
-            return username;
-        }
-
-        public void setUsername(String username) {
-            this.username = username;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
-    }
-
-    /**
      * Clase interna para representar una respuesta de login.
      */
     public static class LoginResponse {
@@ -99,32 +76,27 @@ public class AuthController {
      * Endpoint para autenticar usuario y generar token JWT.
      */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> login(@RequestBody LoginRequestDTO request) {
         try {
-            // Autenticar con Spring Security
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            loginRequest.getUsername(),
-                            loginRequest.getPassword()
+                            request.username(),
+                            request.password()
                     )
             );
         } catch (BadCredentialsException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Credenciales incorrectas"));
         }
 
-        // Cargar detalles del usuario
-        final UserDetails userDetails = usuarioDetailsService.loadUserByUsername(loginRequest.getUsername());
-        
-        // Obtener usuario de la base de datos
-        EspUsuario usuario = usuarioRepository.findByUsername(loginRequest.getUsername());
+        final UserDetails userDetails = usuarioDetailsService.loadUserByUsername(request.username());
+
+        EspUsuario usuario = usuarioRepository.findByUsername(request.username());
         if (usuario == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Usuario no encontrado"));
         }
 
-        // Generar token JWT
         final String jwt = jwtUtil.generateToken(userDetails);
 
-        // Devolver respuesta
         return ResponseEntity.ok(new LoginResponse(jwt, usuario));
     }
 
@@ -132,26 +104,21 @@ public class AuthController {
      * Endpoint para registrar un nuevo usuario (opcional).
      */
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody LoginRequest registerRequest) {
-        // Verificar si el usuario ya existe
-        if (usuarioRepository.findByUsername(registerRequest.getUsername()) != null) {
+    public ResponseEntity<?> register(@RequestBody LoginRequestDTO request) {
+        if (usuarioRepository.findByUsername(request.username()) != null) {
             return ResponseEntity.badRequest().body(Map.of("error", "El nombre de usuario ya está en uso"));
         }
 
-        // Crear nuevo usuario
         EspUsuario usuario = new EspUsuario();
-        usuario.setUsername(registerRequest.getUsername());
-        usuario.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+        usuario.setUsername(request.username());
+        usuario.setPassword(passwordEncoder.encode(request.password()));
         usuario.setActivo(true);
 
-        // Guardar usuario
         usuarioRepository.save(usuario);
 
-        // Generar token para el nuevo usuario
         final UserDetails userDetails = usuarioDetailsService.loadUserByUsername(usuario.getUsername());
         final String jwt = jwtUtil.generateToken(userDetails);
 
-        // Devolver respuesta
         return ResponseEntity.ok(new LoginResponse(jwt, usuario));
     }
 }
