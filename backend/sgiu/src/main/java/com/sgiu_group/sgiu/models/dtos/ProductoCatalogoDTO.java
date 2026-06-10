@@ -6,5 +6,6 @@ public record ProductoCatalogoDTO(
     String codigo,
     String nombre,
     BigDecimal precioUnitario,
-    Long stockActual
+    Long stockActual,
+    Boolean activo
 ) {}

@@ -16,6 +16,35 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     on<ConfirmSale>(_onConfirmSale);
     on<ClearError>((event, emit) => emit(state.copyWith(errorMessage: null)));
     on<ClearSuccess>((event, emit) => emit(state.copyWith(successMessage: null)));
+    // --- MANEJADORES DEL CATÁLOGO ---
+
+    on<CreateProduct>((event, emit) async {
+      // 1. Ponemos la pantalla en modo "Cargando"
+      emit(state.copyWith(isLoading: true, errorMessage: null, successMessage: null));
+      try {
+        // 2. Llamamos a la API
+        await _apiService.createProduct(event.productData);
+        // 3. Si todo sale bien, le decimos al BLoC que vuelva a cargar la lista de productos de la base de datos
+        add(LoadProducts());
+        // 4. Mostramos mensaje de éxito
+        emit(state.copyWith(isLoading: false, successMessage: 'Producto guardado con éxito'));
+      } catch (e) {
+        // Si hay error (ej. código duplicado), mostramos el error
+        emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
+      }
+    });
+
+    on<UpdateProduct>((event, emit) async {
+      emit(state.copyWith(isLoading: true, errorMessage: null, successMessage: null));
+      try {
+        await _apiService.updateProduct(event.codigo, event.productData);
+        add(LoadProducts()); // Recargamos la lista actualizada
+        emit(state.copyWith(isLoading: false, successMessage: 'Producto actualizado con éxito'));
+      } catch (e) {
+        emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
+      }
+    });
+    
   }
 
   Future<void> _onLoadProducts(LoadProducts event, Emitter<PosState> emit) async {

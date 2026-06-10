@@ -2,6 +2,10 @@ server:
   port: 3000
   address: 0.0.0.0
 
+jwt:
+  secret: a7b8C9d0E1f2G3h4I5j6K7l8M9n0O1p2Q3r4S5t6U7v=
+  expiration: 3600000
+
 spring:
   application:
     name: sgiu
