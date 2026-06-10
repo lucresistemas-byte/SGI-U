@@ -12,9 +12,11 @@ import java.util.Optional;
 @Repository
 public interface EspProductoRepository extends JpaRepository<EspProducto, Long> {
 
-    // NUEVO: Le enseñamos a Spring a buscar por el código de texto
     Optional<EspProducto> findByCodigo(String codigo);
 
+    boolean existsByCodigo(String codigo);
+
+    // Nota: se quitó el WHERE p.activo = true porque ahora Flutter se encarga de mostrar inactivos
     @Query("""
            SELECT new com.sgiu_group.sgiu.models.dtos.ProductoCatalogoDTO(
                p.codigo, 
@@ -28,5 +30,4 @@ public interface EspProductoRepository extends JpaRepository<EspProducto, Long> 
            GROUP BY p.codigo, p.nombre, p.precioUnitario, p.activo
            """)
     List<ProductoCatalogoDTO> obtenerCatalogo();
-    // (Nota: le saqué el WHERE p.activo = true porque ahora Flutter se encarga de mostrar inactivos)
 }

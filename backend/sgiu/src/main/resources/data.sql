@@ -19,3 +19,6 @@ INSERT IGNORE INTO articulos_stock (id, esp_producto_id, cantidad, created_at, u
 (3, 3, 100, NOW(), NOW()),
 (4, 4, 20, NOW(), NOW()),
 (5, 5, 60, NOW(), NOW());
+
+INSERT IGNORE INTO esp_usuarios (id, activo, password, username) VALUES
+(1, 1, '$2a$10$ZoyPuSsTfLPetCn1SJmW.eWzrD3Otan/DnE5eIh4C8KGTQDZ0P3eW', 'admin')

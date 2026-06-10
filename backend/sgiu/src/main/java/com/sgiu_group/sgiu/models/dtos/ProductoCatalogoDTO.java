@@ -7,5 +7,5 @@ public record ProductoCatalogoDTO(
     String nombre,
     BigDecimal precioUnitario,
     Long stockActual,
-    Boolean activo // <-- NUEVO: Fundamental para el frontend
+    Boolean activo
 ) {}
