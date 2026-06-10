@@ -74,9 +74,12 @@ public class VentaService {
 
         // Registro Financiero (Ingreso)
         MovFinanciero movimiento = new MovFinanciero(
-            totalAcumulado, 
-            "INGRESO", 
-            "Venta de productos - ID: " + ventaGuardada.getId(), 
+            TipoMovimiento.INGRESO,
+            totalAcumulado,
+            metodoPagoStr,
+            "VENTA",
+            "Venta de productos - ID: " + ventaGuardada.getId(),
+            ventaGuardada.getFechaHora(),
             pago
         );
         movFinancieroRepository.save(movimiento);
