@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import '../models/product.dart';
-
+import 'package:intl/intl.dart';
 class ApiService {
   late Dio _dio;
   late String baseUrl;
@@ -122,7 +122,65 @@ class ApiService {
       throw Exception('Error de red al crear el producto: ${e.message}');
     }
   }
+// dentro de ApiService
 
+  Future<Map<String, dynamic>> getResumenFinanciero() async {
+    try {
+      final response = await _dio.get('/api/finanzas/resumen');
+      if (response.statusCode == 200) {
+        return response.data;
+      } else {
+        throw Exception('Error al cargar resumen');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getMovimientos({int pagina = 1, int limite = 10}) async {
+    try {
+      final response = await _dio.get('/api/movimientos', queryParameters: {
+        'page': pagina,
+        'limit': limite,
+      });
+      if (response.statusCode == 200) {
+        return response.data;
+      } else {
+        throw Exception('Error al cargar movimientos');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  Future<void> createMovimiento(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.post('/api/movimientos', data: data);
+      if (response.statusCode != 201) {
+        throw Exception('Error al crear movimiento');
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        throw Exception('Datos inválidos: ${e.response?.data['message']}');
+      }
+      throw Exception('Error de conexión');
+    }
+  }
+  Future<Map<String, dynamic>> getBalance(DateTime inicio, DateTime fin) async {
+    try {
+      final response = await _dio.get('/api/balance', queryParameters: {
+        'desde': DateFormat('yyyy-MM-dd').format(inicio),
+        'hasta': DateFormat('yyyy-MM-dd').format(fin),
+      });
+      if (response.statusCode == 200) {
+        return response.data;
+      } else {
+        throw Exception('Error al cargar balance');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
   Future<Product> updateProduct(String codigo, Map<String, dynamic> productData) async {
     try {
       final response = await _dio.put('/api/productos/$codigo', data: productData);
