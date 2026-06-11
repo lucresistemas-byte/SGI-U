@@ -1,4 +1,3 @@
-// lib/screens/balance_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -206,9 +205,10 @@ class _BalanceScreenState extends State<BalanceScreen> {
   }
 
   Widget _buildMetricasYTabla(Map<String, dynamic> balance) {
-    final ingresos = (balance['ingresos'] ?? 0.0).toDouble();
-    final egresos = (balance['egresos'] ?? 0.0).toDouble();
-    final margenNeto = ingresos - egresos;
+    // Adaptar a los campos reales del backend
+    final ingresos = (balance['totalIngresos'] ?? 0.0).toDouble();
+    final egresos = (balance['totalEgresos'] ?? 0.0).toDouble();
+    final margenNeto = (balance['margenNeto'] ?? 0.0).toDouble();
     final colorMargen = margenNeto >= 0 ? const Color(0xFF006B3D) : const Color(0xFFFF0000);
 
     return Column(
@@ -317,20 +317,37 @@ class _BalanceScreenState extends State<BalanceScreen> {
                   DataColumn(label: Text('Descripción')),
                 ],
                 rows: movimientos.map((mov) {
-                  final tipo = mov['tipo'] as String;
-                  final monto = (mov['monto'] as num).toDouble();
-                  final metodo = mov['metodoPago'] as String;
-                  final categoria = mov['categoria'] ?? '';
-                  final descripcion = mov['descripcion'] ?? '';
+                  // Parsear tipo: "INGRESO" -> "Ingreso" para mostrar
+                  String tipoRaw = mov['tipo'] ?? '';
+                  String tipoDisplay = tipoRaw.toLowerCase() == 'ingreso' ? 'Ingreso' : 'Egreso';
+                  bool isIngreso = tipoDisplay == 'Ingreso';
+
+                  // Parsear método de pago
+                  String metodoRaw = mov['metodoPago']?.toString() ?? '';
+                  String metodoDisplay = _parseMetodoPago(metodoRaw);
+
+                  // Monto: asumir que siempre es positivo, el tipo define signo visual
+                  double monto = (mov['monto'] ?? 0.0).toDouble();
+
+                  // Fecha: formatear desde ISO 8601
+                  String fechaHora = _formatFechaHora(mov['fechaHora'] ?? '');
+
+                  String categoria = mov['categoria'] ?? 'Sin categoría';
+                  String descripcion = mov['descripcion'] ?? '';
+
                   return DataRow(cells: [
-                    DataCell(Text(mov['fechaHora'])),
-                    DataCell(_buildTipoBadge(tipo)),
-                    DataCell(Text(_formatMonto(monto),
+                    DataCell(Text(fechaHora)),
+                    DataCell(_buildTipoBadge(tipoDisplay, isIngreso)),
+                    DataCell(
+                      Text(
+                        _formatMonto(monto),
                         style: TextStyle(
-                          color: tipo.toLowerCase() == 'ingreso' ? const Color(0xFF008A3D) : const Color(0xFFFF2E2E),
+                          color: isIngreso ? const Color(0xFF008A3D) : const Color(0xFFFF2E2E),
                           fontWeight: FontWeight.w500,
-                        ))),
-                    DataCell(_buildMetodoBadge(metodo)),
+                        ),
+                      ),
+                    ),
+                    DataCell(_buildMetodoBadge(metodoDisplay)),
                     DataCell(Text(categoria)),
                     DataCell(Text(descripcion)),
                   ]);
@@ -356,15 +373,37 @@ class _BalanceScreenState extends State<BalanceScreen> {
     );
   }
 
-  Widget _buildTipoBadge(String tipo) {
-    final isIngreso = tipo.toLowerCase() == 'ingreso';
+  String _parseMetodoPago(String raw) {
+    switch (raw) {
+      case '1':
+        return 'Efectivo';
+      case '2':
+        return 'Mercado Pago';
+      case '3':
+        return 'Tarjeta';
+      default:
+        return raw;
+    }
+  }
+
+  String _formatFechaHora(String isoString) {
+    if (isoString.isEmpty) return '';
+    try {
+      final dateTime = DateTime.parse(isoString);
+      return DateFormat('dd/MM/yyyy HH:mm').format(dateTime.toLocal());
+    } catch (e) {
+      return isoString;
+    }
+  }
+
+  Widget _buildTipoBadge(String tipo, bool isIngreso) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
         color: isIngreso ? const Color(0xFF008A3D) : const Color(0xFFFF2E2E),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(isIngreso ? 'Ingreso' : 'Egreso', style: const TextStyle(color: Colors.white, fontSize: 12)),
+      child: Text(tipo, style: const TextStyle(color: Colors.white, fontSize: 12)),
     );
   }
 
@@ -379,6 +418,9 @@ class _BalanceScreenState extends State<BalanceScreen> {
         break;
       case 'tarjeta':
         color = const Color(0xFF1976D2);
+        break;
+      case 'mercado pago':
+        color = const Color(0xFF1E88E5);
         break;
       default:
         color = const Color(0xFF757575);
