@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../screens/catalogo_screen.dart';
 import '../screens/pos_screen.dart';
-
+import '../screens/movimientos_screen.dart';
+import '../screens/balance_screen.dart';
 class SideMenu extends StatefulWidget {
   final String rutaActual;
   const SideMenu({super.key, required this.rutaActual});
@@ -47,6 +48,17 @@ class _SideMenuState extends State<SideMenu> {
             ),
           ),
           const SizedBox(height: 10),
+          _buildMenuItem(
+            Icons.receipt_long,
+            'Movimientos',
+            widget.rutaActual == '/movimientos',
+                () {
+              if (widget.rutaActual != '/movimientos') {
+                Navigator.pushReplacement(
+                    context, MaterialPageRoute(builder: (_) =>  MovimientosScreen()));
+              }
+            },
+          ),
 
           // 1. Punto de Venta
           _buildMenuItem(Icons.storefront_outlined, 'Punto de Venta',
@@ -64,14 +76,8 @@ class _SideMenuState extends State<SideMenu> {
             );
           }),
 
-          // 3. Ventas (próximamente)
-          _buildMenuItem(Icons.receipt_outlined, 'Ventas', false, () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Módulo de Ventas disponible próximamente')),
-            );
-          }),
 
-          // 4. Catálogo (renombrado de "Productos")
+          // 3. Catálogo (renombrado de "Productos")
           _buildMenuItem(Icons.inventory_2, 'Catálogo',
               widget.rutaActual == '/catalogo', () {
                 if (widget.rutaActual != '/catalogo') {
@@ -79,17 +85,22 @@ class _SideMenuState extends State<SideMenu> {
                       MaterialPageRoute(builder: (_) => const CatalogoScreen()));
                 }
               }),
-
-          // 5. Reportes (próximamente)
-          _buildMenuItem(Icons.bar_chart_outlined, 'Reportes', false, () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Reportes disponibles próximamente')),
-            );
-          }),
+            // 4. Balance
+          _buildMenuItem(
+            Icons.balance,
+            'Balance',
+            widget.rutaActual == '/balance',
+                () {
+              if (widget.rutaActual != '/balance') {
+                Navigator.pushReplacement(
+                    context, MaterialPageRoute(builder: (_) => const BalanceScreen()));
+              }
+            },
+          ),
 
           const Spacer(),
 
-          // 6. Configuración
+          // 5. Configuración
           _buildMenuItem(Icons.settings_outlined, 'Configuración', false, () {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Configuración disponible próximamente')),

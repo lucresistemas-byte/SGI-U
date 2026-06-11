@@ -4,6 +4,7 @@ import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
 import 'blocs/pos_bloc.dart';
+import 'blocs/finanzas/finanzas_bloc.dart';
 import 'screens/catalogo_screen.dart';
 import 'screens/login_screen.dart';
 
@@ -20,6 +21,7 @@ class MyApp extends StatelessWidget {
       providers: [
         BlocProvider(create: (context) => AuthBloc()..add(CheckAuthStatus())),
         BlocProvider(create: (context) => PosBloc()),
+        BlocProvider(create: (context) => FinanzasBloc()), // ← AGREGADO
       ],
       child: MaterialApp(
         title: 'SGI-U',
@@ -29,12 +31,13 @@ class MyApp extends StatelessWidget {
         ),
         home: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, authState) {
+            // Descomentar la siguiente línea para saltarse el login durante el desarrollo
+            // return const CatalogoScreen();
             if (authState is Authenticated) {
-              return const CatalogoScreen(); // Pantalla principal
+              return const CatalogoScreen();
             } else if (authState is Unauthenticated) {
               return const LoginScreen();
             } else {
-              // AuthInitial o AuthLoading
               return const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
               );
