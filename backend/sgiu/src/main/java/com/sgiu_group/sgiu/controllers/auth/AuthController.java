@@ -78,6 +78,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequestDTO request) {
         try {
+            // Restauramos la validación estricta de credenciales
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.username(),

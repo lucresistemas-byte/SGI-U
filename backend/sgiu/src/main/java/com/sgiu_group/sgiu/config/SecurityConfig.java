@@ -30,12 +30,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            // 1. Configuramos CORS de forma segura (restringido a tu puerto de Flutter)
+            .cors(cors -> cors.configurationSource(request -> {
+    var config = new org.springframework.web.cors.CorsConfiguration();
+    config.setAllowedOriginPatterns(java.util.List.of("*")); // Permite cualquier puerto de Flutter
+    config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    config.setAllowedHeaders(java.util.List.of("*"));
+    return config;
+}))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
-                // Rutas públicas
-                .requestMatchers("/api/auth/**", "/v2/api-docs", "/swagger-ui/**", "/swagger-resources/**", "/swagger-ui.html", "/webjars/**").permitAll()
-                // Rutas protegidas - ajustar según tus necesidades
+                // 2. Rutas públicas
+                .requestMatchers("/api/auth/**", "/v2/api-docs", "/swagger-ui/**").permitAll()
+                // 3. Todo lo demás (como /api/productos) requiere token JWT válido
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

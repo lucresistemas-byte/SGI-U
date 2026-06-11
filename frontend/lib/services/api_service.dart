@@ -3,11 +3,20 @@ import 'package:dio/dio.dart';
 import '../models/product.dart';
 
 class ApiService {
+  // --- INICIO DEL FIX: PATRÓN SINGLETON ---
+  static final ApiService _instance = ApiService._internal();
+
+  factory ApiService() {
+    return _instance;
+  }
+  // --- FIN DEL FIX ---
+
   late Dio _dio;
   late String baseUrl;
   String? _authToken;
 
-  ApiService() {
+  // Constructor interno privado
+  ApiService._internal() {
     baseUrl = 'http://localhost:3000';
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
@@ -19,6 +28,7 @@ class ApiService {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
         if (_authToken != null) {
+          // Acá se inyecta el token en CADA petición si existe
           options.headers['Authorization'] = 'Bearer $_authToken';
         }
         return handler.next(options);
@@ -34,7 +44,6 @@ class ApiService {
     _authToken = null;
   }
 
-  // METODO LOGIN CORREGIDO
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
       final response = await _dio
@@ -42,7 +51,7 @@ class ApiService {
         'username': username,
         'password': password,
       })
-          .timeout(const Duration(seconds: 10)); // Timeout adicional por seguridad
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         return response.data;
@@ -50,7 +59,6 @@ class ApiService {
         throw Exception('Credenciales incorrectas');
       }
     } on DioException catch (e) {
-      // Capturamos TODOS los errores de conexión, incluido el servidor apagado
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.connectionError) {
@@ -66,6 +74,7 @@ class ApiService {
       throw Exception('Error inesperado: $e');
     }
   }
+
   Future<List<dynamic>> getProducts() async {
     try {
       final response = await _dio.get('/api/productos');
@@ -105,7 +114,6 @@ class ApiService {
     }
   }
 
-// NUEVO: POST para crear un producto (BK-5) adaptado para Dio
   Future<Product> createProduct(Map<String, dynamic> productData) async {
     try {
       final response = await _dio.post('/api/productos', data: productData);
@@ -116,7 +124,6 @@ class ApiService {
       }
     } on DioException catch (e) {
       if (e.response?.statusCode == 409) {
-        // FIX #1: Código duplicado
         throw Exception('El código de producto ya existe.');
       }
       throw Exception('Error de red al crear el producto: ${e.message}');
@@ -132,7 +139,6 @@ class ApiService {
         throw Exception('Error al actualizar el producto');
       }
     } on DioException catch (e) {
-      // Manejar 422 o 409 si corresponde
       if (e.response?.statusCode == 422) {
         throw Exception('Datos inválidos: verifique el precio o el stock.');
       }

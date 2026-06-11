@@ -19,9 +19,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       CheckAuthStatus event, Emitter<AuthState> emit) async {
     final token = await _storage.read(key: _tokenKey);
     if (token != null && token.isNotEmpty) {
-      // Opcional: verificar validez con backend, pero por simplicidad asumimos válido
       emit(Authenticated(token));
-      _apiService.setAuthToken(token); // Configurar token en ApiService
+      _apiService.setAuthToken(token);
     } else {
       emit(Unauthenticated());
     }
@@ -32,7 +31,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     try {
       final response = await _apiService.login(event.username, event.password);
-      final token = response['token']; // Asumiendo que la respuesta tiene "token"
+      
+      // CORRECCIÓN: Usamos 'token' porque así aparece en el JSON de respuesta del servidor
+      final token = response['token']; 
+      
       if (token != null && token.isNotEmpty) {
         await _storage.write(key: _tokenKey, value: token);
         _apiService.setAuthToken(token);
