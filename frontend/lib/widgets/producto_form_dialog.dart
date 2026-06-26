@@ -77,7 +77,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   bool _isAjusteValido() {
     if (!_esEdicion) return true;
     final cantidad = int.tryParse(_ajusteCantidadController.text.trim()) ?? 0;
-    if (cantidad <= 0) return false;
+    // En edición el ajuste es opcional: si no se ingresó una cantidad (>0), se considera válido
+    if (cantidad <= 0) return true;
     if (_ajusteTipo == 'restar' && cantidad > _stockActualMostrado) return false;
     return true;
   }
