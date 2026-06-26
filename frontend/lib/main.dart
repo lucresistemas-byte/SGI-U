@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
         home: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, authState) {
             // Descomentar la siguiente línea para saltarse el login durante el desarrollo
-            // return const CatalogoScreen();
+            return const CatalogoScreen();
             if (authState is Authenticated) {
               return const CatalogoScreen();
             } else if (authState is Unauthenticated) {
