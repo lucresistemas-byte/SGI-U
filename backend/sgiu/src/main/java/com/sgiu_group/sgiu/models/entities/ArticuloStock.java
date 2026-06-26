@@ -15,11 +15,15 @@ public class ArticuloStock extends BaseEntity {
     @Column(nullable = false)
     private Integer cantidad;
 
+    @Column(name = "stock_minimo")
+    private Integer stockMinimo = 0;
+
     public ArticuloStock() {}
 
     public ArticuloStock(EspProducto espProducto, Integer cantidad) {
         this.espProducto = espProducto;
         this.cantidad = cantidad;
+        this.stockMinimo = 0;
     }
 
     public EspProducto getEspProducto() {
@@ -36,5 +40,13 @@ public class ArticuloStock extends BaseEntity {
 
     public void setCantidad(Integer cantidad) {
         this.cantidad = cantidad;
+    }
+
+    public Integer getStockMinimo() {
+        return stockMinimo;
+    }
+
+    public void setStockMinimo(Integer stockMinimo) {
+        this.stockMinimo = stockMinimo;
     }
 }

@@ -47,6 +47,7 @@ public class ProductoService {
         ArticuloStock nuevoStock = new ArticuloStock();
         nuevoStock.setEspProducto(nuevoProducto);
         nuevoStock.setCantidad(dto.stockActual() != null ? dto.stockActual().intValue() : 0);
+        nuevoStock.setStockMinimo(dto.stockMinimo() != null ? dto.stockMinimo() : 0);
         stockRepository.save(nuevoStock);
 
         return new ProductoCatalogoDTO(
@@ -54,6 +55,7 @@ public class ProductoService {
                 nuevoProducto.getNombre(),
                 nuevoProducto.getPrecioUnitario(),
                 Long.valueOf(nuevoStock.getCantidad()),
+                nuevoStock.getStockMinimo(),
                 nuevoProducto.isActivo()
         );
     }
@@ -78,15 +80,26 @@ public class ProductoService {
 
         productoRepository.save(productoExistente);
 
-        Long stockActual = stockRepository.findByEspProducto(productoExistente)
-                .map(stock -> Long.valueOf(stock.getCantidad()))
-                .orElse(0L);
+        ArticuloStock stock = stockRepository.findByEspProducto(productoExistente)
+                .orElseGet(() -> {
+                    ArticuloStock nuevo = new ArticuloStock();
+                    nuevo.setEspProducto(productoExistente);
+                    nuevo.setCantidad(0);
+                    nuevo.setStockMinimo(0);
+                    return nuevo;
+                });
+
+        if (dto.stockMinimo() != null) {
+            stock.setStockMinimo(dto.stockMinimo());
+            stockRepository.save(stock);
+        }
 
         return new ProductoCatalogoDTO(
                 productoExistente.getCodigo(),
                 productoExistente.getNombre(),
                 productoExistente.getPrecioUnitario(),
-                stockActual,
+                Long.valueOf(stock.getCantidad()),
+                stock.getStockMinimo(),
                 productoExistente.isActivo()
         );
     }
@@ -117,6 +130,7 @@ public class ProductoService {
                 producto.getNombre(),
                 producto.getPrecioUnitario(),
                 Long.valueOf(nuevoStock),
+                stock.getStockMinimo(),
                 producto.isActivo()
         );
     }

@@ -11,5 +11,6 @@ public record ProductoRequestDTO(
     BigDecimal precioUnitario,
     @Min(value = 0, message = "El stock no puede ser negativo.")
     Long stockActual,
+    Integer stockMinimo,
     Boolean activo
 ) {}
