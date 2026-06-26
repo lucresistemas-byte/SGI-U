@@ -205,4 +205,33 @@ class ApiService {
       throw Exception('Error de red al actualizar: ${e.message}');
     }
   }
+
+  Future<Map<String, dynamic>> getDashboardData({
+    required DateTime fechaDesde,
+    required DateTime fechaHasta,
+    String? metodoPago,
+    int? productoId,
+  }) async {
+    // Formateamos las fechas a yyyy-MM-dd como exige el contrato
+    final String desdeStr = "${fechaDesde.year}-${fechaDesde.month.toString().padLeft(2, '0')}-${fechaDesde.day.toString().padLeft(2, '0')}";
+    final String hastaStr = "${fechaHasta.year}-${fechaHasta.month.toString().padLeft(2, '0')}-${fechaHasta.day.toString().padLeft(2, '0')}";
+
+    try {
+      final response = await _dio.get('/api/dashboard', queryParameters: {
+        'fechaDesde': desdeStr,
+        'fechaHasta': hastaStr,
+        // Solo mandamos estos parámetros si el usuario eligió un filtro específico
+        if (metodoPago != null && metodoPago != 'Todos') 'metodoPago': metodoPago.toUpperCase(),
+        if (productoId != null) 'productoId': productoId,
+      });
+
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      } else {
+        throw Exception('Error al cargar el dashboard');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
 }

@@ -3,6 +3,7 @@ import '../screens/catalogo_screen.dart';
 import '../screens/pos_screen.dart';
 import '../screens/movimientos_screen.dart';
 import '../screens/balance_screen.dart';
+import '../screens/dashboard_screen.dart'; // <-- AGREGAMOS LA PANTALLA ACÁ
 
 class SideMenu extends StatefulWidget {
   final String rutaActual;
@@ -94,16 +95,18 @@ class _SideMenuState extends State<SideMenu> {
             },
           ),
 
-          // 5. Dashboard
-          _buildMenuItem(Icons.dashboard_outlined, 'Dashboard', false, () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Dashboard disponible próximamente')),
-            );
+          // 5. Dashboard (¡AHORA SÍ VIAJA A LA PANTALLA!)
+          _buildMenuItem(Icons.dashboard_outlined, 'Dashboard', 
+              widget.rutaActual == '/dashboard', () {
+                if (widget.rutaActual != '/dashboard') {
+                  Navigator.pushReplacement(context,
+                      MaterialPageRoute(builder: (_) => const DashboardScreen()));
+                }
           }),
 
           const Spacer(),
 
-          // 5. Configuración
+          // 6. Configuración
           // _buildMenuItem(Icons.settings_outlined, 'Configuración', false, () {
           //   ScaffoldMessenger.of(context).showSnackBar(
           //     const SnackBar(content: Text('Configuración disponible próximamente')),
