@@ -30,10 +30,24 @@ class FinanzasBloc extends Bloc<FinanzasEvent, FinanzasState> {
       CargarMovimientos event, Emitter<FinanzasState> emit) async {
     emit(MovimientosLoading());
     try {
-      final data = await _apiService.getMovimientos(
+      // 1. Buscamos los movimientos para la tabla
+      final List<dynamic> data = await _apiService.getMovimientos(
           pagina: event.pagina, limite: event.limite ?? 10);
-      emit(MovimientosLoaded(data['items'],
-          pagina: data['pagina'], totalPaginas: data['totalPaginas']));
+
+      // 2. Buscamos los saldos para las tarjetas
+      final hoy = DateTime.now();
+      final inicioMes = DateTime(hoy.year, hoy.month, 1);
+      final dataHoy = await _apiService.getBalance(hoy, hoy);
+      final dataMes = await _apiService.getBalance(inicioMes, hoy);
+
+      final resumen = {
+        'ingresosHoy': dataHoy['totalIngresos'] ?? 0.0,
+        'egresosHoy': dataHoy['totalEgresos'] ?? 0.0,
+        'saldoActual': dataMes['margenNeto'] ?? 0.0,
+      };
+
+      // 3. Emitimos un ÚNICO estado con todo empaquetado
+      emit(MovimientosLoaded(data, resumen, pagina: 1, totalPaginas: 1));
     } catch (e) {
       emit(MovimientosError(e.toString()));
     }

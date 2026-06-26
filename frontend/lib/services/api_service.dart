@@ -144,14 +144,15 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getMovimientos({int pagina = 1, int limite = 10}) async {
+  Future<List<dynamic>> getMovimientos({int pagina = 1, int limite = 10}) async {
     try {
       final response = await _dio.get('/api/movimientos', queryParameters: {
         'page': pagina,
         'limit': limite,
       });
       if (response.statusCode == 200) {
-        return response.data;
+        // Ahora devolvemos directamente la lista que manda el backend
+        return response.data as List<dynamic>; 
       } else {
         throw Exception('Error al cargar movimientos');
       }
@@ -176,8 +177,9 @@ class ApiService {
   Future<Map<String, dynamic>> getBalance(DateTime inicio, DateTime fin) async {
     try {
       final response = await _dio.get('/api/balance', queryParameters: {
-        'desde': DateFormat('yyyy-MM-dd').format(inicio),
-        'hasta': DateFormat('yyyy-MM-dd').format(fin),
+        // CUIDADO ACÁ: Tienen que llamarse igual que en el BalanceController de Java
+        'fechaInicio': DateFormat('yyyy-MM-dd').format(inicio), 
+        'fechaFin': DateFormat('yyyy-MM-dd').format(fin),
       });
       if (response.statusCode == 200) {
         return response.data;

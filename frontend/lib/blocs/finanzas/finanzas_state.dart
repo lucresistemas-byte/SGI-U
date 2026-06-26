@@ -21,13 +21,20 @@ class ResumenLoaded extends FinanzasState {
 class MovimientosLoading extends FinanzasState {}
 
 class MovimientosLoaded extends FinanzasState {
-  final List<Map<String, dynamic>> movimientos;
+  final List<dynamic> movimientos;
+  final Map<String, dynamic> resumen; // <-- FIX: Ahora viaja todo junto
   final int pagina;
   final int totalPaginas;
-  const MovimientosLoaded(this.movimientos,
-      {this.pagina = 1, this.totalPaginas = 1});
+
+  const MovimientosLoaded(
+    this.movimientos,
+    this.resumen, {
+    this.pagina = 1,
+    this.totalPaginas = 1,
+  });
+
   @override
-  List<Object?> get props => [movimientos, pagina, totalPaginas];
+  List<Object?> get props => [movimientos, resumen, pagina, totalPaginas];
 }
 
 class MovimientosError extends FinanzasState {
@@ -45,6 +52,7 @@ class OperacionExitosa extends FinanzasState {
 }
 
 class BalanceLoading extends FinanzasState {}
+
 class BalanceLoaded extends FinanzasState {
   final Map<String, dynamic> balance;
   const BalanceLoaded(this.balance);

@@ -3,6 +3,7 @@ import '../screens/catalogo_screen.dart';
 import '../screens/pos_screen.dart';
 import '../screens/movimientos_screen.dart';
 import '../screens/balance_screen.dart';
+
 class SideMenu extends StatefulWidget {
   final String rutaActual;
   const SideMenu({super.key, required this.rutaActual});
@@ -48,6 +49,17 @@ class _SideMenuState extends State<SideMenu> {
             ),
           ),
           const SizedBox(height: 10),
+          
+          // 1. Punto de Venta
+          _buildMenuItem(Icons.storefront_outlined, 'Punto de Venta',
+              widget.rutaActual == '/pos', () {
+                if (widget.rutaActual != '/pos') {
+                  Navigator.pushReplacement(
+                      context, MaterialPageRoute(builder: (_) => const PosScreen()));
+                }
+              }),
+
+          // 2. Movimientos
           _buildMenuItem(
             Icons.receipt_long,
             'Movimientos',
@@ -60,32 +72,16 @@ class _SideMenuState extends State<SideMenu> {
             },
           ),
 
-          // 1. Punto de Venta
-          _buildMenuItem(Icons.storefront_outlined, 'Punto de Venta',
-              widget.rutaActual == '/pos', () {
-                if (widget.rutaActual != '/pos') {
-                  Navigator.pushReplacement(
-                      context, MaterialPageRoute(builder: (_) => const PosScreen()));
-                }
-              }),
-
-          // 2. Dashboard (próximamente)
-          _buildMenuItem(Icons.dashboard_outlined, 'Dashboard', false, () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Dashboard disponible próximamente')),
-            );
-          }),
-
-
-          // 3. Catálogo (renombrado de "Productos")
-          _buildMenuItem(Icons.inventory_2, 'Catálogo',
+          // 3. Productos (renombrado de "Catálogo")
+          _buildMenuItem(Icons.inventory_2, 'Productos',
               widget.rutaActual == '/catalogo', () {
                 if (widget.rutaActual != '/catalogo') {
                   Navigator.pushReplacement(context,
                       MaterialPageRoute(builder: (_) => const CatalogoScreen()));
                 }
               }),
-            // 4. Balance
+            
+          // 4. Balance
           _buildMenuItem(
             Icons.balance,
             'Balance',
@@ -97,6 +93,13 @@ class _SideMenuState extends State<SideMenu> {
               }
             },
           ),
+
+          // 5. Dashboard
+          _buildMenuItem(Icons.dashboard_outlined, 'Dashboard', false, () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Dashboard disponible próximamente')),
+            );
+          }),
 
           const Spacer(),
 

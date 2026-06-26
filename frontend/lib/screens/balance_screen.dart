@@ -139,17 +139,12 @@ class _BalanceScreenState extends State<BalanceScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Encabezado
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
                         'Balance',
-                        style: TextStyle(
-                          fontSize: 54,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFF111111),
-                        ),
+                        style: TextStyle(fontSize: 54, fontWeight: FontWeight.w400, color: Color(0xFF111111)),
                       ),
                       ElevatedButton.icon(
                         onPressed: _exportarReportePdf,
@@ -158,28 +153,20 @@ class _BalanceScreenState extends State<BalanceScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF006B3D),
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(28),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                           minimumSize: const Size(250, 56),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 24),
-                  // Tarjeta de filtros
                   _buildFiltrosCard(),
                   const SizedBox(height: 24),
-                  // Tarjetas de métricas + tabla
                   Expanded(
                     child: BlocBuilder<FinanzasBloc, FinanzasState>(
                       builder: (context, state) {
-                        if (state is BalanceLoading) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-                        if (state is BalanceLoaded) {
-                          return _buildMetricasYTabla(state.balance);
-                        }
+                        if (state is BalanceLoading) return const Center(child: CircularProgressIndicator());
+                        if (state is BalanceLoaded) return _buildMetricasYTabla(state.balance);
                         if (state is MovimientosError) {
                           return Center(
                             child: Column(
@@ -187,10 +174,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
                               children: [
                                 Text(state.message),
                                 const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: _cargarBalance,
-                                  child: const Text('Reintentar'),
-                                ),
+                                ElevatedButton(onPressed: _cargarBalance, child: const Text('Reintentar')),
                               ],
                             ),
                           );
@@ -214,21 +198,20 @@ class _BalanceScreenState extends State<BalanceScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Rango de Fechas', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
           const SizedBox(height: 16),
-          Row(
+          Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               _buildFechaField(label: 'Fecha Inicio', fecha: _fechaInicio, onTap: _seleccionarFechaInicio),
-              const SizedBox(width: 16),
               _buildFechaField(label: 'Fecha Fin', fecha: _fechaFin, onTap: _seleccionarFechaFin),
-              const SizedBox(width: 16),
               ElevatedButton(
                 onPressed: _cargarBalance,
                 style: ElevatedButton.styleFrom(
@@ -268,7 +251,6 @@ class _BalanceScreenState extends State<BalanceScreen> {
   }
 
   Widget _buildMetricasYTabla(Map<String, dynamic> balance) {
-    // Adaptar a los campos reales del backend
     final ingresos = (balance['totalIngresos'] ?? 0.0).toDouble();
     final egresos = (balance['totalEgresos'] ?? 0.0).toDouble();
     final margenNeto = (balance['margenNeto'] ?? 0.0).toDouble();
@@ -322,100 +304,127 @@ class _BalanceScreenState extends State<BalanceScreen> {
   }) {
     final formatter = NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
     return Expanded(
-      child: Container(
-        height: 140,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(titulo, style: const TextStyle(fontSize: 16, color: Color(0xFF666666))),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final double cardWidth = constraints.maxWidth;
+          final double circleSize = (cardWidth * 0.22).clamp(36.0, 56.0);
+          final double iconSize = circleSize * 0.5;
+          final double titleSize = (cardWidth * 0.08).clamp(14.0, 16.0);
+          final double moneySize = (cardWidth * 0.15).clamp(20.0, 28.0);
+
+          return Container(
+            height: 140,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(formatter.format(valor),
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: colorValor)),
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(40)),
-                  child: Icon(icon, size: 40, color: iconColor),
+                Text(titulo, style: TextStyle(fontSize: titleSize, color: const Color(0xFF666666))),
+                const Spacer(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          formatter.format(valor),
+                          style: TextStyle(fontSize: moneySize, fontWeight: FontWeight.bold, color: colorValor),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      width: circleSize,
+                      height: circleSize,
+                      decoration: BoxDecoration(color: iconBgColor, shape: BoxShape.circle),
+                      child: Icon(icon, size: iconSize, color: iconColor),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildTablaMovimientos(List<dynamic> movimientos) {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Padding(
             padding: EdgeInsets.all(24),
             child: Text('Detalle de Movimientos', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                headingRowHeight: 50,
-                headingRowColor: MaterialStateProperty.resolveWith((_) => const Color(0xFFF6F6F6)),
-                headingTextStyle: const TextStyle(fontWeight: FontWeight.w600),
-                dataRowMinHeight: 48,
-                dataRowMaxHeight: 48,
-                dividerThickness: 1,
-                columns: const [
-                  DataColumn(label: Text('Fecha/Hora')),
-                  DataColumn(label: Text('Tipo')),
-                  DataColumn(label: Text('Monto')),
-                  DataColumn(label: Text('Método de Pago')),
-                  DataColumn(label: Text('Categoría')),
-                  DataColumn(label: Text('Descripción')),
-                ],
-                rows: movimientos.map((mov) {
-                  // Parsear tipo: "INGRESO" -> "Ingreso" para mostrar
-                  String tipoRaw = mov['tipo'] ?? '';
-                  String tipoDisplay = tipoRaw.toLowerCase() == 'ingreso' ? 'Ingreso' : 'Egreso';
-                  bool isIngreso = tipoDisplay == 'Ingreso';
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                      child: DataTable(
+                        columnSpacing: 40,
+                        horizontalMargin: 24,
+                        headingRowHeight: 50,
+                        headingRowColor: MaterialStateProperty.resolveWith((_) => const Color(0xFFF6F6F6)),
+                        headingTextStyle: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                        dataRowMinHeight: 60,
+                        dataRowMaxHeight: 60,
+                        dividerThickness: 1,
+                        columns: const [
+                          DataColumn(label: Text('Fecha/Hora')),
+                          DataColumn(label: Text('Tipo')),
+                          DataColumn(label: Text('Monto')),
+                          DataColumn(label: Text('Método de Pago')),
+                          DataColumn(label: Text('Categoría')),
+                          DataColumn(label: Text('Descripción')),
+                        ],
+                        rows: movimientos.map((mov) {
+                          String tipoRaw = mov['tipo'] ?? '';
+                          String tipoDisplay = tipoRaw.toLowerCase() == 'ingreso' ? 'Ingreso' : 'Egreso';
+                          bool isIngreso = tipoDisplay == 'Ingreso';
 
-                  // Parsear método de pago
-                  String metodoRaw = mov['metodoPago']?.toString() ?? '';
-                  String metodoDisplay = _parseMetodoPago(metodoRaw);
+                          String metodoRaw = mov['metodoPago']?.toString() ?? '';
+                          String metodoDisplay = _parseMetodoPago(metodoRaw);
 
-                  // Monto: asumir que siempre es positivo, el tipo define signo visual
-                  double monto = (mov['monto'] ?? 0.0).toDouble();
+                          double monto = (mov['monto'] ?? 0.0).toDouble();
+                          String fechaHora = _formatFechaHora(mov['fechaHora'] ?? '');
+                          String categoria = mov['categoria'] ?? 'Sin categoría';
+                          String descripcion = mov['descripcion'] ?? '-';
 
-                  // Fecha: formatear desde ISO 8601
-                  String fechaHora = _formatFechaHora(mov['fechaHora'] ?? '');
-
-                  String categoria = mov['categoria'] ?? 'Sin categoría';
-                  String descripcion = mov['descripcion'] ?? '';
-
-                  return DataRow(cells: [
-                    DataCell(Text(fechaHora)),
-                    DataCell(_buildTipoBadge(tipoDisplay, isIngreso)),
-                    DataCell(
-                      Text(
-                        _formatMonto(monto),
-                        style: TextStyle(
-                          color: isIngreso ? const Color(0xFF008A3D) : const Color(0xFFFF2E2E),
-                          fontWeight: FontWeight.w500,
-                        ),
+                          return DataRow(cells: [
+                            DataCell(Text(fechaHora, style: const TextStyle(color: Colors.black87))),
+                            DataCell(_buildTipoBadge(tipoDisplay, isIngreso)),
+                            DataCell(
+                              Text(
+                                (isIngreso ? '+ ' : '- ') + _formatMonto(monto),
+                                style: TextStyle(
+                                  color: isIngreso ? const Color(0xFF008A3D) : const Color(0xFFFF2E2E),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            DataCell(_buildMetodoBadge(metodoDisplay)),
+                            DataCell(Text(categoria)),
+                            DataCell(Text(descripcion, maxLines: 2, overflow: TextOverflow.ellipsis)),
+                          ]);
+                        }).toList(),
                       ),
                     ),
-                    DataCell(_buildMetodoBadge(metodoDisplay)),
-                    DataCell(Text(categoria)),
-                    DataCell(Text(descripcion)),
-                  ]);
-                }).toList(),
-              ),
+                  ),
+                );
+              },
             ),
           ),
           Container(
@@ -424,10 +433,10 @@ class _BalanceScreenState extends State<BalanceScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const Text('Página 1 de 1'),
+                const Text('Página 1 de 1', style: TextStyle(color: Colors.grey)),
                 const SizedBox(width: 16),
-                IconButton(icon: const Icon(Icons.chevron_left), onPressed: null),
-                IconButton(icon: const Icon(Icons.chevron_right), onPressed: null),
+                IconButton(icon: const Icon(Icons.chevron_left, color: Colors.grey), onPressed: null),
+                IconButton(icon: const Icon(Icons.chevron_right, color: Colors.grey), onPressed: null),
               ],
             ),
           ),
@@ -437,16 +446,12 @@ class _BalanceScreenState extends State<BalanceScreen> {
   }
 
   String _parseMetodoPago(String raw) {
-    switch (raw) {
-      case '1':
-        return 'Efectivo';
-      case '2':
-        return 'Mercado Pago';
-      case '3':
-        return 'Tarjeta';
-      default:
-        return raw;
-    }
+    String normal = raw.toLowerCase().replaceAll('_', ' ');
+    if (normal.contains('efectivo') || normal == '1') return 'Efectivo';
+    if (normal.contains('mercado') || normal == '2') return 'Mercado Pago';
+    if (normal.contains('tarjeta') || normal == '3') return 'Tarjeta';
+    if (normal.contains('transferencia') || normal == '4') return 'Transferencia';
+    return raw;
   }
 
   String _formatFechaHora(String isoString) {
