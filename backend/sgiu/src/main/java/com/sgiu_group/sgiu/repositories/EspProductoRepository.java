@@ -19,15 +19,16 @@ public interface EspProductoRepository extends JpaRepository<EspProducto, Long> 
     // Nota: se quitó el WHERE p.activo = true porque ahora Flutter se encarga de mostrar inactivos
     @Query("""
            SELECT new com.sgiu_group.sgiu.models.dtos.ProductoCatalogoDTO(
-               p.codigo, 
-               p.nombre, 
-               p.precioUnitario, 
+               p.codigo,
+               p.nombre,
+               p.precioUnitario,
                COALESCE(SUM(s.cantidad), 0L),
+               COALESCE(s.stockMinimo, 0),
                p.activo
            )
            FROM EspProducto p
            LEFT JOIN ArticuloStock s ON s.espProducto = p
-           GROUP BY p.codigo, p.nombre, p.precioUnitario, p.activo
+           GROUP BY p.codigo, p.nombre, p.precioUnitario, p.activo, s.stockMinimo
            """)
     List<ProductoCatalogoDTO> obtenerCatalogo();
 }
