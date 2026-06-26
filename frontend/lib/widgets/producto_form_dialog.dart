@@ -47,6 +47,13 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     if (_esEdicion) {
       _stockActualMostrado = widget.productoAEditar!.stockActual;
     }
+
+    // Listeners para actualizar estado del diálogo cuando cambian campos
+    _codigoController.addListener(() => setState(() {}));
+    _nombreController.addListener(() => setState(() {}));
+    _precioController.addListener(() => setState(() {}));
+    _stockInicialController.addListener(() => setState(() {}));
+    _ajusteCantidadController.addListener(() => setState(() {}));
   }
 
   @override
@@ -62,7 +69,9 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   bool _isPrecioValido() {
     final precioText = _precioController.text.trim();
     if (precioText.isEmpty) return false;
-    final precio = double.tryParse(precioText);
+    // Aceptar coma como separador decimal
+    final normalized = precioText.replaceAll(',', '.');
+    final precio = double.tryParse(normalized);
     return precio != null && precio > 0;
   }
 
@@ -97,7 +106,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
           ? widget.productoAEditar!.codigo
           : _codigoController.text.trim(),
       'nombre': _nombreController.text.trim(),
-      'precioUnitario': double.parse(_precioController.text.trim()),
+      'precioUnitario': double.parse(_precioController.text.trim().replaceAll(',', '.')), // aceptar coma
       'activo': _activo,
     };
 
@@ -165,15 +174,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
             style: const TextStyle(fontWeight: FontWeight.bold)),
         content: StatefulBuilder(
           builder: (context, setStateDialog) {
-            // Escuchamos cambios para actualizar el estado del botón
-            _codigoController.addListener(() => setStateDialog(() {}));
-            _nombreController.addListener(() => setStateDialog(() {}));
-            _precioController.addListener(() => setStateDialog(() {}));
-            if (!_esEdicion) {
-              _stockInicialController.addListener(() => setStateDialog(() {}));
-            } else {
-              _ajusteCantidadController.addListener(() => setStateDialog(() {}));
-            }
+            // No agregamos listeners aquí (se agregan en initState)
 
             return SingleChildScrollView(
               child: Form(

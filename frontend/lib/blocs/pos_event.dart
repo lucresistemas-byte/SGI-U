@@ -51,6 +51,10 @@ class ClearSuccess extends PosEvent {
   const ClearSuccess();
 }
 
+class ClearSelection extends PosEvent {
+  const ClearSelection();
+}
+
 // --- NUEVOS EVENTOS PARA EL CATÁLOGO (FT-5 y FT-6) ---
 
 class CreateProduct extends PosEvent {

@@ -16,6 +16,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     on<ConfirmSale>(_onConfirmSale);
     on<ClearError>((event, emit) => emit(state.copyWith(errorMessage: null)));
     on<ClearSuccess>((event, emit) => emit(state.copyWith(successMessage: null)));
+    on<ClearSelection>((event, emit) => emit(PosState.initial().copyWith(products: state.products)));
     // --- MANEJADORES DEL CATÁLOGO ---
 
     on<CreateProduct>((event, emit) async {
