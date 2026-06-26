@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class MovimientoService {
@@ -65,22 +66,14 @@ public class MovimientoService {
         LocalDateTime desde = inicio.atStartOfDay();
         LocalDateTime hasta = fin.plusDays(1).atStartOfDay();
 
-        List<MovFinanciero> movs = repository.findEnRango(desde, hasta);
+        BigDecimal ingresos = Optional.ofNullable(
+                repository.sumByTipoEnRango(desde, hasta, TipoMovimiento.INGRESO))
+                .orElse(BigDecimal.ZERO);
 
-        BigDecimal ingresos = movs.stream()
-                .filter(m -> m.getTipo() == TipoMovimiento.INGRESO)
-                .map(MovFinanciero::getMonto)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal egresos = Optional.ofNullable(
+                repository.sumByTipoEnRango(desde, hasta, TipoMovimiento.EGRESO))
+                .orElse(BigDecimal.ZERO);
 
-        BigDecimal egresos = movs.stream()
-                .filter(m -> m.getTipo() == TipoMovimiento.EGRESO)
-                .map(MovFinanciero::getMonto)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        List<MovimientoResponseDTO> dtoList = movs.stream()
-                .map(MovimientoResponseDTO::fromEntity)
-                .toList();
-
-        return new BalanceResponseDTO(ingresos, egresos, ingresos.subtract(egresos), dtoList);
+        return new BalanceResponseDTO(ingresos, egresos, ingresos.subtract(egresos), List.of());
     }
 }
