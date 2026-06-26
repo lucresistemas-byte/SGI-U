@@ -98,7 +98,7 @@ class LeftPanel extends StatelessWidget {
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          const SearchAddBar(),
+          // const SearchAddBar(),
           const SizedBox(height: 16),
           SizedBox(
             height: 200,
@@ -378,7 +378,7 @@ class RightPanel extends StatelessWidget {
                   );
                   return;
                 }
-                
+                 
                 // Si el carrito tiene cosas, verificamos el método de pago
                 if (state.selectedPaymentMethod == null) {
                   showDialog(
@@ -396,7 +396,7 @@ class RightPanel extends StatelessWidget {
                   );
                   return;
                 }
-                
+                 
                 // Si todo está bien, disparamos la venta al backend
                 context.read<PosBloc>().add(const ConfirmSale());
               },
@@ -406,6 +406,50 @@ class RightPanel extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('CONFIRMAR COBRO', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton(
+              onPressed: () {
+                final state = context.read<PosBloc>().state;
+                // Solo mostrar confirmación si hay algo que limpiar
+                if (state.cart.isEmpty && state.selectedPaymentMethod == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('No hay selecciones para limpiar')),
+                  );
+                  return;
+                }
+
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('Limpiar selección'),
+                    content: const Text('¿Está seguro de que desea descartar todos los productos y el método de pago seleccionado?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancelar'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          context.read<PosBloc>().add(const ClearSelection());
+                          Navigator.pop(context);
+                        },
+                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        child: const Text('Limpiar'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.grey),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('LIMPIAR SELECCIÓN', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
             ),
           ),
         ],

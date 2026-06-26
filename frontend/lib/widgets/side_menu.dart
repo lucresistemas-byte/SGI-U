@@ -101,11 +101,11 @@ class _SideMenuState extends State<SideMenu> {
           const Spacer(),
 
           // 5. Configuración
-          _buildMenuItem(Icons.settings_outlined, 'Configuración', false, () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Configuración disponible próximamente')),
-            );
-          }),
+          // _buildMenuItem(Icons.settings_outlined, 'Configuración', false, () {
+          //   ScaffoldMessenger.of(context).showSnackBar(
+          //     const SnackBar(content: Text('Configuración disponible próximamente')),
+          //   );
+          // }),
           const SizedBox(height: 20),
         ],
       ),
