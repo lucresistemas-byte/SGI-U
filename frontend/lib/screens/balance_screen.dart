@@ -5,6 +5,7 @@ import '../blocs/finanzas/finanzas_bloc.dart';
 import '../blocs/finanzas/finanzas_event.dart';
 import '../blocs/finanzas/finanzas_state.dart';
 import '../widgets/side_menu.dart';
+import '../services/pdf_service.dart';
 
 class BalanceScreen extends StatefulWidget {
   const BalanceScreen({Key? key}) : super(key: key);
@@ -63,6 +64,68 @@ class _BalanceScreenState extends State<BalanceScreen> {
     }
   }
 
+  Future<void> _exportarReportePdf() async {
+    final state = context.read<FinanzasBloc>().state;
+     
+    if (state is! BalanceLoaded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cargue datos de balance antes de exportar'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Mostrar loading
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Generando PDF...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      await PdfService.generarYDescargarBalance(
+        fechaInicio: _fechaInicio,
+        fechaFin: _fechaFin,
+        totalIngresos: (state.balance['totalIngresos'] ?? 0.0).toDouble(),
+        totalEgresos: (state.balance['totalEgresos'] ?? 0.0).toDouble(),
+        margenNeto: (state.balance['margenNeto'] ?? 0.0).toDouble(),
+        movimientos: state.balance['movimientos'] ?? [],
+      );
+
+      if (mounted) {
+        Navigator.pop(context); // Cerrar dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reporte exportado exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Cerrar dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al exportar: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -89,7 +152,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
                         ),
                       ),
                       ElevatedButton.icon(
-                        onPressed: () {},
+                        onPressed: _exportarReportePdf,
                         icon: const Icon(Icons.download, color: Colors.white),
                         label: const Text('Exportar reporte'),
                         style: ElevatedButton.styleFrom(
