@@ -6,6 +6,11 @@ import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 
+import java.io.FileWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.UUID;
+
 public class Launcher {
 
     private static Process dbProcess;
@@ -22,6 +27,7 @@ public class Launcher {
             System.out.println("🐧 Entorno Unix/Linux detectado. Se asume que la base de datos corre externamente (ej. Docker).");
         }
 
+        setupInstanceId(os);
         System.out.println("🚀 Iniciando Spring Boot...");
         SpringApplication.run(SgiuApplication.class, args);
         
@@ -68,5 +74,37 @@ public class Launcher {
             }
         }
         System.err.println("\n❌ Tiempo de espera agotado para la base de datos.");
+    }
+
+    private static void setupInstanceId(String os) {
+        try {
+            // Tarea C2.2: Define la ruta según el SO (AppData en Windows, Home en Linux)
+            String basePath = os.contains("win") ? System.getenv("APPDATA") : System.getProperty("user.home");
+            File dir = new File(basePath, "SGI-U");
+            if (!dir.exists()) dir.mkdirs();
+
+            File instanceFile = new File(dir, "instance.json");
+            String instanceId;
+
+            if (instanceFile.exists()) {
+                // Si ya existe, lee el ID guardado
+                String content = new String(Files.readAllBytes(Paths.get(instanceFile.toURI())));
+                instanceId = content.split("\"")[3]; // Extracción simple asumiendo {"instanceId": "UUID"}
+            } else {
+                // Si es el primer arranque, genera un ID único de 8 caracteres
+                instanceId = UUID.randomUUID().toString().substring(0, 8);
+                String json = "{\"instanceId\":\"" + instanceId + "\"}";
+                try (FileWriter fw = new FileWriter(instanceFile)) {
+                    fw.write(json);
+                }
+                System.out.println("🆕 Nueva instalación detectada. Archivo instance.json generado con ID: " + instanceId);
+            }
+            
+            // Guarda el ID en el sistema para que MdnsConfig lo pueda leer luego
+            System.setProperty("sgiu.instance-id", instanceId);
+        } catch (Exception e) {
+            System.err.println("❌ Error manejando instance.json: " + e.getMessage());
+            System.setProperty("sgiu.instance-id", "generico");
+        }
     }
 }
