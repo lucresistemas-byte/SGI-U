@@ -83,6 +83,11 @@
 			<artifactId>mariadb-java-client</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+		<dependency>
+    		<groupId>org.jmdns</groupId>
+    		<artifactId>jmdns</artifactId>
+    		<version>3.5.10</version>
+		</dependency>
 	</dependencies>
 
 	<build>
