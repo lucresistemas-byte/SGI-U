@@ -64,11 +64,6 @@
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
@@ -82,6 +77,11 @@
 			<groupId>org.mariadb.jdbc</groupId>
 			<artifactId>mariadb-java-client</artifactId>
 			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+    		<groupId>org.jmdns</groupId>
+    		<artifactId>jmdns</artifactId>
+    		<version>3.5.10</version>
 		</dependency>
 	</dependencies>
 
