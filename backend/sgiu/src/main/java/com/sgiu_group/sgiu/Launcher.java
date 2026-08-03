@@ -23,6 +23,7 @@ public class Launcher {
             System.out.println("💻 Entorno Windows detectado. Iniciando MariaDB Portable...");
             startDatabase();
             waitForDatabase(3307); // Espera al puerto definido en la tarea C2.1
+            configureFirewall(); // <-- Invocación del script de Vicky
         } else {
             System.out.println("🐧 Entorno Unix/Linux detectado. Se asume que la base de datos corre externamente (ej. Docker).");
         }
@@ -105,6 +106,25 @@ public class Launcher {
         } catch (Exception e) {
             System.err.println("❌ Error manejando instance.json: " + e.getMessage());
             System.setProperty("sgiu.instance-id", "generico");
+        }
+    }
+
+    private static void configureFirewall() {
+        try {
+            System.out.println("🛡️ Solicitando permisos UAC para configurar el Firewall de Windows...");
+            
+            // Usamos PowerShell para invocar cmd como Administrador y ejecutar el .bat de Vicky
+            ProcessBuilder pb = new ProcessBuilder(
+                "powershell.exe", 
+                "-Command", 
+                "Start-Process cmd.exe -ArgumentList '/c firewall-windows.bat' -Verb RunAs -WindowStyle Hidden"
+            );
+            
+            Process p = pb.start();
+            p.waitFor(); 
+            System.out.println("✅ Comando de firewall enviado al sistema.");
+        } catch (Exception e) {
+            System.err.println("❌ Error al invocar el script del firewall: " + e.getMessage());
         }
     }
 }
