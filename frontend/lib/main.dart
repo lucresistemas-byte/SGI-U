@@ -8,6 +8,10 @@ import 'blocs/pos_bloc.dart';
 import 'blocs/finanzas/finanzas_bloc.dart';
 import 'screens/catalogo_screen.dart';
 import 'screens/login_screen.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:dio/dio.dart';
+import 'services/discovery_service.dart';
+import 'services/api_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -40,22 +44,29 @@ class MyApp extends StatelessWidget {
           Locale('es'),
           Locale('en'),
         ],
-        home: BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, authState) {
-            // Descomentar la siguiente línea para saltarse el login durante el desarrollo
-            // return const CatalogoScreen();
-            if (authState is Authenticated) {
-              return const CatalogoScreen();
-            } else if (authState is Unauthenticated) {
-              return const LoginScreen();
-            } else {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
-          },
-        ),
+        home: const StartupDecider(),
       ),
+    );
+  }
+}
+
+class StartupDecider extends StatelessWidget {
+  const StartupDecider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, authState) {
+        if (authState is Authenticated) {
+          return const CatalogoScreen();
+        } else if (authState is Unauthenticated) {
+          return const LoginScreen();
+        } else {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+      },
     );
   }
 }
