@@ -14,8 +14,14 @@ public class MdnsConfig {
     @EventListener(ApplicationReadyEvent.class)
     public void registerService() {
         try {
-            // Obtiene la IP local de tu computadora en la red WiFi
-            InetAddress localHost = InetAddress.getLocalHost();
+            // Finge una conexión hacia afuera para que el sistema operativo revele la IP real de la LAN
+            InetAddress localHost;
+            try (java.net.DatagramSocket socket = new java.net.DatagramSocket()) {
+                socket.connect(java.net.InetAddress.getByName("8.8.8.8"), 10002);
+                localHost = socket.getLocalAddress();
+            }
+
+            // Instancia JmDNS con la IP real detectada
             JmDNS jmdns = JmDNS.create(localHost);
             
             // Crea el anuncio con el nombre del servicio requerido por la Tarea C1.2
