@@ -73,10 +73,18 @@ class ReconnectionService {
         selectedService = services.first;
       }
 
-      // Build the URL and save it
+      // Build the URL and save it only if valid
       final discoveredUrl = 'http://${selectedService.ip}:${selectedService.port}';
-      await _storageService.saveBackendUrl(discoveredUrl);
-      await _storageService.saveBackendServiceName(selectedService.name);
+      
+      // L6.2: Only save if the discovered URL is valid
+      if (discoveredUrl.isNotEmpty) {
+        await _storageService.saveBackendUrl(discoveredUrl);
+      }
+      
+      // Save service name only if valid
+      if (selectedService.name.isNotEmpty) {
+        await _storageService.saveBackendServiceName(selectedService.name);
+      }
 
       return discoveredUrl;
     } catch (e) {

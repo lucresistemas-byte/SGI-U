@@ -37,7 +37,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         await _storageService.saveToken(token);
         _apiService.setAuthToken(token);
         
-        // L4.1: Save the current backend URL and service name after successful login
+        // L4.1 & L6.2: Save the current backend URL after successful login
+        // Only save if URL is valid (non-null, non-empty)
         final currentUrl = _apiService.baseUrl;
         if (currentUrl.isNotEmpty) {
           await _storageService.saveBackendUrl(currentUrl);

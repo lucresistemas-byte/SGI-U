@@ -14,7 +14,8 @@ class DiscoveryService {
   /// Discover services of type _sgiu._tcp.local. Returns an empty list on none.
   /// Uses MDnsClient and listens for [timeout] duration. Errors are caught
   /// and do not throw to the caller (keeps the app stable).
-  static Future<List<DiscoveredService>> discoverServices({Duration timeout = const Duration(seconds: 8)}) async {
+  /// Default timeout is 4 seconds to avoid blocking app startup.
+  static Future<List<DiscoveredService>> discoverServices({Duration timeout = const Duration(seconds: 4)}) async {
     final List<DiscoveredService> results = [];
     final MDnsClient client = MDnsClient();
     try {
