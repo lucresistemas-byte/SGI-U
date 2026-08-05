@@ -8,12 +8,10 @@ import 'blocs/pos_bloc.dart';
 import 'blocs/finanzas/finanzas_bloc.dart';
 import 'screens/catalogo_screen.dart';
 import 'screens/login_screen.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:dio/dio.dart';
-import 'services/discovery_service.dart';
-import 'services/api_service.dart';
+import 'services/connection_bootstrap.dart';
 
 void main() {
+  ConnectionBootstrap.init();
   runApp(const MyApp());
 }
 

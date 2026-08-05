@@ -36,6 +36,19 @@ class ApiService {
     ));
   }
 
+  /// Realiza una petición liviana al backend para verificar que la base URL
+  /// actual responde. Usa un timeout corto. Devuelve true si responde.
+  Future<bool> testConnection() async {
+    try {
+      final response = await _dio
+          .get('/actuator/health')
+          .timeout(const Duration(seconds: 3));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   void setAuthToken(String token) {
     _authToken = token;
   }
