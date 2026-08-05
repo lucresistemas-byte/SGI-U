@@ -37,15 +37,36 @@ class ApiService {
   }
 
   /// Realiza una petición liviana al backend para verificar que la base URL
-  /// actual responde. Usa un timeout corto. Devuelve true si responde.
+  /// actual responde. Usa un timeout corto. Devuelve true si el servidor
+  /// respondió (aunque sea con 401/404), false solo si no hubo respuesta.
   Future<bool> testConnection() async {
     try {
-      final response = await _dio
+      await _dio
           .get('/actuator/health')
           .timeout(const Duration(seconds: 3));
-      return response.statusCode == 200;
+      return true;
+    } on DioException catch (e) {
+      return e.response != null;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Verifica si el token actual sigue siendo válido contra el backend.
+  /// Devuelve true si el servidor acepta el token (200), false si lo rechaza
+  /// (401/403) y relanza el error si hubo un problema de conexión.
+  Future<bool> validateToken() async {
+    try {
+      final response = await _dio
+          .get('/api/productos')
+          .timeout(const Duration(seconds: 5));
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401 ||
+          e.response?.statusCode == 403) {
+        return false;
+      }
+      rethrow;
     }
   }
 

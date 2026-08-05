@@ -17,11 +17,36 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onCheckAuthStatus(
       CheckAuthStatus event, Emitter<AuthState> emit) async {
-    final token = await _storage.read(key: _tokenKey);
-    if (token != null && token.isNotEmpty) {
+    String? token;
+    try {
+      token = await _storage.read(key: _tokenKey);
+    } catch (_) {
+      // Sin keyring disponible: no se puede conservar la sesión.
+      token = null;
+    }
+
+    if (token == null || token.isEmpty) {
+      emit(Unauthenticated());
+      return;
+    }
+
+    _apiService.setAuthToken(token);
+
+    // Validamos el token contra el backend en lugar de confiar solo en que
+    // exista. Un JWT caducado o inválido borra la sesión y vuelve al login.
+    bool isValid = false;
+    try {
+      isValid = await _apiService.validateToken();
+    } catch (_) {
+      // Backend inalcanzable: no confirmamos la sesión, volvemos al login.
+      isValid = false;
+    }
+
+    if (isValid) {
       emit(Authenticated(token));
-      _apiService.setAuthToken(token);
     } else {
+      await _storage.delete(key: _tokenKey);
+      _apiService.clearAuthToken();
       emit(Unauthenticated());
     }
   }

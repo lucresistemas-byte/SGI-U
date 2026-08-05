@@ -10,8 +10,9 @@ import 'screens/catalogo_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/connection_bootstrap.dart';
 
-void main() {
-  ConnectionBootstrap.init();
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ConnectionBootstrap.init();
   runApp(const MyApp());
 }
 
