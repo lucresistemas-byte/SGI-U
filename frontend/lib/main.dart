@@ -8,13 +8,38 @@ import 'blocs/pos_bloc.dart';
 import 'blocs/finanzas/finanzas_bloc.dart';
 import 'screens/catalogo_screen.dart';
 import 'screens/login_screen.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:dio/dio.dart';
-import 'services/discovery_service.dart';
 import 'services/api_service.dart';
+import 'services/storage_service.dart';
+import 'services/reconnection_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // L4.2: Initialize backend URL from storage and attempt reconnection
+  await _initializeBackendUrl();
+  
   runApp(const MyApp());
+}
+
+/// Initializes the backend URL from storage and performs reconnection logic.
+/// This ensures the app uses a valid backend URL before proceeding.
+Future<void> _initializeBackendUrl() async {
+  final storageService = StorageService();
+  final reconnectionService = ReconnectionService(storageService: storageService);
+  final apiService = ApiService();
+
+  // Read saved URL and service name
+  final savedUrl = await storageService.getBackendUrl();
+  final savedServiceName = await storageService.getBackendServiceName();
+
+  // Attempt reconnection (checks if URL is reachable, or discovers via mDNS)
+  final urlToUse = await reconnectionService.attemptReconnection(savedUrl, savedServiceName);
+
+  // Update ApiService with the determined URL
+  if (urlToUse != null && urlToUse.isNotEmpty) {
+    apiService.updateBaseUrl(urlToUse);
+  }
+  // If no URL is available, ApiService will use its default (localhost:3000)
 }
 
 class MyApp extends StatelessWidget {
