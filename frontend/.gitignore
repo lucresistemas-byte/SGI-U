@@ -32,8 +32,6 @@ context
 .pub/
 /build/
 /coverage/
-/windows/
-/linux/
 
 # Symbolication related
 app.*.symbols
