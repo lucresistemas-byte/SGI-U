@@ -11,6 +11,9 @@ class DiscoveredService {
 }
 
 class DiscoveryService {
+  /// Type mDNS que anuncia el backend SGI-U.
+  static const String serviceType = '_sgiu._tcp.local';
+
   /// Discover services of type _sgiu._tcp.local. Returns an empty list on none.
   /// Uses MDnsClient and listens for [timeout] duration. Errors are caught
   /// and do not throw to the caller (keeps the app stable).
@@ -22,7 +25,7 @@ class DiscoveryService {
       await client.start();
 
       // Listen for PTR records that advertise the service
-      final ptrStream = client.lookup<PtrResourceRecord>(ResourceRecordQuery.serverPointer('_sgiu._tcp.local'));
+      final ptrStream = client.lookup<PtrResourceRecord>(ResourceRecordQuery.serverPointer(serviceType));
 
       // Subscriptions for nested lookups
       final List<StreamSubscription> subscriptions = [];

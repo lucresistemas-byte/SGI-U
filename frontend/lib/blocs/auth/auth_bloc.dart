@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 import '../../services/api_service.dart';
+import '../../services/discovery_service.dart';
 import '../../services/storage_service.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
@@ -43,6 +44,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         if (currentUrl.isNotEmpty) {
           await _storageService.saveBackendUrl(currentUrl);
         }
+
+        // L4.1: Save the mDNS service name associated with the backend so the
+        // app can remember/reconnect to the same service on next launch.
+        await _storageService.saveBackendServiceName(DiscoveryService.serviceType);
         
         emit(Authenticated(token));
       } else {
