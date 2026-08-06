@@ -91,7 +91,8 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
-					<excludes>
+							<mainClass>com.sgiu_group.sgiu.Launcher</mainClass>
+	\t\t\t\t<excludes>
 						<exclude>
 							<groupId>org.projectlombok</groupId>
 							<artifactId>lombok</artifactId>
@@ -139,3 +140,5 @@
 	</build>
 
 </project>
+
+
