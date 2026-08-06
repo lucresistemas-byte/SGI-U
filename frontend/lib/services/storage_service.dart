@@ -30,13 +30,14 @@ class StorageService {
     return (url != null && url.isNotEmpty) ? url : null;
   }
 
-  /// Saves backend URL only if it's valid (non-null, non-empty).
+  /// Saves backend URL only if it's valid (non-null, non-empty after trim).
   /// L6.2: Validation to prevent storing invalid URLs
   Future<void> saveBackendUrl(String? url) async {
-    if (url == null || url.isEmpty) {
-      return; // Don't save empty or null URLs
+    final trimmed = url?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return; // Don't save empty, null or whitespace-only URLs
     }
-    await _storage.write(key: _backendUrlKey, value: url);
+    await _storage.write(key: _backendUrlKey, value: trimmed);
   }
 
   // Backend service name management
@@ -48,14 +49,15 @@ class StorageService {
 
   /// Saves backend service name only if it's valid (non-null, non-empty).
   /// L6.2: Validation to prevent storing invalid service names.
-  /// If name is null or empty, deletes the saved value (treat as not available).
+  /// If name is null or empty after trim, deletes the saved value (treat as not available).
   Future<void> saveBackendServiceName(String? serviceName) async {
-    if (serviceName == null || serviceName.isEmpty) {
+    final trimmed = serviceName?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
       // Delete if invalid instead of saving empty string
       await _storage.delete(key: _backendServiceNameKey);
       return;
     }
-    await _storage.write(key: _backendServiceNameKey, value: serviceName);
+    await _storage.write(key: _backendServiceNameKey, value: trimmed);
   }
 
   // Clear all backend-related data (except token)
