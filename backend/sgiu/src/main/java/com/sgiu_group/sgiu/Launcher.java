@@ -112,16 +112,18 @@ public class Launcher {
     private static void configureFirewall() {
         try {
             System.out.println("🛡️ Solicitando permisos UAC para configurar el Firewall de Windows...");
-            
-            // Usamos PowerShell para invocar cmd como Administrador y ejecutar el .bat de Vicky
+
+            String appDir = new File(Launcher.class.getProtectionDomain()
+                .getCodeSource().getLocation().toURI()).getParentFile().getAbsolutePath();
+            String scriptPath = appDir + "\\firewall-windows.bat";
+
             ProcessBuilder pb = new ProcessBuilder(
-                "powershell.exe", 
-                "-Command", 
-                "Start-Process cmd.exe -ArgumentList '/c firewall-windows.bat' -Verb RunAs -WindowStyle Hidden"
+                "powershell.exe",
+                "-Command",
+                "Start-Process cmd.exe -ArgumentList '/c \"" + scriptPath + "\"' -Verb RunAs -WindowStyle Hidden -Wait"
             );
-            
             Process p = pb.start();
-            p.waitFor(); 
+            p.waitFor();
             System.out.println("✅ Comando de firewall enviado al sistema.");
         } catch (Exception e) {
             System.err.println("❌ Error al invocar el script del firewall: " + e.getMessage());
