@@ -4,8 +4,9 @@ import 'package:intl/intl.dart';
 import '../blocs/finanzas/finanzas_bloc.dart';
 import '../blocs/finanzas/finanzas_event.dart';
 import '../blocs/finanzas/finanzas_state.dart';
-import '../widgets/side_menu.dart';
+import '../widgets/app_scaffold.dart';
 import '../services/pdf_service.dart';
+import '../theme/app_colors.dart';
 
 class BalanceScreen extends StatefulWidget {
   const BalanceScreen({Key? key}) : super(key: key);
@@ -128,66 +129,60 @@ class _BalanceScreenState extends State<BalanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: Row(
-        children: [
-          const SideMenu(rutaActual: '/balance'),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Balance',
-                        style: TextStyle(fontSize: 54, fontWeight: FontWeight.w400, color: Color(0xFF111111)),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: _exportarReportePdf,
-                        icon: const Icon(Icons.download, color: Colors.white),
-                        label: const Text('Exportar reporte'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF006B3D),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-                          minimumSize: const Size(250, 56),
-                        ),
-                      ),
-                    ],
+    return AppScaffold(
+      title: 'Balance',
+      rutaActual: '/balance',
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Balance',
+                  style: TextStyle(fontSize: 54, fontWeight: FontWeight.w400, color: Color(0xFF111111)),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _exportarReportePdf,
+                  icon: const Icon(Icons.download, color: Colors.white),
+                  label: const Text('Exportar reporte'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.verdePrincipal,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                    minimumSize: const Size(250, 56),
                   ),
-                  const SizedBox(height: 24),
-                  _buildFiltrosCard(),
-                  const SizedBox(height: 24),
-                  Expanded(
-                    child: BlocBuilder<FinanzasBloc, FinanzasState>(
-                      builder: (context, state) {
-                        if (state is BalanceLoading) return const Center(child: CircularProgressIndicator());
-                        if (state is BalanceLoaded) return _buildMetricasYTabla(state.balance);
-                        if (state is MovimientosError) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(state.message),
-                                const SizedBox(height: 16),
-                                ElevatedButton(onPressed: _cargarBalance, child: const Text('Reintentar')),
-                              ],
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ),
-                ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _buildFiltrosCard(),
+            const SizedBox(height: 24),
+            Expanded(
+              child: BlocBuilder<FinanzasBloc, FinanzasState>(
+                builder: (context, state) {
+                  if (state is BalanceLoading) return const Center(child: CircularProgressIndicator());
+                  if (state is BalanceLoaded) return _buildMetricasYTabla(state.balance);
+                  if (state is MovimientosError) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(state.message),
+                          const SizedBox(height: 16),
+                          ElevatedButton(onPressed: _cargarBalance, child: const Text('Reintentar')),
+                        ],
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -215,7 +210,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
               ElevatedButton(
                 onPressed: _cargarBalance,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF006B3D),
+                 backgroundColor: AppColors.verdePrincipal,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   minimumSize: const Size(120, 48),

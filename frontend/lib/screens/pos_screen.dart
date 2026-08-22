@@ -6,7 +6,8 @@ import '../blocs/pos_state.dart';
 import '../models/product.dart';
 import '../widgets/product_card.dart';
 import '../widgets/payment_method_selector.dart';
-import '../widgets/side_menu.dart';
+import '../widgets/app_scaffold.dart';
+import '../theme/app_colors.dart';
 
 class PosScreen extends StatelessWidget {
   const PosScreen({super.key});
@@ -64,20 +65,14 @@ class PosView extends StatelessWidget {
           );
         }
       },
-      child: Scaffold(
-        // Le agregamos el mismo fondo clarito que tiene el catálogo para mantener la coherencia visual
-        backgroundColor: const Color(0xFFF1F5F9), 
+      child: AppScaffold(
+        title: 'Punto de Venta',
+        rutaActual: '/pos',
         body: FractionallySizedBox(
           widthFactor: 1.0,
           heightFactor: 1.0,
           child: Row(
             children: [
-              // 1. ¡ACÁ AGREGAMOS EL MENÚ!
-              // Le pasamos la ruta '/pos' para que el botón de Caja quede pintado de verde
-              const SideMenu(rutaActual: '/pos'),
-
-              // 2. Tus paneles originales quedan intactos. 
-              // Tomarán el 70% y 30% del espacio que deje libre el menú.
               const Expanded(flex: 7, child: LeftPanel()),
               const Expanded(flex: 3, child: RightPanel()),
             ],
@@ -401,8 +396,8 @@ class RightPanel extends StatelessWidget {
                 context.read<PosBloc>().add(const ConfirmSale());
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.verdePrincipal,
+                foregroundColor: AppColors.blanco,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('CONFIRMAR COBRO', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -438,7 +433,7 @@ class RightPanel extends StatelessWidget {
                           context.read<PosBloc>().add(const ClearSelection());
                           Navigator.pop(context);
                         },
-                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        style: TextButton.styleFrom(foregroundColor: AppColors.rojoEgresos),
                         child: const Text('Limpiar'),
                       ),
                     ],

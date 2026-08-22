@@ -1,9 +1,10 @@
 // lib/screens/dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../widgets/side_menu.dart';
+import '../widgets/app_scaffold.dart';
 import '../services/api_service.dart';
 import '../models/dashboard_models.dart';
+import '../theme/app_colors.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -93,39 +94,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F7F6),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SideMenu(rutaActual: '/dashboard'),
-          Expanded(
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF008A3D)),
-                    ),
-                  )
-                : _errorMessage != null
-                    ? _buildErrorWidget()
-                    : SingleChildScrollView(
-                        padding: const EdgeInsets.all(32.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildCabecera(),
-                            const SizedBox(height: 32),
-                            _buildTarjetasFinancieras(),
-                            const SizedBox(height: 32),
-                            _buildMetricasComerciales(),
-                            const SizedBox(height: 32),
-                            _buildAlertasOperativas(),
-                          ],
-                        ),
-                      ),
-          ),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Dashboard',
+      rutaActual: '/dashboard',
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.verdeClaro),
+              ),
+            )
+          : _errorMessage != null
+              ? _buildErrorWidget()
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildCabecera(),
+                      const SizedBox(height: 32),
+                      _buildTarjetasFinancieras(),
+                      const SizedBox(height: 32),
+                      _buildMetricasComerciales(),
+                      const SizedBox(height: 32),
+                      _buildAlertasOperativas(),
+                    ],
+                  ),
+                ),
     );
   }
 
@@ -134,7 +128,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Color(0xFFD32F2F)),
+          const Icon(Icons.error_outline, size: 64, color: AppColors.rojoEgresos),
           const SizedBox(height: 16),
           Text(
             'Hubo un problema: $_errorMessage',
@@ -144,7 +138,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: _cargarDatos,
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF008A3D)),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.verdeClaro),
             child: const Text('Reintentar', style: TextStyle(color: Colors.white)),
           )
         ],

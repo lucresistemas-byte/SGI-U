@@ -6,7 +6,8 @@ import '../blocs/finanzas/finanzas_bloc.dart';
 import '../blocs/finanzas/finanzas_event.dart';
 import '../blocs/finanzas/finanzas_state.dart';
 import '../widgets/movimiento_form_dialog.dart';
-import '../widgets/side_menu.dart';
+import '../widgets/app_scaffold.dart';
+import '../theme/app_colors.dart';
 
 class MovimientosScreen extends StatelessWidget {
   const MovimientosScreen({Key? key}) : super(key: key);
@@ -16,14 +17,10 @@ class MovimientosScreen extends StatelessWidget {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<FinanzasBloc>().add(const CargarMovimientos());
     });
-    return const Scaffold(
-      backgroundColor: Color(0xFFF5F5F5),
-      body: Row(
-        children: [
-          SideMenu(rutaActual: '/movimientos'),
-          Expanded(child: MovimientosContent()),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Movimientos',
+      rutaActual: '/movimientos',
+      body: const MovimientosContent(),
     );
   }
 }
@@ -86,7 +83,7 @@ class _MovimientosContentState extends State<MovimientosContent> {
                 icon: const Icon(Icons.add, color: Colors.white, size: 18),
                 label: const Text('Agregar movimiento', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF006B3D),
+                   backgroundColor: AppColors.verdePrincipal,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
