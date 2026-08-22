@@ -90,7 +90,7 @@ class ApiService {
         throw Exception('No se pudo conectar con el servidor. Verifique su conexión.');
       }
       if (e.response?.statusCode == 401) {
-        throw Exception('Usuario o contraseña incorrectos');
+        throw Exception('Credenciales incorrectas');
       }
       throw Exception('Error de conexión: ${e.message}');
     } on TimeoutException {

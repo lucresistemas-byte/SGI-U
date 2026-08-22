@@ -1,15 +1,17 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
-import '../../services/api_service.dart';
+import '../../repositories/auth_repository.dart';
 import '../../services/discovery_service.dart';
 import '../../services/storage_service.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final ApiService _apiService = ApiService();
+  final AuthRepository _authRepository;
   final StorageService _storageService = StorageService();
 
-  AuthBloc() : super(AuthInitial()) {
+  AuthBloc({required AuthRepository authRepository})
+      : _authRepository = authRepository,
+        super(AuthInitial()) {
     on<CheckAuthStatus>(_onCheckAuthStatus);
     on<LoginRequested>(_onLoginRequested);
     on<LogoutRequested>(_onLogoutRequested);
@@ -20,7 +22,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final token = await _storageService.getToken();
     if (token != null && token.isNotEmpty) {
       emit(Authenticated(token));
-      _apiService.setAuthToken(token);
+      _authRepository.setAuthToken(token);
     } else {
       emit(Unauthenticated());
     }
@@ -30,17 +32,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       LoginRequested event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      final response = await _apiService.login(event.username, event.password);
+      final response = await _authRepository.login(event.username, event.password);
       
       final token = response['token']; 
       
       if (token != null && token.isNotEmpty) {
         await _storageService.saveToken(token);
-        _apiService.setAuthToken(token);
+        _authRepository.setAuthToken(token);
         
         // L4.1 & L6.2: Save the current backend URL after successful login
         // Only save if URL is valid (non-null, non-empty)
-        final currentUrl = _apiService.baseUrl;
+        final currentUrl = _authRepository.baseUrl;
         if (currentUrl.isNotEmpty) {
           await _storageService.saveBackendUrl(currentUrl);
         }
@@ -54,14 +56,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(const AuthError('Token no recibido del servidor'));
       }
     } catch (e) {
-      emit(AuthError(e.toString()));
+      final message = e.toString();
+      if (message.contains('Credenciales incorrectas')) {
+        emit(const AuthError('Credenciales incorrectas'));
+      } else if (message.startsWith('Exception: ')) {
+        emit(AuthError(message.substring('Exception: '.length)));
+      } else {
+        emit(const AuthError('Error inesperado. Intente nuevamente'));
+      }
     }
   }
 
   Future<void> _onLogoutRequested(
       LogoutRequested event, Emitter<AuthState> emit) async {
     await _storageService.deleteToken();
-    _apiService.clearAuthToken();
+    _authRepository.clearAuthToken();
     emit(Unauthenticated());
   }
 }

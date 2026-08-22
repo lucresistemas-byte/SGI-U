@@ -8,6 +8,7 @@ import 'blocs/pos_bloc.dart';
 import 'blocs/finanzas/finanzas_bloc.dart';
 import 'screens/catalogo_screen.dart';
 import 'screens/login_screen.dart';
+import 'repositories/auth_repository.dart';
 import 'services/api_service.dart';
 import 'services/storage_service.dart';
 import 'services/reconnection_service.dart';
@@ -49,7 +50,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (context) => AuthBloc()..add(CheckAuthStatus())),
+        BlocProvider(
+          create: (context) => AuthBloc(authRepository: AuthRepository())
+            ..add(CheckAuthStatus()),
+        ),
         BlocProvider(create: (context) => PosBloc()),
         BlocProvider(create: (context) => FinanzasBloc()), // ← AGREGADO
       ],
