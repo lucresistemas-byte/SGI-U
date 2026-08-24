@@ -15,10 +15,10 @@ import 'services/reconnection_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // L4.2: Initialize backend URL from storage and attempt reconnection
   await _initializeBackendUrl();
-  
+
   runApp(const MyApp());
 }
 
@@ -26,7 +26,8 @@ void main() async {
 /// This ensures the app uses a valid backend URL before proceeding.
 Future<void> _initializeBackendUrl() async {
   final storageService = StorageService();
-  final reconnectionService = ReconnectionService(storageService: storageService);
+  final reconnectionService =
+      ReconnectionService(storageService: storageService);
   final apiService = ApiService();
 
   // Read saved URL and service name
@@ -34,7 +35,8 @@ Future<void> _initializeBackendUrl() async {
   final savedServiceName = await storageService.getBackendServiceName();
 
   // Attempt reconnection (checks if URL is reachable, or discovers via mDNS)
-  final urlToUse = await reconnectionService.attemptReconnection(savedUrl, savedServiceName);
+  final urlToUse =
+      await reconnectionService.attemptReconnection(savedUrl, savedServiceName);
 
   // Update ApiService with the determined URL
   if (urlToUse != null && urlToUse.isNotEmpty) {
@@ -88,13 +90,17 @@ class StartupDecider extends StatelessWidget {
       builder: (context, authState) {
         if (authState is Authenticated) {
           return const CatalogoScreen();
-        } else if (authState is Unauthenticated) {
-          return const LoginScreen();
-        } else {
+        }
+        if (authState is AuthInitial) {
+          // Spinner solo durante el chequeo inicial del token guardado
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
+        // Unauthenticated, AuthLoading y AuthError muestran el formulario:
+        // el botón de login maneja su propio spinner y los errores se
+        // notifican mediante SnackBar dentro de LoginScreen.
+        return const LoginScreen();
       },
     );
   }

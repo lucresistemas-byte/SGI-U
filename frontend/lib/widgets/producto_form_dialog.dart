@@ -87,7 +87,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     if (!_esEdicion) return true;
     final cantidad = int.tryParse(_ajusteCantidadController.text.trim()) ?? 0;
     if (cantidad <= 0) return false;
-    if (_ajusteTipo == 'restar' && cantidad > _stockActualMostrado) return false;
+    if (_ajusteTipo == 'restar' && cantidad > _stockActualMostrado)
+      return false;
     return true;
   }
 
@@ -97,7 +98,11 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     final precioValido = _isPrecioValido();
     final stockInicialValido = _isStockInicialValido();
     final ajusteValido = _isAjusteValido();
-    return nombreValido && codigoValido && precioValido && stockInicialValido && ajusteValido;
+    return nombreValido &&
+        codigoValido &&
+        precioValido &&
+        stockInicialValido &&
+        ajusteValido;
   }
 
   Map<String, dynamic> _buildProductData() {
@@ -106,14 +111,16 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
           ? widget.productoAEditar!.codigo
           : _codigoController.text.trim(),
       'nombre': _nombreController.text.trim(),
-      'precioUnitario': double.parse(_precioController.text.trim().replaceAll(',', '.')), // aceptar coma
+      'precioUnitario': double.parse(
+          _precioController.text.trim().replaceAll(',', '.')), // aceptar coma
       'activo': _activo,
     };
 
     if (!_esEdicion) {
       data['stockActual'] = int.parse(_stockInicialController.text.trim());
     } else {
-      final cantidadAjuste = int.tryParse(_ajusteCantidadController.text.trim()) ?? 0;
+      final cantidadAjuste =
+          int.tryParse(_ajusteCantidadController.text.trim()) ?? 0;
       if (cantidadAjuste > 0) {
         int nuevoStock = _calcularStockResultante();
         data['stockActual'] = nuevoStock;
@@ -140,9 +147,9 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
 
     if (_esEdicion) {
       context.read<PosBloc>().add(UpdateProduct(
-        widget.productoAEditar!.codigo,
-        productoData,
-      ));
+            widget.productoAEditar!.codigo,
+            productoData,
+          ));
     } else {
       context.read<PosBloc>().add(CreateProduct(productoData));
     }
@@ -152,7 +159,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   Widget build(BuildContext context) {
     return BlocListener<PosBloc, PosState>(
       listenWhen: (previous, current) =>
-      previous.errorMessage != current.errorMessage ||
+          previous.errorMessage != current.errorMessage ||
           previous.successMessage != current.successMessage,
       listener: (context, state) {
         if (state.errorMessage != null) {
@@ -185,18 +192,20 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                     // Código
                     TextFormField(
                       controller: _codigoController,
-                      decoration: const InputDecoration(labelText: 'Código (SKU)'),
+                      decoration:
+                          const InputDecoration(labelText: 'Código (SKU)'),
                       enabled: !_esEdicion,
                       validator: (value) =>
-                      value == null || value.isEmpty ? 'Requerido' : null,
+                          value == null || value.isEmpty ? 'Requerido' : null,
                     ),
                     const SizedBox(height: 16),
                     // Nombre
                     TextFormField(
                       controller: _nombreController,
-                      decoration: const InputDecoration(labelText: 'Nombre del Producto'),
+                      decoration: const InputDecoration(
+                          labelText: 'Nombre del Producto'),
                       validator: (value) =>
-                      value == null || value.isEmpty ? 'Requerido' : null,
+                          value == null || value.isEmpty ? 'Requerido' : null,
                     ),
                     const SizedBox(height: 16),
                     // Precio
@@ -208,13 +217,16 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                       ),
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value == null || value.isEmpty) return 'El precio es obligatorio.';
+                        if (value == null || value.isEmpty)
+                          return 'El precio es obligatorio.';
                         final precio = double.tryParse(value);
-                        if (precio == null) return 'Ingrese un valor numérico válido.';
+                        if (precio == null)
+                          return 'Ingrese un valor numérico válido.';
                         if (precio <= 0) {
                           return 'El precio debe ser mayor a \$0.';
                         }
-                        if (value.contains('.') && value.split('.')[1].length > 2) {
+                        if (value.contains('.') &&
+                            value.split('.')[1].length > 2) {
                           return 'Máximo 2 decimales permitidos.';
                         }
                         return null;
@@ -231,10 +243,12 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'Requerido';
+                          if (value == null || value.isEmpty)
+                            return 'Requerido';
                           final stock = int.tryParse(value);
                           if (stock == null) return 'Debe ser un número entero';
-                          if (stock < 0) return 'El stock no puede ser negativo';
+                          if (stock < 0)
+                            return 'El stock no puede ser negativo';
                           return null;
                         },
                       ),
@@ -252,20 +266,27 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('Stock actual: $_stockActualMostrado unidades',
-                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
                             const SizedBox(height: 12),
                             Row(
                               children: [
                                 Expanded(
                                   child: DropdownButtonFormField<String>(
                                     value: _ajusteTipo,
-                                    decoration: const InputDecoration(labelText: 'Acción'),
+                                    decoration: const InputDecoration(
+                                        labelText: 'Acción'),
                                     items: const [
-                                      DropdownMenuItem(value: 'sumar', child: Text('Sumar stock')),
-                                      DropdownMenuItem(value: 'restar', child: Text('Restar stock')),
+                                      DropdownMenuItem(
+                                          value: 'sumar',
+                                          child: Text('Sumar stock')),
+                                      DropdownMenuItem(
+                                          value: 'restar',
+                                          child: Text('Restar stock')),
                                     ],
                                     onChanged: (value) {
-                                      setStateDialog(() => _ajusteTipo = value!);
+                                      setStateDialog(
+                                          () => _ajusteTipo = value!);
                                     },
                                   ),
                                 ),
@@ -279,11 +300,14 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                                     ),
                                     keyboardType: TextInputType.number,
                                     validator: (value) {
-                                      if (value == null || value.isEmpty) return null;
+                                      if (value == null || value.isEmpty)
+                                        return null;
                                       final cant = int.tryParse(value);
                                       if (cant == null) return 'Número entero';
-                                      if (cant <= 0) return 'Debe ser mayor a 0';
-                                      if (_ajusteTipo == 'restar' && cant > _stockActualMostrado) {
+                                      if (cant <= 0)
+                                        return 'Debe ser mayor a 0';
+                                      if (_ajusteTipo == 'restar' &&
+                                          cant > _stockActualMostrado) {
                                         return 'No puede quedar stock negativo';
                                       }
                                       return null;
@@ -292,14 +316,21 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                                 ),
                               ],
                             ),
-                            if (_ajusteCantidadController.text.trim().isNotEmpty &&
-                                int.tryParse(_ajusteCantidadController.text.trim()) != null &&
-                                int.parse(_ajusteCantidadController.text.trim()) > 0)
+                            if (_ajusteCantidadController.text
+                                    .trim()
+                                    .isNotEmpty &&
+                                int.tryParse(_ajusteCantidadController.text
+                                        .trim()) !=
+                                    null &&
+                                int.parse(
+                                        _ajusteCantidadController.text.trim()) >
+                                    0)
                               Padding(
                                 padding: const EdgeInsets.only(top: 8),
                                 child: Text(
-                                  'Stock resultante: $_calcularStockResultante() unidades',
-                                  style: const TextStyle(fontSize: 12, color: Colors.green),
+                                  'Stock resultante: ${_calcularStockResultante()} unidades',
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Colors.green),
                                 ),
                               ),
                           ],
@@ -314,7 +345,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                         const SizedBox(width: 16),
                         Switch(
                           value: _activo,
-                          onChanged: (value) => setStateDialog(() => _activo = value),
+                          onChanged: (value) =>
+                              setStateDialog(() => _activo = value),
                         ),
                         Text(_activo ? 'Activo' : 'Inactivo'),
                       ],
@@ -322,7 +354,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                     if (_backendError != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 16),
-                        child: Text(_backendError!, style: const TextStyle(color: Colors.red)),
+                        child: Text(_backendError!,
+                            style: const TextStyle(color: Colors.red)),
                       ),
                   ],
                 ),
@@ -341,7 +374,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
               backgroundColor: const Color(0xFF004D40),
               disabledBackgroundColor: Colors.grey.shade400,
             ),
-            child: const Text('Guardar Producto', style: TextStyle(color: Colors.white)),
+            child: const Text('Guardar Producto',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

@@ -1,6 +1,11 @@
 import 'package:equatable/equatable.dart';
 import '../models/product.dart';
 
+/// Sentinel para distinguir "no se pasó el parámetro" de "se pasó null".
+/// Permite que errorMessage/successMessage se preserven por defecto en
+/// copyWith y solo se limpien cuando se pasan explícitamente como null.
+const Object _unset = Object();
+
 class PosState extends Equatable {
   final List<Product> products;
   final Map<String, int> cart;
@@ -38,17 +43,22 @@ class PosState extends Equatable {
     String? selectedPaymentMethod,
     bool? isProcessing,
     bool? isLoading,
-    String? errorMessage,
-    String? successMessage,
+    Object? errorMessage = _unset,
+    Object? successMessage = _unset,
   }) {
     return PosState(
       products: products ?? this.products,
       cart: cart ?? this.cart,
-      selectedPaymentMethod: selectedPaymentMethod ?? this.selectedPaymentMethod,
+      selectedPaymentMethod:
+          selectedPaymentMethod ?? this.selectedPaymentMethod,
       isProcessing: isProcessing ?? this.isProcessing,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
-      successMessage: successMessage,
+      errorMessage: identical(errorMessage, _unset)
+          ? this.errorMessage
+          : errorMessage as String?,
+      successMessage: identical(successMessage, _unset)
+          ? this.successMessage
+          : successMessage as String?,
     );
   }
 
@@ -56,8 +66,9 @@ class PosState extends Equatable {
     double total = 0.0;
     for (var entry in cart.entries) {
       final product = products.firstWhere(
-            (p) => p.codigo == entry.key,
-        orElse: () => Product(codigo: '', nombre: '', precioUnitario: 0, stockActual: 0),
+        (p) => p.codigo == entry.key,
+        orElse: () =>
+            Product(codigo: '', nombre: '', precioUnitario: 0, stockActual: 0),
       );
       total += product.precioUnitario * entry.value;
     }
@@ -66,12 +77,12 @@ class PosState extends Equatable {
 
   @override
   List<Object?> get props => [
-    products,
-    cart,
-    selectedPaymentMethod,
-    isProcessing,
-    isLoading,
-    errorMessage,
-    successMessage,
-  ];
+        products,
+        cart,
+        selectedPaymentMethod,
+        isProcessing,
+        isLoading,
+        errorMessage,
+        successMessage,
+      ];
 }

@@ -9,15 +9,25 @@ import '../widgets/payment_method_selector.dart';
 import '../widgets/app_scaffold.dart';
 import '../theme/app_colors.dart';
 
-class PosScreen extends StatelessWidget {
+class PosScreen extends StatefulWidget {
   const PosScreen({super.key});
 
   @override
+  State<PosScreen> createState() => _PosScreenState();
+}
+
+class _PosScreenState extends State<PosScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Usa el PosBloc global provisto en main.dart (evita una segunda
+    // instancia desincronizada con Catálogo) y refresca el stock
+    context.read<PosBloc>().add(LoadProducts());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => PosBloc()..add(LoadProducts()),
-      child: const PosView(),
-    );
+    return const PosView();
   }
 }
 
@@ -113,11 +123,14 @@ class LeftPanel extends StatelessWidget {
                         // FIX: Verificamos si la cantidad total en carrito superaría el stock
                         final currentCartQty = state.cart[product.codigo] ?? 0;
                         if (currentCartQty + quantity <= product.stockActual) {
-                          context.read<PosBloc>().add(AddToCart(product.codigo, quantity));
+                          context
+                              .read<PosBloc>()
+                              .add(AddToCart(product.codigo, quantity));
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Stock máximo alcanzado. Solo quedan ${product.stockActual} en stock.'),
+                              content: Text(
+                                  'Stock máximo alcanzado. Solo quedan ${product.stockActual} en stock.'),
                               duration: const Duration(seconds: 2),
                             ),
                           );
@@ -147,7 +160,8 @@ class SearchAddBar extends StatefulWidget {
 
 class _SearchAddBarState extends State<SearchAddBar> {
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _quantityController = TextEditingController(text: '1');
+  final TextEditingController _quantityController =
+      TextEditingController(text: '1');
   String? _selectedProductCode;
 
   @override
@@ -163,8 +177,12 @@ class _SearchAddBarState extends State<SearchAddBar> {
                   if (textEditingValue.text.isEmpty) return [];
                   return state.products
                       .where((product) =>
-                          product.nombre.toLowerCase().contains(textEditingValue.text.toLowerCase()) ||
-                          product.codigo.toLowerCase().contains(textEditingValue.text.toLowerCase()))
+                          product.nombre
+                              .toLowerCase()
+                              .contains(textEditingValue.text.toLowerCase()) ||
+                          product.codigo
+                              .toLowerCase()
+                              .contains(textEditingValue.text.toLowerCase()))
                       .map((product) => product.codigo)
                       .toList();
                 },
@@ -174,9 +192,11 @@ class _SearchAddBarState extends State<SearchAddBar> {
                     _searchController.text = selection;
                   });
                 },
-                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                fieldViewBuilder:
+                    (context, controller, focusNode, onFieldSubmitted) {
                   _searchController.addListener(() {
-                    if (_searchController.text.isEmpty) setState(() => _selectedProductCode = null);
+                    if (_searchController.text.isEmpty)
+                      setState(() => _selectedProductCode = null);
                   });
                   return TextField(
                     controller: _searchController,
@@ -207,25 +227,31 @@ class _SearchAddBarState extends State<SearchAddBar> {
               onPressed: () {
                 final quantity = int.tryParse(_quantityController.text) ?? 1;
                 if (quantity <= 0) return;
-                
+
                 if (_selectedProductCode != null) {
                   // FIX: Validamos stock al agregar por búsqueda
-                  final product = state.products.firstWhere((p) => p.codigo == _selectedProductCode);
+                  final product = state.products
+                      .firstWhere((p) => p.codigo == _selectedProductCode);
                   final currentCartQty = state.cart[_selectedProductCode] ?? 0;
-                  
+
                   if (currentCartQty + quantity <= product.stockActual) {
-                    context.read<PosBloc>().add(AddToCart(_selectedProductCode!, quantity));
+                    context
+                        .read<PosBloc>()
+                        .add(AddToCart(_selectedProductCode!, quantity));
                     _searchController.clear();
                     setState(() => _selectedProductCode = null);
                     _quantityController.text = '1';
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Stock insuficiente. Quedan ${product.stockActual} unidades.')),
+                      SnackBar(
+                          content: Text(
+                              'Stock insuficiente. Quedan ${product.stockActual} unidades.')),
                     );
                   }
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Seleccione un producto de la lista')),
+                    const SnackBar(
+                        content: Text('Seleccione un producto de la lista')),
                   );
                 }
               },
@@ -261,7 +287,8 @@ class CartTable extends StatelessWidget {
             rows: state.cart.entries.map((entry) {
               final product = state.products.firstWhere(
                 (p) => p.codigo == entry.key,
-                orElse: () => Product(codigo: '', nombre: '', precioUnitario: 0, stockActual: 0),
+                orElse: () => Product(
+                    codigo: '', nombre: '', precioUnitario: 0, stockActual: 0),
               );
               return DataRow(cells: [
                 DataCell(Text(product.nombre)),
@@ -273,7 +300,8 @@ class CartTable extends StatelessWidget {
                         onPressed: () {
                           int newQty = entry.value - 1;
                           if (newQty >= 0) {
-                            context.read<PosBloc>().add(UpdateCartItemQuantity(product.codigo, newQty));
+                            context.read<PosBloc>().add(
+                                UpdateCartItemQuantity(product.codigo, newQty));
                           }
                         },
                       ),
@@ -283,11 +311,13 @@ class CartTable extends StatelessWidget {
                         icon: const Icon(Icons.add),
                         onPressed: () {
                           if (entry.value < product.stockActual) {
-                            context.read<PosBloc>().add(UpdateCartItemQuantity(product.codigo, entry.value + 1));
+                            context.read<PosBloc>().add(UpdateCartItemQuantity(
+                                product.codigo, entry.value + 1));
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('No hay más stock de ${product.nombre}'),
+                                content: Text(
+                                    'No hay más stock de ${product.nombre}'),
                                 duration: const Duration(seconds: 1),
                               ),
                             );
@@ -297,13 +327,17 @@ class CartTable extends StatelessWidget {
                     ],
                   ),
                 ),
-                DataCell(Text('\$${product.precioUnitario.toStringAsFixed(2)}')),
-                DataCell(Text('\$${(product.precioUnitario * entry.value).toStringAsFixed(2)}')),
+                DataCell(
+                    Text('\$${product.precioUnitario.toStringAsFixed(2)}')),
+                DataCell(Text(
+                    '\$${(product.precioUnitario * entry.value).toStringAsFixed(2)}')),
                 DataCell(
                   IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red),
                     onPressed: () {
-                      context.read<PosBloc>().add(RemoveFromCart(product.codigo));
+                      context
+                          .read<PosBloc>()
+                          .add(RemoveFromCart(product.codigo));
                     },
                   ),
                 ),
@@ -337,11 +371,14 @@ class RightPanel extends StatelessWidget {
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
-                      const Text('Total', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text('Total',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
                       Text(
                         '\$${state.totalAmount.toStringAsFixed(2)}',
-                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 28, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -373,14 +410,15 @@ class RightPanel extends StatelessWidget {
                   );
                   return;
                 }
-                 
+
                 // Si el carrito tiene cosas, verificamos el método de pago
                 if (state.selectedPaymentMethod == null) {
                   showDialog(
                     context: context,
                     builder: (_) => AlertDialog(
                       title: const Text('Método de pago requerido'),
-                      content: const Text('Seleccione cómo va a abonar el cliente.'),
+                      content:
+                          const Text('Seleccione cómo va a abonar el cliente.'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
@@ -391,16 +429,18 @@ class RightPanel extends StatelessWidget {
                   );
                   return;
                 }
-                 
+
                 // Si todo está bien, disparamos la venta al backend
                 context.read<PosBloc>().add(const ConfirmSale());
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.verdePrincipal,
                 foregroundColor: AppColors.blanco,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('CONFIRMAR COBRO', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              child: const Text('CONFIRMAR COBRO',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(height: 12),
@@ -413,7 +453,8 @@ class RightPanel extends StatelessWidget {
                 // Solo mostrar confirmación si hay algo que limpiar
                 if (state.cart.isEmpty && state.selectedPaymentMethod == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('No hay selecciones para limpiar')),
+                    const SnackBar(
+                        content: Text('No hay selecciones para limpiar')),
                   );
                   return;
                 }
@@ -422,7 +463,8 @@ class RightPanel extends StatelessWidget {
                   context: context,
                   builder: (_) => AlertDialog(
                     title: const Text('Limpiar selección'),
-                    content: const Text('¿Está seguro de que desea descartar todos los productos y el método de pago seleccionado?'),
+                    content: const Text(
+                        '¿Está seguro de que desea descartar todos los productos y el método de pago seleccionado?'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
@@ -433,7 +475,8 @@ class RightPanel extends StatelessWidget {
                           context.read<PosBloc>().add(const ClearSelection());
                           Navigator.pop(context);
                         },
-                        style: TextButton.styleFrom(foregroundColor: AppColors.rojoEgresos),
+                        style: TextButton.styleFrom(
+                            foregroundColor: AppColors.rojoEgresos),
                         child: const Text('Limpiar'),
                       ),
                     ],
@@ -442,9 +485,14 @@ class RightPanel extends StatelessWidget {
               },
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Colors.grey),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('LIMPIAR SELECCIÓN', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
+              child: const Text('LIMPIAR SELECCIÓN',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey)),
             ),
           ),
         ],
@@ -452,4 +500,3 @@ class RightPanel extends StatelessWidget {
     );
   }
 }
-
