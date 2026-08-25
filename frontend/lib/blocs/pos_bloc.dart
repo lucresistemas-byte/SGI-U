@@ -160,17 +160,16 @@ class PosBloc extends Bloc<PosEvent, PosState> {
 
       await _apiService.createSale(saleData);
 
-      // D.12: limpiar carrito conservando productos y el snapshot de la venta
+      // D.12: limpiar carrito conservando productos, snapshot de venta y mensaje de éxito.
+      // Un solo emit evita re-triggers del BlocListener.
       emit(PosState.initial().copyWith(
         products: state.products,
         completedSale: saleSnapshot,
+        successMessage: 'Venta registrada correctamente',
       ));
       add(LoadProducts());
-      emit(state.copyWith(successMessage: 'Venta registrada correctamente'));
     } catch (e) {
       emit(state.copyWith(errorMessage: e.toString()));
-    } finally {
-      emit(state.copyWith(isProcessing: false));
     }
   }
 }

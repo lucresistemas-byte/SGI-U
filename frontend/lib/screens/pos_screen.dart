@@ -39,6 +39,11 @@ class PosView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocListener<PosBloc, PosState>(
+      listenWhen: (previous, current) {
+        final errorBorn = previous.errorMessage == null && current.errorMessage != null;
+        final successBorn = previous.successMessage == null && current.successMessage != null;
+        return errorBorn || successBorn;
+      },
       listener: (context, state) {
         if (state.errorMessage != null) {
           showDialog(
