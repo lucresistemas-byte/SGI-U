@@ -3,20 +3,30 @@ import 'package:dio/dio.dart';
 import 'discovery_service.dart';
 import 'storage_service.dart';
 
+/// C.3.4: firma del descubrimiento inyectable (permite mockearlo en tests).
+typedef DiscoverServicesFn = Future<List<DiscoveredService>> Function();
+
 class ReconnectionService {
   final StorageService _storageService;
   final Dio _dio;
+
+  /// C.3.4: función de descubrimiento mDNS (default: DiscoveryService, 3s).
+  final DiscoverServicesFn _discover;
   static const int _connectivityCheckTimeoutSeconds = 2;
+  static const Duration _discoveryTimeout = Duration(seconds: 3);
 
   ReconnectionService({
     StorageService? storageService,
     Dio? dio,
+    DiscoverServicesFn? discoverFn,
   })  : _storageService = storageService ?? StorageService(),
         _dio = dio ??
             Dio(BaseOptions(
               connectTimeout: const Duration(seconds: 10),
               receiveTimeout: const Duration(seconds: 10),
-            ));
+            )),
+        _discover =
+            discoverFn ?? (() => DiscoveryService.discoverServices(timeout: _discoveryTimeout));
 
   /// Checks if a backend URL is reachable with a short timeout.
   /// Returns true if the server responds, false otherwise.
@@ -50,11 +60,9 @@ class ReconnectionService {
       }
     }
 
-    // If saved URL is not reachable, try mDNS discovery
+    // If saved URL is not reachable, try mDNS discovery (C.3.4: 3s)
     try {
-      final services = await DiscoveryService.discoverServices(
-        timeout: const Duration(seconds: 4),
-      );
+      final services = await _discover();
 
       if (services.isEmpty) {
         // No services found, return saved URL if available (even if unreachable)

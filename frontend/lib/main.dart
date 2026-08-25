@@ -16,31 +16,38 @@ import 'services/reconnection_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // L4.2: Initialize backend URL from storage and attempt reconnection
-  await _initializeBackendUrl();
+  // L4.2 / C.3.4: inicializa la URL del backend (storage + reconexión mDNS)
+  await initializeBackendUrl();
 
   runApp(const MyApp());
 }
 
-/// Initializes the backend URL from storage and performs reconnection logic.
-/// This ensures the app uses a valid backend URL before proceeding.
-Future<void> _initializeBackendUrl() async {
-  final storageService = StorageService();
-  final reconnectionService =
-      ReconnectionService(storageService: storageService);
-  final apiService = ApiService();
+/// Inicializa la URL base del backend antes de arrancar la app.
+/// - Lee la URL guardada y el nombre de servicio mDNS desde storage.
+/// - Intenta reconexión: reusa la URL si responde; si no, descubre vía mDNS.
+/// - Aplica la URL resultante a ApiService mediante setBaseUrl (C.3.4).
+/// Los servicios son inyectables para poder mockearlos en tests.
+Future<void> initializeBackendUrl({
+  StorageService? storageService,
+  ReconnectionService? reconnectionService,
+  ApiService? apiService,
+}) async {
+  final storage = storageService ?? StorageService();
+  final reconnection =
+      reconnectionService ?? ReconnectionService(storageService: storage);
+  final api = apiService ?? ApiService();
 
   // Read saved URL and service name
-  final savedUrl = await storageService.getBackendUrl();
-  final savedServiceName = await storageService.getBackendServiceName();
+  final savedUrl = await storage.getBackendUrl();
+  final savedServiceName = await storage.getBackendServiceName();
 
   // Attempt reconnection (checks if URL is reachable, or discovers via mDNS)
   final urlToUse =
-      await reconnectionService.attemptReconnection(savedUrl, savedServiceName);
+      await reconnection.attemptReconnection(savedUrl, savedServiceName);
 
   // Update ApiService with the determined URL
   if (urlToUse != null && urlToUse.isNotEmpty) {
-    apiService.updateBaseUrl(urlToUse);
+    api.setBaseUrl(urlToUse);
   }
   // If no URL is available, ApiService will use its default (localhost:3000)
 }
