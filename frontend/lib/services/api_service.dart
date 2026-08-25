@@ -45,30 +45,15 @@ class ApiService {
     _authToken = null;
   }
 
-  /// Update the base URL used by the internal Dio client.
-  /// This recreates the Dio instance preserving timeouts, headers and
-  /// the authentication behavior (token injection).
-  void updateBaseUrl(String newBaseUrl) {
+  /// C.3.4: actualiza la URL base usada por el cliente Dio interno.
+  /// Preserva timeouts, headers y la inyección del token de autenticación.
+  void setBaseUrl(String newBaseUrl) {
     baseUrl = newBaseUrl;
-
-    // Recreate Dio with the same options but new baseUrl
-    _dio = Dio(BaseOptions(
-      baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      headers: {'Content-Type': 'application/json'},
-    ));
-
-    // Re-add the auth interceptor so token continues to be injected
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
-        if (_authToken != null) {
-          options.headers['Authorization'] = 'Bearer $_authToken';
-        }
-        return handler.next(options);
-      },
-    ));
+    _dio.options.baseUrl = newBaseUrl;
   }
+
+  /// URL base efectiva del cliente Dio interno (útil para diagnóstico/tests).
+  String get effectiveBaseUrl => _dio.options.baseUrl;
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {

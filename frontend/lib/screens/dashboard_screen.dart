@@ -151,11 +151,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Column(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final filtros = Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                _buildFiltroDropdown(
+                  Icons.calendar_today_outlined,
+                  '${DateFormat('dd/MM/yyyy').format(_fechaDesde)} - ${DateFormat('dd/MM/yyyy').format(_fechaHasta)}',
+                  onTap: _seleccionarRangoFechas,
+                ),
+                _buildFiltroDropdown(Icons.credit_card_outlined, 'Todos los métodos de pago'),
+                _buildFiltroDropdown(Icons.inventory_2_outlined, 'Todos los productos'),
+              ],
+            );
+
+            final titulo = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
@@ -174,21 +186,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ],
-            ),
-            Row(
+            );
+
+            if (constraints.maxWidth < 700) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  titulo,
+                  const SizedBox(height: 16),
+                  filtros,
+                ],
+              );
+            }
+
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildFiltroDropdown(
-                  Icons.calendar_today_outlined, 
-                  '${DateFormat('dd/MM/yyyy').format(_fechaDesde)} - ${DateFormat('dd/MM/yyyy').format(_fechaHasta)}',
-                  onTap: _seleccionarRangoFechas,
-                ),
-                const SizedBox(width: 12),
-                _buildFiltroDropdown(Icons.credit_card_outlined, 'Todos los métodos de pago'),
-                const SizedBox(width: 12),
-                _buildFiltroDropdown(Icons.inventory_2_outlined, 'Todos los productos'),
+                Expanded(flex: 5, child: titulo),
+                const SizedBox(width: 16),
+                Expanded(flex: 7, child: filtros),
               ],
-            ),
-          ],
+            );
+          },
         ),
         const SizedBox(height: 16),
         Row(
@@ -199,9 +219,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               decoration: const BoxDecoration(color: Color(0xFF008A3D), shape: BoxShape.circle),
             ),
             const SizedBox(width: 8),
-            const Text(
-              'Visualiza la salud financiera y el desempeño de tu negocio en el período seleccionado.',
-              style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
+            const Expanded(
+              child: Text(
+                'Visualiza la salud financiera y el desempeño de tu negocio en el período seleccionado.',
+                style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
+              ),
             ),
           ],
         ),
@@ -221,10 +243,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 18, color: Colors.grey.shade700),
             const SizedBox(width: 10),
-            Text(texto, style: const TextStyle(fontSize: 14, color: Color(0xFF333333), fontWeight: FontWeight.w500)),
+            Flexible(
+              child: Text(texto,
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF333333), fontWeight: FontWeight.w500),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false),
+            ),
             const SizedBox(width: 10),
             Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey.shade700),
           ],
