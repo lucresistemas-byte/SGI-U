@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:printing/printing.dart';
 import '../blocs/pos_bloc.dart';
 import '../blocs/pos_event.dart';
 import '../blocs/pos_state.dart';
@@ -8,6 +9,7 @@ import '../widgets/product_card.dart';
 import '../widgets/payment_method_selector.dart';
 import '../widgets/app_scaffold.dart';
 import '../theme/app_colors.dart';
+import '../services/ticket_service.dart';
 
 class PosScreen extends StatefulWidget {
   const PosScreen({super.key});
@@ -57,18 +59,34 @@ class PosView extends StatelessWidget {
           );
         }
         if (state.successMessage != null) {
+          final sale = state.completedSale;
           showDialog(
             context: context,
             builder: (_) => AlertDialog(
               title: const Text('Éxito'),
               content: Text(state.successMessage!),
               actions: [
+                if (sale != null)
+                  TextButton.icon(
+                    onPressed: () async {
+                      final pdfBytes =
+                          await TicketService.generarTicket(sale: sale);
+                      if (context.mounted) {
+                        await Printing.layoutPdf(
+                          onLayout: (format) async => pdfBytes,
+                          name: 'Ticket SGI-U',
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.receipt_long),
+                    label: const Text('Ver ticket'),
+                  ),
                 TextButton(
                   onPressed: () {
                     context.read<PosBloc>().add(const ClearSuccess());
                     Navigator.pop(context);
                   },
-                  child: const Text('OK'),
+                  child: const Text('Nueva venta'),
                 ),
               ],
             ),
@@ -121,7 +139,7 @@ class LeftPanel extends StatelessWidget {
                       product: product,
                       onAdd: (quantity) {
                         // FIX: Verificamos si la cantidad total en carrito superaría el stock
-                        final currentCartQty = state.cart[product.codigo] ?? 0;
+                        final currentCartQty = state.cart[product.codigo]?.cantidad ?? 0;
                         if (currentCartQty + quantity <= product.stockActual) {
                           context
                               .read<PosBloc>()
@@ -232,7 +250,7 @@ class _SearchAddBarState extends State<SearchAddBar> {
                   // FIX: Validamos stock al agregar por búsqueda
                   final product = state.products
                       .firstWhere((p) => p.codigo == _selectedProductCode);
-                  final currentCartQty = state.cart[_selectedProductCode] ?? 0;
+                  final currentCartQty = state.cart[_selectedProductCode]?.cantidad ?? 0;
 
                   if (currentCartQty + quantity <= product.stockActual) {
                     context
@@ -285,39 +303,40 @@ class CartTable extends StatelessWidget {
               DataColumn(label: Text('')),
             ],
             rows: state.cart.entries.map((entry) {
+              final item = entry.value;
+              // Stock check necesita el producto actual del catálogo
               final product = state.products.firstWhere(
                 (p) => p.codigo == entry.key,
                 orElse: () => Product(
                     codigo: '', nombre: '', precioUnitario: 0, stockActual: 0),
               );
               return DataRow(cells: [
-                DataCell(Text(product.nombre)),
+                DataCell(Text(item.nombre)),
                 DataCell(
                   Row(
                     children: [
                       IconButton(
                         icon: const Icon(Icons.remove),
                         onPressed: () {
-                          int newQty = entry.value - 1;
+                          int newQty = item.cantidad - 1;
                           if (newQty >= 0) {
                             context.read<PosBloc>().add(
-                                UpdateCartItemQuantity(product.codigo, newQty));
+                                UpdateCartItemQuantity(item.codigo, newQty));
                           }
                         },
                       ),
-                      Text(entry.value.toString()),
-                      // FIX: Bloqueamos el botón "+" si superamos el stock
+                      Text(item.cantidad.toString()),
                       IconButton(
                         icon: const Icon(Icons.add),
                         onPressed: () {
-                          if (entry.value < product.stockActual) {
+                          if (item.cantidad < product.stockActual) {
                             context.read<PosBloc>().add(UpdateCartItemQuantity(
-                                product.codigo, entry.value + 1));
+                                item.codigo, item.cantidad + 1));
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                    'No hay más stock de ${product.nombre}'),
+                                    'No hay más stock de ${item.nombre}'),
                                 duration: const Duration(seconds: 1),
                               ),
                             );
@@ -328,16 +347,16 @@ class CartTable extends StatelessWidget {
                   ),
                 ),
                 DataCell(
-                    Text('\$${product.precioUnitario.toStringAsFixed(2)}')),
+                    Text('\$${item.precioUnitario.toStringAsFixed(2)}')),
                 DataCell(Text(
-                    '\$${(product.precioUnitario * entry.value).toStringAsFixed(2)}')),
+                    '\$${item.subtotal.toStringAsFixed(2)}')),
                 DataCell(
                   IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red),
                     onPressed: () {
                       context
                           .read<PosBloc>()
-                          .add(RemoveFromCart(product.codigo));
+                          .add(RemoveFromCart(item.codigo));
                     },
                   ),
                 ),
