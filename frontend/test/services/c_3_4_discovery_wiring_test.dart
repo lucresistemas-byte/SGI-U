@@ -7,11 +7,10 @@ import 'package:sgi_u_frontend/main.dart';
 import 'package:sgi_u_frontend/services/api_service.dart';
 import 'package:sgi_u_frontend/services/discovery_service.dart';
 import 'package:sgi_u_frontend/services/reconnection_service.dart';
+import 'package:sgi_u_frontend/services/server_store.dart';
 import 'package:sgi_u_frontend/services/storage_service.dart';
 
 /// Adapter de red falso: simula un servidor que responde correctamente.
-/// Sirve para validar que una URL guardada alcanzable tiene prioridad
-/// sobre el descubrimiento mDNS.
 class _ReachableAdapter implements HttpClientAdapter {
   @override
   void close({bool force = false}) {}
@@ -28,6 +27,25 @@ class _ReachableAdapter implements HttpClientAdapter {
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },
+    );
+  }
+}
+
+/// Adapter de red falso: simula un servidor que no responde.
+class _DeadAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    throw DioException(
+      requestOptions: options,
+      type: DioExceptionType.connectionError,
+      message: 'Simulated connection refused',
     );
   }
 }
@@ -123,6 +141,110 @@ void main() {
       expect(discoverCalled, isFalse,
           reason: 'Con URL alcanzable no debe ejecutarse el descubrimiento.');
       expect(api.baseUrl, saved);
+    });
+  });
+
+  group('initializeBackendUrl (C.3.9 - ServerStore + TTL)', () {
+    test('caché fresca con URL alcanzable: se usa sin descubrir y refresca timestamp',
+        () async {
+      var fixedNow = DateTime(2026, 8, 25, 10);
+      final store = ServerStore(now: () => fixedNow);
+      await store.save('http://10.0.0.9:3000');
+
+      // 6 horas después, sigue dentro del TTL de 24h
+      fixedNow = DateTime(2026, 8, 25, 16);
+
+      var discoverCalled = false;
+      final dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 5)))
+        ..httpClientAdapter = _ReachableAdapter();
+      final reconnection = ReconnectionService(
+        storageService: storage,
+        dio: dio,
+        discoverFn: () async {
+          discoverCalled = true;
+          return [_fakeService()];
+        },
+      );
+
+      await initializeBackendUrl(
+        storageService: storage,
+        reconnectionService: reconnection,
+        apiService: api,
+        serverStore: store,
+      );
+
+      expect(discoverCalled, isFalse,
+          reason: 'Caché fresca con ping OK no debe discover.');
+      expect(api.baseUrl, 'http://10.0.0.9:3000');
+      final refreshed = await store.read();
+      expect(refreshed!.url, 'http://10.0.0.9:3000');
+    });
+
+    test('caché fresca pero URL muerta: cae al descubrimiento y guarda la nueva IP',
+        () async {
+      var fixedNow = DateTime(2026, 8, 25, 10);
+      final store = ServerStore(now: () => fixedNow);
+      await store.save('http://10.255.255.1:3000');
+
+      // 2 horas después, sigue fresca
+      fixedNow = DateTime(2026, 8, 25, 12);
+
+      final deadDio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 5)))
+        ..httpClientAdapter = _DeadAdapter();
+      final reconnection = ReconnectionService(
+        storageService: storage,
+        dio: deadDio,
+        discoverFn: () async => [_fakeService(ip: '192.168.1.200')],
+      );
+
+      await initializeBackendUrl(
+        storageService: storage,
+        reconnectionService: reconnection,
+        apiService: api,
+        serverStore: store,
+      );
+
+      expect(api.baseUrl, 'http://192.168.1.200:3000');
+      final updated = await store.read();
+      expect(updated!.url, 'http://192.168.1.200:3000');
+    });
+
+    test('caché expirada (>24h): rediscovery aunque la URL esté en caché',
+        () async {
+      final fixedNow = DateTime(2026, 8, 25, 10);
+      final store = ServerStore(now: () => fixedNow);
+      await store.save('http://10.0.0.9:3000');
+
+      // 25 horas después, cache expiró
+      final expiredStore = ServerStore(
+        now: () => DateTime(2026, 8, 26, 11),
+      );
+      // Reescribimos la entrada directamente para no cambiar la fecha real
+      await FlutterSecureStorage().write(
+        key: 'server_cache',
+        value:
+            '{"url":"http://10.0.0.9:3000","savedAt":"2026-08-25T10:00:00.000"}',
+      );
+
+      var discoverCalled = false;
+      final reconnection = ReconnectionService(
+        storageService: storage,
+        discoverFn: () async {
+          discoverCalled = true;
+          return [_fakeService(ip: '10.0.0.77')];
+        },
+      );
+
+      await initializeBackendUrl(
+        storageService: storage,
+        reconnectionService: reconnection,
+        apiService: api,
+        serverStore: expiredStore,
+      );
+
+      expect(discoverCalled, isTrue,
+          reason: 'Caché expirada debe ejecutar rediscovery.');
+      expect(api.baseUrl, 'http://10.0.0.77:3000');
     });
   });
 }

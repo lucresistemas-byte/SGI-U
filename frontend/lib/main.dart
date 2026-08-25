@@ -12,6 +12,7 @@ import 'repositories/auth_repository.dart';
 import 'services/api_service.dart';
 import 'services/storage_service.dart';
 import 'services/reconnection_service.dart';
+import 'services/server_store.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,32 +23,42 @@ void main() async {
   runApp(const MyApp());
 }
 
-/// Inicializa la URL base del backend antes de arrancar la app.
-/// - Lee la URL guardada y el nombre de servicio mDNS desde storage.
-/// - Intenta reconexión: reusa la URL si responde; si no, descubre vía mDNS.
-/// - Aplica la URL resultante a ApiService mediante setBaseUrl (C.3.4).
+/// Inicializa la URL base del backend antes de arrancar la app (C.3.4/C.3.9).
+/// - ServerStore cachea la última URL resuelta con timestamp y TTL de 24h.
+/// - El candidato a reusar es la caché si está fresca; si no, la URL legacy
+///   guardada en StorageService.
+/// - Siempre se hace ping previo al candidato: si responde se usa directo;
+///   si no, ReconnectionService descubre el backend vía mDNS.
+/// - La URL resultante se aplica con setBaseUrl y refresca el TTL de la caché.
 /// Los servicios son inyectables para poder mockearlos en tests.
 Future<void> initializeBackendUrl({
   StorageService? storageService,
   ReconnectionService? reconnectionService,
   ApiService? apiService,
+  ServerStore? serverStore,
 }) async {
   final storage = storageService ?? StorageService();
   final reconnection =
       reconnectionService ?? ReconnectionService(storageService: storage);
   final api = apiService ?? ApiService();
+  final store = serverStore ?? ServerStore();
 
-  // Read saved URL and service name
-  final savedUrl = await storage.getBackendUrl();
+  // C.3.9: el TTL decide contra quién se hace el ping, no lo evita.
+  final cached = await store.read();
+  final candidateUrl =
+      (cached != null && store.isFresh(cached)) ? cached.url : null;
+  final savedUrl =
+      candidateUrl ?? await storage.getBackendUrl();
   final savedServiceName = await storage.getBackendServiceName();
 
   // Attempt reconnection (checks if URL is reachable, or discovers via mDNS)
   final urlToUse =
       await reconnection.attemptReconnection(savedUrl, savedServiceName);
 
-  // Update ApiService with the determined URL
+  // Apply the resolved URL and refresh the cache timestamp
   if (urlToUse != null && urlToUse.isNotEmpty) {
     api.setBaseUrl(urlToUse);
+    await store.save(urlToUse);
   }
   // If no URL is available, ApiService will use its default (localhost:3000)
 }
