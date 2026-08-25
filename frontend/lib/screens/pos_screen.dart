@@ -121,7 +121,7 @@ class LeftPanel extends StatelessWidget {
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          // const SearchAddBar(),
+          const SearchAddBar(),
           const SizedBox(height: 16),
           SizedBox(
             height: 200,

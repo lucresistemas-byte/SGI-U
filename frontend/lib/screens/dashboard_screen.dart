@@ -19,6 +19,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // --- VARIABLES DE ESTADO ---
   DateTime _fechaDesde = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime _fechaHasta = DateTime.now();
+  String? _filtroMetodoPago;
   
   DashboardResponse? _dashboardData;
   bool _isLoading = true;
@@ -42,6 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final data = await _apiService.getDashboardData(
         fechaDesde: _fechaDesde,
         fechaHasta: _fechaHasta,
+        metodoPago: _filtroMetodoPago,
       );
       setState(() {
         _dashboardData = DashboardResponse.fromJson(data);
@@ -162,7 +164,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   '${DateFormat('dd/MM/yyyy').format(_fechaDesde)} - ${DateFormat('dd/MM/yyyy').format(_fechaHasta)}',
                   onTap: _seleccionarRangoFechas,
                 ),
-                _buildFiltroDropdown(Icons.credit_card_outlined, 'Todos los métodos de pago'),
+                _buildMetodoPagoDropdown(),
                 _buildFiltroDropdown(Icons.inventory_2_outlined, 'Todos los productos'),
               ],
             );
@@ -256,6 +258,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey.shade700),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMetodoPagoDropdown() {
+    const opciones = <String, String>{
+      'Todos': 'Todos los métodos de pago',
+      'EFECTIVO': 'Efectivo',
+      'MERCADO_PAGO': 'Mercado Pago',
+      'TARJETA': 'Tarjeta',
+      'TRANSFERENCIA': 'Transferencia',
+    };
+
+    final seleccion = _filtroMetodoPago ?? 'Todos';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: DropdownButton<String>(
+        value: seleccion,
+        underline: const SizedBox.shrink(),
+        isDense: true,
+        icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey.shade700),
+        style: const TextStyle(fontSize: 14, color: Color(0xFF333333), fontWeight: FontWeight.w500),
+        items: opciones.entries.map((e) {
+          return DropdownMenuItem(value: e.key, child: Text(e.value));
+        }).toList(),
+        onChanged: (value) {
+          setState(() {
+            _filtroMetodoPago = (value == 'Todos') ? null : value;
+          });
+          _cargarDatos();
+        },
       ),
     );
   }

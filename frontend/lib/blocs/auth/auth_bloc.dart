@@ -7,10 +7,11 @@ import '../../services/storage_service.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
-  final StorageService _storageService = StorageService();
+  final StorageService _storageService;
 
-  AuthBloc({required AuthRepository authRepository})
+  AuthBloc({required AuthRepository authRepository, StorageService? storageService})
       : _authRepository = authRepository,
+        _storageService = storageService ?? StorageService(),
         super(AuthInitial()) {
     on<CheckAuthStatus>(_onCheckAuthStatus);
     on<LoginRequested>(_onLoginRequested);
