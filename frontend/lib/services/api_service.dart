@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import '../models/product.dart';
 import 'package:intl/intl.dart';
+
 class ApiService {
   // --- INICIO DEL FIX: PATRÓN SINGLETON ---
   static final ApiService _instance = ApiService._internal();
@@ -71,12 +72,10 @@ class ApiService {
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
-      final response = await _dio
-          .post('/api/auth/login', data: {
+      final response = await _dio.post('/api/auth/login', data: {
         'username': username,
         'password': password,
-      })
-          .timeout(const Duration(seconds: 10));
+      }).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         return response.data;
@@ -87,11 +86,25 @@ class ApiService {
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.connectionError) {
-        throw Exception('No se pudo conectar con el servidor. Verifique su conexión.');
+        throw Exception(
+            'No se pudo conectar con el servidor. Verifique su conexión.');
       }
-      if (e.response?.statusCode == 401) {
-        throw Exception('Usuario o contraseña incorrectos');
+
+      // El backend informa el motivo en el body con status 400:
+      // {"error": "Credenciales incorrectas"} / {"error": "Usuario no encontrado"}
+      final data = e.response?.data;
+      if (data is Map &&
+          data['error'] is String &&
+          (data['error'] as String).isNotEmpty) {
+        throw Exception(data['error']);
       }
+
+      // Fallback por código de estado si el body no trae mensaje útil
+      final status = e.response?.statusCode;
+      if (status == 400 || status == 401 || status == 403) {
+        throw Exception('Credenciales incorrectas');
+      }
+
       throw Exception('Error de conexión: ${e.message}');
     } on TimeoutException {
       throw Exception('Tiempo de espera agotado. El servidor no responde.');
@@ -169,7 +182,8 @@ class ApiService {
     }
   }
 
-  Future<List<dynamic>> getMovimientos({int pagina = 1, int limite = 10}) async {
+  Future<List<dynamic>> getMovimientos(
+      {int pagina = 1, int limite = 10}) async {
     try {
       final response = await _dio.get('/api/movimientos', queryParameters: {
         'page': pagina,
@@ -177,7 +191,7 @@ class ApiService {
       });
       if (response.statusCode == 200) {
         // Ahora devolvemos directamente la lista que manda el backend
-        return response.data as List<dynamic>; 
+        return response.data as List<dynamic>;
       } else {
         throw Exception('Error al cargar movimientos');
       }
@@ -199,11 +213,12 @@ class ApiService {
       throw Exception('Error de conexión');
     }
   }
+
   Future<Map<String, dynamic>> getBalance(DateTime inicio, DateTime fin) async {
     try {
       final response = await _dio.get('/api/balance', queryParameters: {
         // CUIDADO ACÁ: Tienen que llamarse igual que en el BalanceController de Java
-        'fechaInicio': DateFormat('yyyy-MM-dd').format(inicio), 
+        'fechaInicio': DateFormat('yyyy-MM-dd').format(inicio),
         'fechaFin': DateFormat('yyyy-MM-dd').format(fin),
       });
       if (response.statusCode == 200) {
@@ -215,9 +230,12 @@ class ApiService {
       throw Exception('Error de red: ${e.message}');
     }
   }
-  Future<Product> updateProduct(String codigo, Map<String, dynamic> productData) async {
+
+  Future<Product> updateProduct(
+      String codigo, Map<String, dynamic> productData) async {
     try {
-      final response = await _dio.put('/api/productos/$codigo', data: productData);
+      final response =
+          await _dio.put('/api/productos/$codigo', data: productData);
       if (response.statusCode == 200) {
         return Product.fromJson(response.data);
       } else {
@@ -238,15 +256,18 @@ class ApiService {
     int? productoId,
   }) async {
     // Formateamos las fechas a yyyy-MM-dd como exige el contrato
-    final String desdeStr = "${fechaDesde.year}-${fechaDesde.month.toString().padLeft(2, '0')}-${fechaDesde.day.toString().padLeft(2, '0')}";
-    final String hastaStr = "${fechaHasta.year}-${fechaHasta.month.toString().padLeft(2, '0')}-${fechaHasta.day.toString().padLeft(2, '0')}";
+    final String desdeStr =
+        "${fechaDesde.year}-${fechaDesde.month.toString().padLeft(2, '0')}-${fechaDesde.day.toString().padLeft(2, '0')}";
+    final String hastaStr =
+        "${fechaHasta.year}-${fechaHasta.month.toString().padLeft(2, '0')}-${fechaHasta.day.toString().padLeft(2, '0')}";
 
     try {
       final response = await _dio.get('/api/dashboard', queryParameters: {
         'fechaDesde': desdeStr,
         'fechaHasta': hastaStr,
         // Solo mandamos estos parámetros si el usuario eligió un filtro específico
-        if (metodoPago != null && metodoPago != 'Todos') 'metodoPago': metodoPago.toUpperCase(),
+        if (metodoPago != null && metodoPago != 'Todos')
+          'metodoPago': metodoPago.toUpperCase(),
         if (productoId != null) 'productoId': productoId,
       });
 

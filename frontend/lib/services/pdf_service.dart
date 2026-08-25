@@ -2,6 +2,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
+import '../utils/parsers.dart';
 
 class PdfService {
   static Future<void> generarYDescargarBalance({
@@ -14,7 +15,8 @@ class PdfService {
   }) async {
     final pdf = pw.Document();
     final _formatterFecha = DateFormat('dd/MM/yyyy');
-    final _formatterCurrency = NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
+    final _formatterCurrency =
+        NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
     final _formatterFechaHora = DateFormat('dd/MM/yyyy HH:mm');
 
     // Construir contenido del PDF
@@ -91,12 +93,16 @@ class PdfService {
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildKpiCard('Total Ingresos', totalIngresos, PdfColor.fromInt(0xFF008A3D)),
-                  _buildKpiCard('Total Egresos', totalEgresos, PdfColor.fromInt(0xFFFF2E2E)),
+                  _buildKpiCard('Total Ingresos', totalIngresos,
+                      PdfColor.fromInt(0xFF008A3D)),
+                  _buildKpiCard('Total Egresos', totalEgresos,
+                      PdfColor.fromInt(0xFFFF2E2E)),
                   _buildKpiCard(
                     'Margen Neto',
                     margenNeto,
-                    margenNeto >= 0 ? PdfColor.fromInt(0xFF008A3D) : PdfColor.fromInt(0xFFFF2E2E),
+                    margenNeto >= 0
+                        ? PdfColor.fromInt(0xFF008A3D)
+                        : PdfColor.fromInt(0xFFFF2E2E),
                   ),
                 ],
               ),
@@ -104,7 +110,8 @@ class PdfService {
               // Tabla de movimientos
               pw.Text(
                 'Detalle de Movimientos',
-                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+                style:
+                    pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
               ),
               pw.SizedBox(height: 12),
               pw.TableHelper.fromTextArray(
@@ -130,14 +137,17 @@ class PdfService {
                   'Descripción',
                 ],
                 data: movimientos.map((mov) {
-                  String tipoRaw = mov['tipo'] ?? '';
-                  String tipoDisplay = tipoRaw.toLowerCase() == 'ingreso' ? 'Ingreso' : 'Egreso';
-                  String metodoRaw = mov['metodoPago']?.toString() ?? '';
+                  String tipoRaw = parseString(mov['tipo']);
+                  String tipoDisplay =
+                      tipoRaw.toLowerCase() == 'ingreso' ? 'Ingreso' : 'Egreso';
+                  String metodoRaw = parseString(mov['metodoPago']);
                   String metodoDisplay = _parseMetodoPago(metodoRaw);
-                  double monto = (mov['monto'] ?? 0.0).toDouble();
-                  String fechaHora = _formatFechaHora(mov['fechaHora'] ?? '');
-                  String categoria = mov['categoria'] ?? 'Sin categoría';
-                  String descripcion = mov['descripcion'] ?? '';
+                  double monto = parseDouble(mov['monto']);
+                  String fechaHora =
+                      _formatFechaHora(parseString(mov['fechaHora']));
+                  String categoria =
+                      parseString(mov['categoria'], 'Sin categoría');
+                  String descripcion = parseString(mov['descripcion']);
 
                   return [
                     fechaHora,
@@ -165,12 +175,14 @@ class PdfService {
     // Descargar PDF
     await Printing.sharePdf(
       bytes: await pdf.save(),
-      filename: 'Balance_${_formatterFecha.format(fechaInicio)}_a_${_formatterFecha.format(fechaFin)}.pdf',
+      filename:
+          'Balance_${_formatterFecha.format(fechaInicio)}_a_${_formatterFecha.format(fechaFin)}.pdf',
     );
   }
 
   static pw.Widget _buildKpiCard(String titulo, double valor, PdfColor color) {
-    final _formatterCurrency = NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
+    final _formatterCurrency =
+        NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
     return pw.Container(
       width: 150,
       padding: const pw.EdgeInsets.all(12),
