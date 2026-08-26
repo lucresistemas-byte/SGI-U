@@ -19,7 +19,7 @@ class TicketService {
 
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat(58 * PdfPageFormat.mm, double.infinity,
+        pageFormat: PdfPageFormat(58 * PdfPageFormat.mm, 297 * PdfPageFormat.mm,
             marginAll: 4 * PdfPageFormat.mm),
         build: (pw.Context context) => [
           // Encabezado
