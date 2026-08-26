@@ -74,13 +74,21 @@ class PosView extends StatelessWidget {
                 if (sale != null)
                   TextButton.icon(
                     onPressed: () async {
-                      final pdfBytes =
-                          await TicketService.generarTicket(sale: sale);
-                      if (context.mounted) {
-                        await Printing.layoutPdf(
-                          onLayout: (format) async => pdfBytes,
-                          name: 'Ticket SGI-U',
-                        );
+                      try {
+                        final pdfBytes =
+                            await TicketService.generarTicket(sale: sale);
+                        if (context.mounted) {
+                          await Printing.sharePdf(
+                            bytes: pdfBytes,
+                            filename: 'ticket_sgiu.pdf',
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error al generar ticket: $e')),
+                          );
+                        }
                       }
                     },
                     icon: const Icon(Icons.receipt_long),
