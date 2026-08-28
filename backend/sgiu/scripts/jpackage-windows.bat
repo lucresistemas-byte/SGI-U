@@ -7,7 +7,7 @@ REM empaquetando el JAR, el runtime de jlink y MariaDB Portable.
 set APP_NAME=SGI-U
 set APP_VERSION=1.0.0
 set MAIN_JAR=sgiu-0.0.1-SNAPSHOT.jar
-set MAIN_CLASS=com.sgiu_group.sgiu.Launcher
+set MAIN_CLASS=org.springframework.boot.loader.launch.JarLauncher
 set INPUT_DIR=packaging\app\input
 set RUNTIME_DIR=packaging\app\runtime
 set CONTENT_DIR=packaging\app\content
@@ -23,7 +23,7 @@ jpackage ^
     --main-jar %MAIN_JAR% ^
     --main-class %MAIN_CLASS% ^
     --runtime-image "%RUNTIME_DIR%" ^
-    --app-content "%CONTENT_DIR%" ^
+    --app-content "%CONTENT_DIR%,..\..\packaging\scripts,packaging\app\frontend" ^
     --dest "%DEST_DIR%" ^
     --win-shortcut ^
     --win-menu ^
