@@ -13,6 +13,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
 
 import java.util.Map;
 
@@ -85,8 +86,9 @@ public class AuthController {
                             request.password()
                     )
             );
-        } catch (BadCredentialsException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Credenciales incorrectas"));
+        }catch (BadCredentialsException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body(Map.of("error", "Credenciales incorrectas"));
         }
 
         final UserDetails userDetails = usuarioDetailsService.loadUserByUsername(request.username());
