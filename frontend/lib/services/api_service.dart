@@ -139,7 +139,7 @@ class ApiService {
 
   Future<Product> createProduct(Map<String, dynamic> productData) async {
     try {
-      final response = await _dio.post('/api/productos', data: productData);
+      final response = await _dio.post('/api/productos/crear', data: productData);
       if (response.statusCode == 201) {
         return Product.fromJson(response.data);
       } else {
@@ -220,7 +220,7 @@ class ApiService {
       String codigo, Map<String, dynamic> productData) async {
     try {
       final response =
-          await _dio.put('/api/productos/$codigo', data: productData);
+          await _dio.put('/api/productos/editar/$codigo', data: productData);
       if (response.statusCode == 200) {
         return Product.fromJson(response.data);
       } else {

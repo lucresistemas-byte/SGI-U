@@ -1,19 +1,19 @@
 import 'package:equatable/equatable.dart';
+import '../models/cart_item.dart';
+import '../models/completed_sale.dart';
 import '../models/product.dart';
 
-/// Sentinel para distinguir "no se pasó el parámetro" de "se pasó null".
-/// Permite que errorMessage/successMessage se preserven por defecto en
-/// copyWith y solo se limpien cuando se pasan explícitamente como null.
 const Object _unset = Object();
 
 class PosState extends Equatable {
   final List<Product> products;
-  final Map<String, int> cart;
+  final Map<String, CartItem> cart;
   final String? selectedPaymentMethod;
   final bool isProcessing;
   final bool isLoading;
   final String? errorMessage;
   final String? successMessage;
+  final CompletedSale? completedSale;
 
   const PosState({
     required this.products,
@@ -23,6 +23,7 @@ class PosState extends Equatable {
     this.isLoading = false,
     this.errorMessage,
     this.successMessage,
+    this.completedSale,
   });
 
   factory PosState.initial() {
@@ -34,17 +35,19 @@ class PosState extends Equatable {
       isLoading: false,
       errorMessage: null,
       successMessage: null,
+      completedSale: null,
     );
   }
 
   PosState copyWith({
     List<Product>? products,
-    Map<String, int>? cart,
+    Map<String, CartItem>? cart,
     String? selectedPaymentMethod,
     bool? isProcessing,
     bool? isLoading,
     Object? errorMessage = _unset,
     Object? successMessage = _unset,
+    Object? completedSale = _unset,
   }) {
     return PosState(
       products: products ?? this.products,
@@ -59,18 +62,17 @@ class PosState extends Equatable {
       successMessage: identical(successMessage, _unset)
           ? this.successMessage
           : successMessage as String?,
+      completedSale: identical(completedSale, _unset)
+          ? this.completedSale
+          : completedSale as CompletedSale?,
     );
   }
 
+  /// D.12: total usando precio congelado de CartItem.
   double get totalAmount {
     double total = 0.0;
-    for (var entry in cart.entries) {
-      final product = products.firstWhere(
-        (p) => p.codigo == entry.key,
-        orElse: () =>
-            Product(codigo: '', nombre: '', precioUnitario: 0, stockActual: 0),
-      );
-      total += product.precioUnitario * entry.value;
+    for (var item in cart.values) {
+      total += item.precioUnitario * item.cantidad;
     }
     return total;
   }
@@ -84,5 +86,6 @@ class PosState extends Equatable {
         isLoading,
         errorMessage,
         successMessage,
+        completedSale,
       ];
 }
