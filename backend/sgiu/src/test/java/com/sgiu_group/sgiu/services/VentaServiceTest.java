@@ -44,6 +44,10 @@ class VentaServiceTest {
     private PagoVentaRepository pagoRepository;
     @Mock
     private MovFinancieroRepository movFinancieroRepository;
+    @Mock
+    private com.sgiu_group.sgiu.repositories.RecetaRepository recetaRepository;
+    @Mock
+    private com.sgiu_group.sgiu.repositories.MateriaPrimaRepository materiaPrimaRepository;
 
     @InjectMocks
     private VentaService ventaService;

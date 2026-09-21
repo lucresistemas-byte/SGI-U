@@ -12,7 +12,7 @@ public record ProductoRequestDTO(
     BigDecimal precioUnitario,
     BigDecimal precioCosto,
     BigDecimal porcentajeGanancia,
-    UnidadMedida unidadMedida,
+    String unidadMedida,
     Long categoriaId,
     @Min(value = 0, message = "El stock no puede ser negativo.")
     Long stockActual,
@@ -33,8 +33,34 @@ public record ProductoRequestDTO(
             precioUnitario,
             BigDecimal.ZERO,
             BigDecimal.ZERO,
-            UnidadMedida.UNIDAD,
+            "UNIDAD",
             null,
+            stockActual,
+            stockMinimo,
+            activo
+        );
+    }
+
+    public ProductoRequestDTO(
+            String codigo,
+            String nombre,
+            BigDecimal precioUnitario,
+            BigDecimal precioCosto,
+            BigDecimal porcentajeGanancia,
+            UnidadMedida unidadMedida,
+            Long categoriaId,
+            Long stockActual,
+            Integer stockMinimo,
+            Boolean activo
+    ) {
+        this(
+            codigo,
+            nombre,
+            precioUnitario,
+            precioCosto,
+            porcentajeGanancia,
+            unidadMedida != null ? unidadMedida.name() : "UNIDAD",
+            categoriaId,
             stockActual,
             stockMinimo,
             activo

@@ -43,9 +43,6 @@ public class ProductoService {
         if (dto.stockActual() != null && dto.stockActual() < 0) {
             throw new IllegalArgumentException("El stock no puede ser negativo.");
         }
-        if (productoRepository.existsByCodigo(dto.codigo())) {
-            throw new IllegalArgumentException("El código de producto ya existe.");
-        }
 
         BigDecimal costo = dto.precioCosto() != null ? dto.precioCosto() : BigDecimal.ZERO;
         if (costo.compareTo(BigDecimal.ZERO) < 0) {
@@ -66,11 +63,26 @@ public class ProductoService {
                     .setScale(2, RoundingMode.HALF_UP);
         }
 
-        if (precioVenta == null || precioVenta.compareTo(BigDecimal.ZERO) <= 0) {
+        if (precioVenta == null) {
+            throw new IllegalArgumentException("El precio es obligatorio.");
+        }
+
+        if (precioVenta.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El precio debe ser un valor mayor a $0.");
         }
 
-        UnidadMedida unidad = dto.unidadMedida() != null ? dto.unidadMedida() : UnidadMedida.UNIDAD;
+        if (productoRepository.existsByCodigo(dto.codigo())) {
+            throw new IllegalArgumentException("El código de producto ya existe.");
+        }
+
+        UnidadMedida unidad = UnidadMedida.UNIDAD;
+        if (dto.unidadMedida() != null && !dto.unidadMedida().isBlank()) {
+            try {
+                unidad = UnidadMedida.valueOf(dto.unidadMedida().trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Unidad de medida no válida: " + dto.unidadMedida());
+            }
+        }
         Categoria categoria = null;
         if (dto.categoriaId() != null) {
             categoria = categoriaRepository.findById(dto.categoriaId()).orElse(null);
@@ -144,8 +156,12 @@ public class ProductoService {
             }
         }
 
-        if (dto.unidadMedida() != null) {
-            productoExistente.setUnidadMedida(dto.unidadMedida());
+        if (dto.unidadMedida() != null && !dto.unidadMedida().isBlank()) {
+            try {
+                productoExistente.setUnidadMedida(UnidadMedida.valueOf(dto.unidadMedida().trim().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Unidad de medida no válida: " + dto.unidadMedida());
+            }
         }
 
         if (dto.categoriaId() != null) {
