@@ -67,7 +67,16 @@ class CreateProduct extends PosEvent {
 class UpdateProduct extends PosEvent {
   final String codigo;
   final Map<String, dynamic> productData;
-  const UpdateProduct(this.codigo, this.productData);
+
+  /// Delta de stock (positivo suma, negativo resta). Null si no se ajusta.
+  final int? stockAjuste;
+  final String? stockMotivo;
+  const UpdateProduct(
+    this.codigo,
+    this.productData, {
+    this.stockAjuste,
+    this.stockMotivo,
+  });
   @override
-  List<Object?> get props => [codigo, productData];
+  List<Object?> get props => [codigo, productData, stockAjuste, stockMotivo];
 }

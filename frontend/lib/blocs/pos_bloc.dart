@@ -7,9 +7,11 @@ import '../models/product.dart';
 import '../services/api_service.dart';
 
 class PosBloc extends Bloc<PosEvent, PosState> {
-  final ApiService _apiService = ApiService();
+  final PosApi _apiService;
 
-  PosBloc() : super(PosState.initial()) {
+  PosBloc({PosApi? apiService})
+      : _apiService = apiService ?? ApiService(),
+        super(PosState.initial()) {
     on<LoadProducts>(_onLoadProducts);
     on<AddToCart>(_onAddToCart);
     on<UpdateCartItemQuantity>(_onUpdateCartItemQuantity);
@@ -40,6 +42,17 @@ class PosBloc extends Bloc<PosEvent, PosState> {
           isLoading: true, errorMessage: null, successMessage: null));
       try {
         await _apiService.updateProduct(event.codigo, event.productData);
+
+        // Ajuste de stock en edición: se persiste con el endpoint dedicado.
+        final ajuste = event.stockAjuste;
+        if (ajuste != null && ajuste != 0) {
+          await _apiService.ajustarStock(
+            event.codigo,
+            cantidad: ajuste,
+            motivo: event.stockMotivo ?? 'Ajuste manual',
+          );
+        }
+
         add(LoadProducts());
         emit(state.copyWith(
             isLoading: false,
