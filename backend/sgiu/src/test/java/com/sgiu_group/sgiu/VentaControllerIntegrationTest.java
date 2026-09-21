@@ -100,11 +100,11 @@ class VentaControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void crearVenta_jsonMalFormado_seManejaComoError500() throws Exception {
+    void crearVenta_jsonMalFormado_devuelve400() throws Exception {
         mockMvc.perform(post("/api/ventas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{lineas rotas"))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.error").value(true));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Error en el formato de los datos o valor inválido."));
     }
 }
