@@ -3,6 +3,7 @@ package com.sgiu_group.sgiu.services;
 import com.sgiu_group.sgiu.models.dtos.VentaRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.LineaVentaDTO;
 import com.sgiu_group.sgiu.models.entities.*;
+import com.sgiu_group.sgiu.exceptions.InsumoInsuficienteException;
 import com.sgiu_group.sgiu.exceptions.ProductoNoEncontradoException;
 import com.sgiu_group.sgiu.exceptions.StockInsuficienteException;
 import com.sgiu_group.sgiu.repositories.*;
@@ -10,6 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class VentaService {
@@ -19,16 +23,22 @@ public class VentaService {
     private final ArticuloStockRepository stockRepository;
     private final PagoVentaRepository pagoRepository;
     private final MovFinancieroRepository movFinancieroRepository;
+    private final RecetaRepository recetaRepository;
+    private final MateriaPrimaRepository materiaPrimaRepository;
 
     // Inyección por constructor: No requiere @Autowired manual
     public VentaService(VentaRepository ventaRepository, 
                         ArticuloStockRepository stockRepository,
                         PagoVentaRepository pagoRepository,
-                        MovFinancieroRepository movFinancieroRepository) {
+                        MovFinancieroRepository movFinancieroRepository,
+                        RecetaRepository recetaRepository,
+                        MateriaPrimaRepository materiaPrimaRepository) {
         this.ventaRepository = ventaRepository;
         this.stockRepository = stockRepository;
         this.pagoRepository = pagoRepository;
         this.movFinancieroRepository = movFinancieroRepository;
+        this.recetaRepository = recetaRepository;
+        this.materiaPrimaRepository = materiaPrimaRepository;
     }
 
     @Transactional
@@ -39,15 +49,52 @@ public class VentaService {
         venta.setCreadoPorUsuario(0); // Valor por defecto temporal
         BigDecimal totalAcumulado = BigDecimal.ZERO;
 
+        // Fase 1: Validación y acumulación de demanda de insumos para productos con receta (elaborados)
+        Map<MateriaPrima, Integer> insumosDemandados = new HashMap<>();
+        Map<String, ArticuloStock> stockPorCodigo = new HashMap<>();
+
         for (LineaVentaDTO dto : request.lineas()) {
-            // Buscamos el stock directamente por el código del producto (RN05)
             ArticuloStock stock = stockRepository.findByEspProducto_Codigo(dto.codigoProducto())
                 .orElseThrow(() -> new ProductoNoEncontradoException("Producto no encontrado: " + dto.codigoProducto()));
+            stockPorCodigo.put(dto.codigoProducto(), stock);
 
-            // RN02: Verificación de stock insuficiente
+            // RN02: Verificación de stock de producto final
             if (stock.getCantidad() < dto.cantidad()) {
                 throw new StockInsuficienteException("Stock insuficiente para: " + dto.codigoProducto());
             }
+
+            // Verificación de materias primas si el producto tiene receta
+            Optional<Receta> recetaOpt = recetaRepository.findByProducto_IdAndActivoTrue(stock.getEspProducto().getId());
+            if (recetaOpt.isPresent()) {
+                for (RecetaDetalle detalle : recetaOpt.get().getDetalles()) {
+                    MateriaPrima mp = detalle.getMateriaPrima();
+                    BigDecimal requerida = detalle.getCantidad().multiply(BigDecimal.valueOf(dto.cantidad()));
+                    int requeridaInt = (int) Math.ceil(requerida.doubleValue());
+                    insumosDemandados.merge(mp, requeridaInt, Integer::sum);
+                }
+            }
+        }
+
+        // Validación de existencia de materias primas requeridas
+        for (Map.Entry<MateriaPrima, Integer> entry : insumosDemandados.entrySet()) {
+            MateriaPrima mp = entry.getKey();
+            int totalRequerido = entry.getValue();
+            if (mp.getStockActual() < totalRequerido) {
+                throw new InsumoInsuficienteException("Stock insuficiente de materia prima: " + mp.getNombre() +
+                        " (requerido: " + totalRequerido + ", disponible: " + mp.getStockActual() + ")");
+            }
+        }
+
+        // Fase 2: Descuento de materias primas
+        for (Map.Entry<MateriaPrima, Integer> entry : insumosDemandados.entrySet()) {
+            MateriaPrima mp = entry.getKey();
+            mp.setStockActual(mp.getStockActual() - entry.getValue());
+            materiaPrimaRepository.save(mp);
+        }
+
+        // Fase 3: Descuento de stock de productos y armado de líneas de venta
+        for (LineaVentaDTO dto : request.lineas()) {
+            ArticuloStock stock = stockPorCodigo.get(dto.codigoProducto());
 
             // Descuento de inventario
             stock.setCantidad(stock.getCantidad() - dto.cantidad());

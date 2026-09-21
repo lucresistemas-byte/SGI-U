@@ -8,6 +8,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
@@ -26,12 +28,35 @@ public abstract class AbstractIntegrationTest {
      * previos que dependían de la limpieza manual.
      */
     protected void limpiarBaseDatos() {
-        jdbcTemplate.execute("DELETE FROM movimientos_financieros");
-        jdbcTemplate.execute("DELETE FROM articulos_stock");
-        jdbcTemplate.execute("DELETE FROM lineas_venta");
-        jdbcTemplate.execute("DELETE FROM pagos_venta");
-        jdbcTemplate.execute("DELETE FROM ventas");
-        jdbcTemplate.execute("DELETE FROM esp_productos");
-        jdbcTemplate.execute("DELETE FROM esp_usuarios");
+        try {
+            jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
+        } catch (Exception ignored) {}
+
+        List<String> tablas = List.of(
+                "pedidos_abonos",
+                "pedidos",
+                "recetas_detalles",
+                "recetas",
+                "materias_primas",
+                "movimientos_financieros",
+                "articulos_stock",
+                "lineas_venta",
+                "pagos_venta",
+                "ventas",
+                "esp_productos",
+                "categorias",
+                "configuracion_negocio",
+                "esp_usuarios"
+        );
+
+        for (String tabla : tablas) {
+            try {
+                jdbcTemplate.execute("DELETE FROM " + tabla);
+            } catch (Exception ignored) {}
+        }
+
+        try {
+            jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
+        } catch (Exception ignored) {}
     }
 }
