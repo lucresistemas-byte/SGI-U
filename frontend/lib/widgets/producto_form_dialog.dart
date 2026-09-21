@@ -86,7 +86,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   bool _isAjusteValido() {
     if (!_esEdicion) return true;
     final cantidad = int.tryParse(_ajusteCantidadController.text.trim()) ?? 0;
-    if (cantidad <= 0) return false;
+    // Sin cantidad ingresada: se guarda solo el dato, sin ajuste de stock.
+    if (cantidad <= 0) return true;
     if (_ajusteTipo == 'restar' && cantidad > _stockActualMostrado)
       return false;
     return true;
@@ -118,17 +119,18 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
 
     if (!_esEdicion) {
       data['stockActual'] = int.parse(_stockInicialController.text.trim());
-    } else {
-      final cantidadAjuste =
-          int.tryParse(_ajusteCantidadController.text.trim()) ?? 0;
-      if (cantidadAjuste > 0) {
-        int nuevoStock = _calcularStockResultante();
-        data['stockActual'] = nuevoStock;
-      } else {
-        data['stockActual'] = _stockActualMostrado;
-      }
     }
     return data;
+  }
+
+  /// Delta de stock firmado: positivo suma, negativo resta. Null si el
+  /// usuario no ingresó una cantidad. El backend lo aplica via /stock.
+  int? _calcularStockAjuste() {
+    if (!_esEdicion) return null;
+    final cantidad =
+        int.tryParse(_ajusteCantidadController.text.trim()) ?? 0;
+    if (cantidad <= 0) return null;
+    return _ajusteTipo == 'sumar' ? cantidad : -cantidad;
   }
 
   int _calcularStockResultante() {
@@ -149,6 +151,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
       context.read<PosBloc>().add(UpdateProduct(
             widget.productoAEditar!.codigo,
             productoData,
+            stockAjuste: _calcularStockAjuste(),
+            stockMotivo: 'Ajuste manual desde edición',
           ));
     } else {
       context.read<PosBloc>().add(CreateProduct(productoData));

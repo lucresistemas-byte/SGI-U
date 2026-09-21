@@ -15,3 +15,9 @@ backups/
 documentacion.md
 documentacion/
 
+instrucciones/
+bitacora/
+
+# Documentos de tareas (no subir a GitHub)
+TAREAS_NUEVAS.md
+.~lock.*
