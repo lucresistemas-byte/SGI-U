@@ -76,5 +76,14 @@ void main() {
 
       expect(a, isNot(equals(b)));
     });
+
+    test('Equatable: dos ítems con distinto precio son diferentes', () {
+      const a = CartItem(
+          codigo: 'P001', nombre: 'Café', precioUnitario: 150.0, cantidad: 2);
+      const b = CartItem(
+          codigo: 'P001', nombre: 'Café', precioUnitario: 155.0, cantidad: 2);
+
+      expect(a, isNot(equals(b)));
+    });
   });
 }
