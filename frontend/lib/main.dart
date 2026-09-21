@@ -6,6 +6,9 @@ import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
 import 'blocs/pos_bloc.dart';
 import 'blocs/finanzas/finanzas_bloc.dart';
+import 'blocs/insumos/insumos_bloc.dart';
+import 'blocs/recetas/recetas_bloc.dart';
+import 'blocs/pedidos/pedidos_bloc.dart';
 import 'screens/catalogo_screen.dart';
 import 'screens/login_screen.dart';
 import 'repositories/auth_repository.dart';
@@ -75,7 +78,10 @@ class MyApp extends StatelessWidget {
             ..add(CheckAuthStatus()),
         ),
         BlocProvider(create: (context) => PosBloc()),
-        BlocProvider(create: (context) => FinanzasBloc()), // ← AGREGADO
+        BlocProvider(create: (context) => FinanzasBloc()),
+        BlocProvider(create: (context) => InsumosBloc()),
+        BlocProvider(create: (context) => RecetasBloc()),
+        BlocProvider(create: (context) => PedidosBloc()),
       ],
       child: MaterialApp(
         title: 'SGI-U',

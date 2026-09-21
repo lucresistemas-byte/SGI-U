@@ -5,6 +5,9 @@ import '../screens/movimientos_screen.dart';
 import '../screens/balance_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/insumos_screen.dart';
+import '../screens/recetas_screen.dart';
+import '../screens/pedidos_screen.dart';
 import '../services/api_service.dart';
 
 class SideMenu extends StatefulWidget {
@@ -77,7 +80,7 @@ class _SideMenuState extends State<SideMenu> {
                 () {
               if (widget.rutaActual != '/movimientos') {
                 Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (_) =>  MovimientosScreen()));
+                    context, MaterialPageRoute(builder: (_) => const MovimientosScreen()));
               }
             },
           ),
@@ -88,6 +91,33 @@ class _SideMenuState extends State<SideMenu> {
                 if (widget.rutaActual != '/catalogo') {
                   Navigator.pushReplacement(context,
                       MaterialPageRoute(builder: (_) => const CatalogoScreen()));
+                }
+              }),
+
+          // 4. Insumos / Materia Prima
+          _buildMenuItem(Icons.egg_outlined, 'Materia Prima',
+              widget.rutaActual == '/insumos', () {
+                if (widget.rutaActual != '/insumos') {
+                  Navigator.pushReplacement(context,
+                      MaterialPageRoute(builder: (_) => const InsumosScreen()));
+                }
+              }),
+
+          // 5. Recetas de Producción
+          _buildMenuItem(Icons.menu_book, 'Recetas',
+              widget.rutaActual == '/recetas', () {
+                if (widget.rutaActual != '/recetas') {
+                  Navigator.pushReplacement(context,
+                      MaterialPageRoute(builder: (_) => const RecetasScreen()));
+                }
+              }),
+
+          // 6. Pedidos con Seña
+          _buildMenuItem(Icons.assignment_outlined, 'Pedidos',
+              widget.rutaActual == '/pedidos', () {
+                if (widget.rutaActual != '/pedidos') {
+                  Navigator.pushReplacement(context,
+                      MaterialPageRoute(builder: (_) => const PedidosScreen()));
                 }
               }),
             

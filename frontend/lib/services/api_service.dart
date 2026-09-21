@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import '../models/product.dart';
 import '../models/configuracion_negocio.dart';
+import '../models/insumo.dart';
+import '../models/receta.dart';
+import '../models/pedido.dart';
 import 'package:intl/intl.dart';
 
 /// Contrato de operaciones POS/productos usado por PosBloc.
@@ -366,6 +369,233 @@ class ApiService implements PosApi {
         return saved;
       } else {
         throw Exception('Error al guardar configuración');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  // --- INSUMOS (MATERIA PRIMA) ---
+  Future<List<Insumo>> getInsumos() async {
+    try {
+      final response = await _dio.get('/api/insumos');
+      if (response.statusCode == 200) {
+        final List list = response.data as List;
+        return list.map((item) => Insumo.fromJson(item as Map<String, dynamic>)).toList();
+      } else {
+        throw Exception('Error al obtener insumos');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  Future<Insumo> createInsumo(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.post('/api/insumos', data: data);
+      if (response.statusCode == 201) {
+        return Insumo.fromJson(response.data as Map<String, dynamic>);
+      } else {
+        throw Exception('Error al crear insumo');
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400 || e.response?.statusCode == 422) {
+        final body = e.response?.data;
+        if (body is Map && body['message'] != null) {
+          throw Exception(body['message']);
+        }
+      }
+      throw Exception('Error al crear insumo: ${e.message}');
+    }
+  }
+
+  Future<Insumo> updateInsumo(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.put('/api/insumos/$id', data: data);
+      if (response.statusCode == 200) {
+        return Insumo.fromJson(response.data as Map<String, dynamic>);
+      } else {
+        throw Exception('Error al actualizar insumo');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  Future<Insumo> ajustarStockInsumo(int id, {required int cantidad, required String motivo}) async {
+    try {
+      final response = await _dio.post(
+        '/api/insumos/$id/ajuste-stock',
+        data: {'cantidad': cantidad, 'motivo': motivo},
+      );
+      if (response.statusCode == 200) {
+        return Insumo.fromJson(response.data as Map<String, dynamic>);
+      } else {
+        throw Exception('Error al ajustar stock de insumo');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  // --- RECETAS ---
+  Future<List<Receta>> getRecetas() async {
+    try {
+      final response = await _dio.get('/api/recetas');
+      if (response.statusCode == 200) {
+        final List list = response.data as List;
+        return list.map((item) => Receta.fromJson(item as Map<String, dynamic>)).toList();
+      } else {
+        throw Exception('Error al obtener recetas');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  Future<Receta?> getRecetaByProducto(String codigo) async {
+    try {
+      final response = await _dio.get('/api/recetas/producto/$codigo');
+      if (response.statusCode == 200) {
+        return Receta.fromJson(response.data as Map<String, dynamic>);
+      }
+      return null;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  Future<Receta> createReceta(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.post('/api/recetas', data: data);
+      if (response.statusCode == 201) {
+        return Receta.fromJson(response.data as Map<String, dynamic>);
+      } else {
+        throw Exception('Error al crear receta');
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400 || e.response?.statusCode == 422) {
+        final body = e.response?.data;
+        if (body is Map && body['message'] != null) {
+          throw Exception(body['message']);
+        }
+      }
+      throw Exception('Error al crear receta: ${e.message}');
+    }
+  }
+
+  Future<Receta> updateReceta(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.put('/api/recetas/$id', data: data);
+      if (response.statusCode == 200) {
+        return Receta.fromJson(response.data as Map<String, dynamic>);
+      } else {
+        throw Exception('Error al actualizar receta');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  Future<void> deleteReceta(int id) async {
+    try {
+      final response = await _dio.delete('/api/recetas/$id');
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception('Error al eliminar receta');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  // --- PEDIDOS CON SEÑA ---
+  Future<List<Pedido>> getPedidos({String? query}) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (query != null && query.trim().isNotEmpty) {
+        queryParams['q'] = query.trim();
+      }
+      final response = await _dio.get('/api/pedidos', queryParameters: queryParams);
+      if (response.statusCode == 200) {
+        final List list = response.data as List;
+        return list.map((item) => Pedido.fromJson(item as Map<String, dynamic>)).toList();
+      } else {
+        throw Exception('Error al obtener pedidos');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  Future<Pedido> getPedidoById(int id) async {
+    try {
+      final response = await _dio.get('/api/pedidos/$id');
+      if (response.statusCode == 200) {
+        return Pedido.fromJson(response.data as Map<String, dynamic>);
+      } else {
+        throw Exception('Error al obtener pedido');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  Future<Pedido> createPedido(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.post('/api/pedidos', data: data);
+      if (response.statusCode == 201) {
+        return Pedido.fromJson(response.data as Map<String, dynamic>);
+      } else {
+        throw Exception('Error al crear pedido');
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400 || e.response?.statusCode == 422) {
+        final body = e.response?.data;
+        if (body is Map && body['message'] != null) {
+          throw Exception(body['message']);
+        }
+      }
+      throw Exception('Error al crear pedido: ${e.message}');
+    }
+  }
+
+  Future<Pedido> abonarPedido(
+    int id, {
+    required double monto,
+    String? metodoPago,
+    String? nota,
+  }) async {
+    try {
+      final payload = {
+        'monto': monto,
+        if (metodoPago != null) 'metodoPago': metodoPago,
+        if (nota != null) 'nota': nota,
+      };
+      final response = await _dio.post('/api/pedidos/$id/abonar', data: payload);
+      if (response.statusCode == 200) {
+        return Pedido.fromJson(response.data as Map<String, dynamic>);
+      } else {
+        throw Exception('Error al abonar pedido');
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400 || e.response?.statusCode == 422) {
+        final body = e.response?.data;
+        if (body is Map && body['message'] != null) {
+          throw Exception(body['message']);
+        }
+      }
+      throw Exception('Error al abonar pedido: ${e.message}');
+    }
+  }
+
+  Future<Pedido> cancelarPedido(int id) async {
+    try {
+      final response = await _dio.post('/api/pedidos/$id/cancelar');
+      if (response.statusCode == 200) {
+        return Pedido.fromJson(response.data as Map<String, dynamic>);
+      } else {
+        throw Exception('Error al cancelar pedido');
       }
     } on DioException catch (e) {
       throw Exception('Error de red: ${e.message}');

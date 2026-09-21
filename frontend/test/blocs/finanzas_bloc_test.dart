@@ -14,6 +14,14 @@ final _resumenEspectado = {
   'saldoActual': 800.0,
 };
 
+final _resumenMovimientosEspectado = {
+  'ingresosHoy': 1000.0,
+  'egresosHoy': 200.0,
+  'saldoActual': 800.0,
+  'costoTotalHoy': 0.0,
+  'gananciaRealHoy': 0.0,
+};
+
 final _balanceDia = {
   'totalIngresos': 1000.0,
   'totalEgresos': 200.0,
@@ -86,7 +94,7 @@ void main() {
         isA<MovimientosLoading>(),
         isA<MovimientosLoaded>()
             .having((s) => s.movimientos, 'movimientos', hasLength(1))
-            .having((s) => s.resumen, 'resumen', _resumenEspectado),
+            .having((s) => s.resumen, 'resumen', _resumenMovimientosEspectado),
       ],
     );
 

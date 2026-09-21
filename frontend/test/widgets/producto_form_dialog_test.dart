@@ -169,7 +169,7 @@ void main() {
       expect(find.text('Editar Producto'), findsOneWidget);
       expect(find.text('P1'), findsOneWidget);
       expect(find.text('Café'), findsOneWidget);
-      expect(find.text('150.0'), findsOneWidget);
+      expect(find.text('150'), findsOneWidget);
       expect(find.text('Stock actual: 10 unidades'), findsOneWidget);
     });
   });

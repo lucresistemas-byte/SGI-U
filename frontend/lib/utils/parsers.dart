@@ -9,6 +9,20 @@ double parseDouble(dynamic value) {
   return 0.0;
 }
 
+/// Convierte un valor dinámico proveniente del backend (num, String o null)
+/// en int de forma segura.
+int parseInt(dynamic value, [int fallback = 0]) {
+  if (value == null) return fallback;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) {
+    return int.tryParse(value) ??
+        double.tryParse(value.replaceAll(',', '.'))?.toInt() ??
+        fallback;
+  }
+  return fallback;
+}
+
 /// Convierte un valor dinámico proveniente del backend en String de forma
 /// segura, devolviendo [fallback] cuando el valor es null.
 String parseString(dynamic value, [String fallback = '']) {
