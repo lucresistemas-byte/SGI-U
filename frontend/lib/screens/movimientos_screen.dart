@@ -9,6 +9,7 @@ import '../widgets/movimiento_form_dialog.dart';
 import '../widgets/app_scaffold.dart';
 import '../theme/app_colors.dart';
 import '../utils/parsers.dart';
+import '../utils/finanzas_calculator.dart';
 
 class MovimientosScreen extends StatelessWidget {
   const MovimientosScreen({Key? key}) : super(key: key);
@@ -101,11 +102,19 @@ class _MovimientosContentState extends State<MovimientosContent> {
               double ingresosHoy = 0.0;
               double egresosHoy = 0.0;
               double saldoActual = 0.0;
+              double costoTotalHoy = 0.0;
+              double gananciaRealHoy = 0.0;
 
               if (state is MovimientosLoaded) {
                 ingresosHoy = parseDouble(state.resumen['ingresosHoy']);
                 egresosHoy = parseDouble(state.resumen['egresosHoy']);
                 saldoActual = parseDouble(state.resumen['saldoActual']);
+                costoTotalHoy = parseDouble(state.resumen['costoTotalHoy'] ?? state.resumen['costoTotal']);
+                gananciaRealHoy = parseDouble(state.resumen['gananciaRealHoy'] ?? state.resumen['gananciaReal']);
+                if (costoTotalHoy == 0.0 && gananciaRealHoy == 0.0 && state.movimientos.isNotEmpty) {
+                  costoTotalHoy = FinanzasCalculator.calcularCostoTotalRaw(state.movimientos);
+                  gananciaRealHoy = FinanzasCalculator.calcularGananciaTotalRaw(state.movimientos);
+                }
               }
               final saldoNeto = ingresosHoy - egresosHoy;
 
@@ -122,6 +131,9 @@ class _MovimientosContentState extends State<MovimientosContent> {
                   const SizedBox(width: 16),
                   _buildResumenCard(
                       'Saldo Actual', saldoActual, const Color(0xFF222222)),
+                  const SizedBox(width: 16),
+                  _buildCostoBeneficioCard(
+                      'Costo vs Beneficio del día', costoTotalHoy, gananciaRealHoy),
                 ],
               );
             },
@@ -227,6 +239,8 @@ class _MovimientosContentState extends State<MovimientosContent> {
                                           DataColumn(label: Text('Fecha/Hora')),
                                           DataColumn(label: Text('Tipo')),
                                           DataColumn(label: Text('Monto')),
+                                          DataColumn(label: Text('Costo')),
+                                          DataColumn(label: Text('Ganancia')),
                                           DataColumn(
                                               label: Text('Método de Pago')),
                                           DataColumn(label: Text('Categoría')),
@@ -251,6 +265,10 @@ class _MovimientosContentState extends State<MovimientosContent> {
 
                                           double monto =
                                               parseDouble(mov['monto']);
+                                          double costo =
+                                              parseDouble(mov['costo']);
+                                          double ganancia =
+                                              parseDouble(mov['ganancia']);
 
                                           String metodoRaw =
                                               mov['metodoPago']?.toString() ??
@@ -278,6 +296,25 @@ class _MovimientosContentState extends State<MovimientosContent> {
                                                     _formatMonto(monto),
                                                 style: TextStyle(
                                                   color: isIngreso
+                                                      ? const Color(0xFF006B3D)
+                                                      : const Color(0xFFF53939),
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                            DataCell(
+                                              Text(
+                                                _formatMonto(costo),
+                                                style: const TextStyle(
+                                                    color: Color(0xFF666666)),
+                                              ),
+                                            ),
+                                            DataCell(
+                                              Text(
+                                                (ganancia >= 0 ? '+ ' : '') +
+                                                    _formatMonto(ganancia),
+                                                style: TextStyle(
+                                                  color: ganancia >= 0
                                                       ? const Color(0xFF006B3D)
                                                       : const Color(0xFFF53939),
                                                   fontWeight: FontWeight.w500,
@@ -384,6 +421,84 @@ class _MovimientosContentState extends State<MovimientosContent> {
                 style: TextStyle(
                     fontSize: 22, fontWeight: FontWeight.bold, color: color),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCostoBeneficioCard(String titulo, double costo, double ganancia) {
+    final colorGanancia =
+        ganancia >= 0 ? const Color(0xFF006B3D) : const Color(0xFFFF2B2B);
+    return Expanded(
+      child: Container(
+        height: 88,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4)
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              titulo,
+              style: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF666666)),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Costo',
+                          style: TextStyle(fontSize: 10, color: Color(0xFF888888))),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _formatMonto(costo),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF555555),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text('Ganancia',
+                          style: TextStyle(fontSize: 10, color: Color(0xFF888888))),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          (ganancia >= 0 ? '+ ' : '') + _formatMonto(ganancia),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: colorGanancia,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),

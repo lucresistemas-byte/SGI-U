@@ -44,6 +44,8 @@ class FinanzasBloc extends Bloc<FinanzasEvent, FinanzasState> {
         'ingresosHoy': dataHoy['totalIngresos'] ?? 0.0,
         'egresosHoy': dataHoy['totalEgresos'] ?? 0.0,
         'saldoActual': dataMes['margenNeto'] ?? 0.0,
+        'costoTotalHoy': dataHoy['costoTotal'] ?? 0.0,
+        'gananciaRealHoy': dataHoy['gananciaReal'] ?? 0.0,
       };
 
       // 3. Emitimos un ÚNICO estado con todo empaquetado
