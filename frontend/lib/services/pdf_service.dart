@@ -1,8 +1,11 @@
+import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import '../utils/parsers.dart';
+import '../models/configuracion_negocio.dart';
+import 'api_service.dart';
 
 class PdfService {
   static Future<void> generarYDescargarBalance({
@@ -12,12 +15,23 @@ class PdfService {
     required double totalEgresos,
     required double margenNeto,
     required List<dynamic> movimientos,
+    String? nombreNegocio,
+    Uint8List? logoBytes,
+    ConfiguracionNegocio? configuracion,
   }) async {
     final pdf = pw.Document();
     final _formatterFecha = DateFormat('dd/MM/yyyy');
     final _formatterCurrency =
         NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
     final _formatterFechaHora = DateFormat('dd/MM/yyyy HH:mm');
+
+    final String nombre = nombreNegocio ??
+        configuracion?.nombre ??
+        ApiService.configuracionActual?.nombre ??
+        'SGI-U';
+    final Uint8List? logo = logoBytes ??
+        configuracion?.logo ??
+        ApiService.configuracionActual?.logo;
 
     // Construir contenido del PDF
     pdf.addPage(
@@ -29,14 +43,37 @@ class PdfService {
           pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Text(
-                'SGI-U',
-                style: pw.TextStyle(
-                  fontSize: 28,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColor.fromInt(0xFF006B3D),
+              if (logo != null && logo.isNotEmpty) ...[
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    pw.Text(
+                      nombre,
+                      style: pw.TextStyle(
+                        fontSize: 26,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColor.fromInt(0xFF006B3D),
+                      ),
+                    ),
+                    pw.Image(
+                      pw.MemoryImage(logo),
+                      width: 45 * PdfPageFormat.mm,
+                      height: 24 * PdfPageFormat.mm,
+                      fit: pw.BoxFit.contain,
+                    ),
+                  ],
                 ),
-              ),
+              ] else ...[
+                pw.Text(
+                  nombre,
+                  style: pw.TextStyle(
+                    fontSize: 28,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColor.fromInt(0xFF006B3D),
+                  ),
+                ),
+              ],
               pw.SizedBox(height: 4),
               pw.Text(
                 'Reporte de Balance',

@@ -276,6 +276,8 @@ class _BalanceScreenState extends State<BalanceScreen> {
     final ingresos = parseDouble(balance['totalIngresos']);
     final egresos = parseDouble(balance['totalEgresos']);
     final margenNeto = parseDouble(balance['margenNeto']);
+    final costoTotal = parseDouble(balance['costoTotal']);
+    final gananciaReal = parseDouble(balance['gananciaReal']);
     final colorMargen =
         margenNeto >= 0 ? const Color(0xFF006B3D) : const Color(0xFFFF0000);
 
@@ -309,11 +311,118 @@ class _BalanceScreenState extends State<BalanceScreen> {
               iconBgColor: const Color(0xFFEAF1FF),
               iconColor: const Color(0xFF006B3D),
             ),
+            const SizedBox(width: 24),
+            _buildCostoBeneficioCard(
+              costoTotal: costoTotal,
+              gananciaReal: gananciaReal,
+            ),
           ],
         ),
         const SizedBox(height: 24),
         Expanded(child: _buildTablaMovimientos(balance['movimientos'] ?? [])),
       ],
+    );
+  }
+
+  Widget _buildCostoBeneficioCard({
+    required double costoTotal,
+    required double gananciaReal,
+  }) {
+    final formatter =
+        NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
+    final colorGanancia =
+        gananciaReal >= 0 ? const Color(0xFF006B3D) : const Color(0xFFFF0000);
+
+    return Expanded(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final double cardWidth = constraints.maxWidth;
+          final double circleSize = (cardWidth * 0.22).clamp(36.0, 56.0);
+          final double iconSize = circleSize * 0.5;
+          final double titleSize = (cardWidth * 0.08).clamp(14.0, 16.0);
+          final double moneySize = (cardWidth * 0.12).clamp(15.0, 22.0);
+
+          return Container(
+            height: 140,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+                color: Colors.white, borderRadius: BorderRadius.circular(18)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Costo vs Beneficio',
+                      style: TextStyle(
+                          fontSize: titleSize,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF666666)),
+                    ),
+                    Container(
+                      width: circleSize,
+                      height: circleSize,
+                      decoration: const BoxDecoration(
+                          color: Color(0xFFEAF8EF), shape: BoxShape.circle),
+                      child: Icon(Icons.show_chart,
+                          size: iconSize, color: const Color(0xFF006B3D)),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Costo',
+                              style: TextStyle(
+                                  fontSize: 11, color: Color(0xFF888888))),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              formatter.format(costoTotal),
+                              style: TextStyle(
+                                  fontSize: moneySize,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF555555)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text('Ganancia Real',
+                              style: TextStyle(
+                                  fontSize: 11, color: Color(0xFF888888))),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              formatter.format(gananciaReal),
+                              style: TextStyle(
+                                  fontSize: moneySize,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorGanancia),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -422,6 +531,8 @@ class _BalanceScreenState extends State<BalanceScreen> {
                           DataColumn(label: Text('Fecha/Hora')),
                           DataColumn(label: Text('Tipo')),
                           DataColumn(label: Text('Monto')),
+                          DataColumn(label: Text('Costo')),
+                          DataColumn(label: Text('Ganancia')),
                           DataColumn(label: Text('Método de Pago')),
                           DataColumn(label: Text('Categoría')),
                           DataColumn(label: Text('Descripción')),
@@ -438,6 +549,8 @@ class _BalanceScreenState extends State<BalanceScreen> {
                           String metodoDisplay = _parseMetodoPago(metodoRaw);
 
                           double monto = parseDouble(mov['monto']);
+                          double costo = parseDouble(mov['costo']);
+                          double ganancia = parseDouble(mov['ganancia']);
                           String fechaHora =
                               _formatFechaHora(parseString(mov['fechaHora']));
                           String categoria =
@@ -454,6 +567,23 @@ class _BalanceScreenState extends State<BalanceScreen> {
                                 (isIngreso ? '+ ' : '- ') + _formatMonto(monto),
                                 style: TextStyle(
                                   color: isIngreso
+                                      ? const Color(0xFF008A3D)
+                                      : const Color(0xFFFF2E2E),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                _formatMonto(costo),
+                                style: const TextStyle(color: Color(0xFF666666)),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                (ganancia >= 0 ? '+ ' : '') + _formatMonto(ganancia),
+                                style: TextStyle(
+                                  color: ganancia >= 0
                                       ? const Color(0xFF008A3D)
                                       : const Color(0xFFFF2E2E),
                                   fontWeight: FontWeight.w600,

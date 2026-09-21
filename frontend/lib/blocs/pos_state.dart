@@ -14,6 +14,8 @@ class PosState extends Equatable {
   final String? errorMessage;
   final String? successMessage;
   final CompletedSale? completedSale;
+  final String? selectedCategory;
+  final String searchQuery;
 
   const PosState({
     required this.products,
@@ -24,6 +26,8 @@ class PosState extends Equatable {
     this.errorMessage,
     this.successMessage,
     this.completedSale,
+    this.selectedCategory,
+    this.searchQuery = '',
   });
 
   factory PosState.initial() {
@@ -36,6 +40,8 @@ class PosState extends Equatable {
       errorMessage: null,
       successMessage: null,
       completedSale: null,
+      selectedCategory: null,
+      searchQuery: '',
     );
   }
 
@@ -48,6 +54,8 @@ class PosState extends Equatable {
     Object? errorMessage = _unset,
     Object? successMessage = _unset,
     Object? completedSale = _unset,
+    Object? selectedCategory = _unset,
+    String? searchQuery,
   }) {
     return PosState(
       products: products ?? this.products,
@@ -65,7 +73,37 @@ class PosState extends Equatable {
       completedSale: identical(completedSale, _unset)
           ? this.completedSale
           : completedSale as CompletedSale?,
+      selectedCategory: identical(selectedCategory, _unset)
+          ? this.selectedCategory
+          : selectedCategory as String?,
+      searchQuery: searchQuery ?? this.searchQuery,
     );
+  }
+
+  /// Lista de productos filtrada por categoría y término de búsqueda combinados
+  List<Product> get filteredProducts {
+    return products.where((p) {
+      final matchesCategory = selectedCategory == null ||
+          selectedCategory!.isEmpty ||
+          selectedCategory == 'Todas' ||
+          (p.categoria != null &&
+              p.categoria!.toLowerCase() == selectedCategory!.toLowerCase());
+      final matchesSearch = searchQuery.isEmpty ||
+          p.nombre.toLowerCase().contains(searchQuery.toLowerCase()) ||
+          p.codigo.toLowerCase().contains(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    }).toList();
+  }
+
+  /// Lista ordenada de categorías únicas disponibles entre los productos cargados
+  List<String> get availableCategories {
+    final Set<String> categories = {};
+    for (final p in products) {
+      if (p.categoria != null && p.categoria!.trim().isNotEmpty) {
+        categories.add(p.categoria!.trim());
+      }
+    }
+    return categories.toList()..sort();
   }
 
   /// D.12: total usando precio congelado de CartItem.
@@ -87,5 +125,7 @@ class PosState extends Equatable {
         errorMessage,
         successMessage,
         completedSale,
+        selectedCategory,
+        searchQuery,
       ];
 }

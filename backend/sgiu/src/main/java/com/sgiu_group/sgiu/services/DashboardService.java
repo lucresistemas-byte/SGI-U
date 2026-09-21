@@ -81,6 +81,7 @@ public class DashboardService {
         graficos.setTopProductosMasVendidos(generarTopProductos(desde, hasta));
         graficos.setEvolucionSaldoNeto(generarEvolucionSaldo(desde, hasta));
         graficos.setProductosConMenorStock(generarProductosCriticos());
+        graficos.setCategoriaMasVendida(obtenerCategoriaMasVendida(desde, hasta));
 
         boolean hayDatos = ingresos.compareTo(BigDecimal.ZERO) > 0
                 || egresos.compareTo(BigDecimal.ZERO) > 0
@@ -155,6 +156,19 @@ public class DashboardService {
         Long cantidadVendida = ((Number) top[2]).longValue();
         BigDecimal montoTotal = (BigDecimal) top[3];
         return new ProductoMasVendidoDTO(productoId, nombre, cantidadVendida, montoTotal);
+    }
+
+    private CategoriaMasVendidaDTO obtenerCategoriaMasVendida(LocalDateTime desde, LocalDateTime hasta) {
+        List<Object[]> resultados = lineaVentaRepository.findTopCategoriasVendidas(desde, hasta);
+        if (resultados.isEmpty()) {
+            return null;
+        }
+        Object[] top = resultados.get(0);
+        Long categoriaId = ((Number) top[0]).longValue();
+        String nombre = (String) top[1];
+        Long cantidadVendida = ((Number) top[2]).longValue();
+        BigDecimal montoTotal = (BigDecimal) top[3];
+        return new CategoriaMasVendidaDTO(categoriaId, nombre, cantidadVendida, montoTotal);
     }
 
     private Long calcularCantidadStockBajo() {

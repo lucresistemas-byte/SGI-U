@@ -135,7 +135,9 @@ class LeftPanel extends StatelessWidget {
       child: Column(
         children: [
           const SearchAddBar(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          const PosCategoryFilter(),
+          const SizedBox(height: 12),
           SizedBox(
             height: 200,
             child: BlocBuilder<PosBloc, PosState>(
@@ -143,12 +145,25 @@ class LeftPanel extends StatelessWidget {
                 if (state.isLoading && state.products.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
                 }
+                final displayProducts = state.filteredProducts;
+                if (displayProducts.isEmpty) {
+                  return Center(
+                    child: Text(
+                      state.selectedCategory != null
+                          ? 'No hay productos en la categoría "${state.selectedCategory}"'
+                          : 'No se encontraron productos',
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                  );
+                }
                 return ListView.builder(
+                  key: ValueKey('pos_list_${state.selectedCategory ?? 'all'}_${state.searchQuery}'),
                   scrollDirection: Axis.horizontal,
-                  itemCount: state.products.length,
+                  itemCount: displayProducts.length,
                   itemBuilder: (context, index) {
-                    final product = state.products[index];
+                    final product = displayProducts[index];
                     return ProductCard(
+                      key: ValueKey('pos_product_card_${product.codigo}'),
                       product: product,
                       onAdd: (quantity) {
                         // FIX: Verificamos si la cantidad total en carrito superaría el stock
@@ -181,6 +196,53 @@ class LeftPanel extends StatelessWidget {
   }
 }
 
+// Filtro de categorías horizontal para POS
+class PosCategoryFilter extends StatelessWidget {
+  const PosCategoryFilter({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<PosBloc, PosState>(
+      builder: (context, state) {
+        if (state.availableCategories.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final categories = ['Todas', ...state.availableCategories];
+        return SizedBox(
+          height: 38,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: categories.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final cat = categories[index];
+              final isSelected =
+                  (state.selectedCategory == null && cat == 'Todas') ||
+                      state.selectedCategory == cat;
+              return FilterChip(
+                key: ValueKey('pos_category_chip_$cat'),
+                label: Text(cat),
+                selected: isSelected,
+                selectedColor: AppColors.verdeTeal.withOpacity(0.2),
+                checkmarkColor: AppColors.verdeTeal,
+                labelStyle: TextStyle(
+                  color: isSelected ? AppColors.verdeTeal : Colors.black87,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 13,
+                ),
+                onSelected: (selected) {
+                  final target = (selected && cat != 'Todas') ? cat : null;
+                  context.read<PosBloc>().add(FilterByCategoryEvent(target));
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
 // Barra de búsqueda + cantidad + botón Agregar
 class SearchAddBar extends StatefulWidget {
   const SearchAddBar({super.key});
@@ -196,6 +258,25 @@ class _SearchAddBarState extends State<SearchAddBar> {
   String? _selectedProductCode;
 
   @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      final query = _searchController.text.trim();
+      context.read<PosBloc>().add(SearchProductsEvent(query));
+      if (query.isEmpty && _selectedProductCode != null) {
+        setState(() => _selectedProductCode = null);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _quantityController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return BlocBuilder<PosBloc, PosState>(
       builder: (context, state) {
@@ -206,7 +287,7 @@ class _SearchAddBarState extends State<SearchAddBar> {
               child: Autocomplete<String>(
                 optionsBuilder: (TextEditingValue textEditingValue) {
                   if (textEditingValue.text.isEmpty) return [];
-                  return state.products
+                  return state.filteredProducts
                       .where((product) =>
                           product.nombre
                               .toLowerCase()
@@ -225,10 +306,6 @@ class _SearchAddBarState extends State<SearchAddBar> {
                 },
                 fieldViewBuilder:
                     (context, controller, focusNode, onFieldSubmitted) {
-                  _searchController.addListener(() {
-                    if (_searchController.text.isEmpty)
-                      setState(() => _selectedProductCode = null);
-                  });
                   return TextField(
                     controller: _searchController,
                     focusNode: focusNode,

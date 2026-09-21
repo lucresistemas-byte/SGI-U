@@ -3,7 +3,9 @@ import '../screens/catalogo_screen.dart';
 import '../screens/pos_screen.dart';
 import '../screens/movimientos_screen.dart';
 import '../screens/balance_screen.dart';
-import '../screens/dashboard_screen.dart'; // <-- AGREGAMOS LA PANTALLA ACÁ
+import '../screens/dashboard_screen.dart';
+import '../screens/settings_screen.dart';
+import '../services/api_service.dart';
 
 class SideMenu extends StatefulWidget {
   final String rutaActual;
@@ -40,11 +42,18 @@ class _SideMenuState extends State<SideMenu> {
                 ),
                 if (!_isCollapsed) ...[
                   const SizedBox(width: 16),
-                  const Text('SGI-U',
-                      style: TextStyle(
+                  Expanded(
+                    child: Text(
+                      ApiService.configuracionActual?.nombre.isNotEmpty == true
+                          ? ApiService.configuracionActual!.nombre
+                          : 'SGI-U',
+                      style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E293B))),
+                          color: Color(0xFF1E293B)),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ]
               ],
             ),
@@ -107,11 +116,14 @@ class _SideMenuState extends State<SideMenu> {
           const Spacer(),
 
           // 6. Configuración
-          // _buildMenuItem(Icons.settings_outlined, 'Configuración', false, () {
-          //   ScaffoldMessenger.of(context).showSnackBar(
-          //     const SnackBar(content: Text('Configuración disponible próximamente')),
-          //   );
-          // }),
+          _buildMenuItem(Icons.settings_outlined, 'Configuración',
+              widget.rutaActual == '/settings', () {
+            if (widget.rutaActual != '/settings') {
+              Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()));
+            }
+          }),
           const SizedBox(height: 20),
         ],
       ),

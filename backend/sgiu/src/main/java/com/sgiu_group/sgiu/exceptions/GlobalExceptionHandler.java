@@ -3,6 +3,7 @@ package com.sgiu_group.sgiu.exceptions;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -23,9 +24,39 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", mensaje));
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<?> handleHttpMessageNotReadable(HttpMessageNotReadableException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Error en el formato de los datos o valor inválido."));
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<?> handleDataIntegrity(DataIntegrityViolationException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "El código de producto ya existe."));
+    }
+
+    @ExceptionHandler(CategoriaDuplicadaException.class)
+    public ResponseEntity<?> handleCategoriaDuplicada(CategoriaDuplicadaException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(InsumoInsuficienteException.class)
+    public ResponseEntity<?> handleInsumoInsuficiente(InsumoInsuficienteException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(RecetaInvalidaException.class)
+    public ResponseEntity<?> handleRecetaInvalida(RecetaInvalidaException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(PedidoInvalidoException.class)
+    public ResponseEntity<?> handlePedidoInvalido(PedidoInvalidoException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(RecursoNoEncontradoException.class)
+    public ResponseEntity<?> handleRecursoNoEncontrado(RecursoNoEncontradoException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)

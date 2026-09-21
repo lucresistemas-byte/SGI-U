@@ -82,3 +82,19 @@ class UpdateProduct extends PosEvent {
   @override
   List<Object?> get props => [codigo, productData, stockAjuste, stockMotivo];
 }
+
+// --- EVENTOS DE FILTRADO Y BÚSQUEDA (Tareas 2.4 y 2.5) ---
+
+class FilterByCategoryEvent extends PosEvent {
+  final String? category;
+  const FilterByCategoryEvent(this.category);
+  @override
+  List<Object?> get props => [category];
+}
+
+class SearchProductsEvent extends PosEvent {
+  final String query;
+  const SearchProductsEvent(this.query);
+  @override
+  List<Object?> get props => [query];
+}

@@ -4,6 +4,7 @@ import '../models/product.dart';
 import '../blocs/pos_bloc.dart';
 import '../blocs/pos_event.dart';
 import '../blocs/pos_state.dart';
+import '../utils/price_calculator.dart';
 
 class ProductoFormDialog extends StatefulWidget {
   final Product? productoAEditar;
@@ -18,6 +19,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   late TextEditingController _codigoController;
   late TextEditingController _nombreController;
   late TextEditingController _precioController;
+  late TextEditingController _costoController;
+  late TextEditingController _porcentajeController;
   late bool _activo;
 
   // Stock inicial (solo creación)
@@ -27,31 +30,59 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   String _ajusteTipo = 'sumar';
   int _stockActualMostrado = 0;
 
+  static const List<String> unidadesMedidaDisponibles = [
+    'UNIDAD',
+    'KILO',
+    'GRAMO',
+    'CAJA',
+    'METRO',
+    'LITRO',
+  ];
+  late String _unidadMedida;
+
   bool get _esEdicion => widget.productoAEditar != null;
   String? _backendError;
 
   @override
   void initState() {
     super.initState();
+    final prod = widget.productoAEditar;
     _codigoController = TextEditingController(
-        text: _esEdicion ? widget.productoAEditar!.codigo : '');
+        text: _esEdicion ? prod!.codigo : '');
     _nombreController = TextEditingController(
-        text: _esEdicion ? widget.productoAEditar!.nombre : '');
+        text: _esEdicion ? prod!.nombre : '');
     _precioController = TextEditingController(
         text: _esEdicion
-            ? widget.productoAEditar!.precioUnitario.toString()
+            ? (prod!.precioUnitario % 1 == 0
+                ? prod.precioUnitario.toInt().toString()
+                : prod.precioUnitario.toString())
             : '');
-    _activo = _esEdicion ? widget.productoAEditar!.activo : true;
+    _costoController = TextEditingController(
+        text: _esEdicion && prod!.precioCosto != null && prod.precioCosto! > 0
+            ? (prod.precioCosto! % 1 == 0
+                ? prod.precioCosto!.toInt().toString()
+                : prod.precioCosto!.toString())
+            : '');
+    _porcentajeController = TextEditingController(
+        text: _esEdicion && prod!.porcentajeGanancia != null && prod.porcentajeGanancia! > 0
+            ? (prod.porcentajeGanancia! % 1 == 0
+                ? prod.porcentajeGanancia!.toInt().toString()
+                : prod.porcentajeGanancia!.toString())
+            : '');
+    _activo = _esEdicion ? prod!.activo : true;
+    _unidadMedida = prod?.unidadMedida ?? 'UNIDAD';
     _stockInicialController = TextEditingController(text: '0');
     _ajusteCantidadController = TextEditingController(text: '0');
     if (_esEdicion) {
-      _stockActualMostrado = widget.productoAEditar!.stockActual;
+      _stockActualMostrado = prod!.stockActual;
     }
 
     // Listeners para actualizar estado del diálogo cuando cambian campos
     _codigoController.addListener(() => setState(() {}));
     _nombreController.addListener(() => setState(() {}));
     _precioController.addListener(() => setState(() {}));
+    _costoController.addListener(() => setState(() {}));
+    _porcentajeController.addListener(() => setState(() {}));
     _stockInicialController.addListener(() => setState(() {}));
     _ajusteCantidadController.addListener(() => setState(() {}));
   }
@@ -61,9 +92,73 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     _codigoController.dispose();
     _nombreController.dispose();
     _precioController.dispose();
+    _costoController.dispose();
+    _porcentajeController.dispose();
     _stockInicialController.dispose();
     _ajusteCantidadController.dispose();
     super.dispose();
+  }
+
+  void _onCostoChanged(String val) {
+    final costoText = val.trim().replaceAll(',', '.');
+    final costo = double.tryParse(costoText);
+    if (costo == null || costo < 0) return;
+
+    final pctText = _porcentajeController.text.trim().replaceAll(',', '.');
+    final pct = double.tryParse(pctText);
+
+    final ventaText = _precioController.text.trim().replaceAll(',', '.');
+    final venta = double.tryParse(ventaText);
+
+    if (pct != null && pct >= 0) {
+      final nuevaVenta = PriceCalculator.calcularPrecioVenta(costo, pct);
+      if (nuevaVenta != null) {
+        _precioController.text = nuevaVenta % 1 == 0
+            ? nuevaVenta.toInt().toString()
+            : nuevaVenta.toStringAsFixed(2);
+      }
+    } else if (venta != null && venta > 0 && costo > 0) {
+      final nuevoPct = PriceCalculator.calcularPorcentajeGanancia(costo, venta);
+      if (nuevoPct != null) {
+        _porcentajeController.text = nuevoPct % 1 == 0
+            ? nuevoPct.toInt().toString()
+            : nuevoPct.toStringAsFixed(2);
+      }
+    }
+  }
+
+  void _onPorcentajeChanged(String val) {
+    final pctText = val.trim().replaceAll(',', '.');
+    final pct = double.tryParse(pctText);
+    if (pct == null || pct < 0) return;
+
+    final costoText = _costoController.text.trim().replaceAll(',', '.');
+    final costo = double.tryParse(costoText);
+    if (costo != null && costo >= 0) {
+      final nuevaVenta = PriceCalculator.calcularPrecioVenta(costo, pct);
+      if (nuevaVenta != null) {
+        _precioController.text = nuevaVenta % 1 == 0
+            ? nuevaVenta.toInt().toString()
+            : nuevaVenta.toStringAsFixed(2);
+      }
+    }
+  }
+
+  void _onPrecioVentaChanged(String val) {
+    final ventaText = val.trim().replaceAll(',', '.');
+    final venta = double.tryParse(ventaText);
+    if (venta == null || venta <= 0) return;
+
+    final costoText = _costoController.text.trim().replaceAll(',', '.');
+    final costo = double.tryParse(costoText);
+    if (costo != null && costo > 0) {
+      final nuevoPct = PriceCalculator.calcularPorcentajeGanancia(costo, venta);
+      if (nuevoPct != null) {
+        _porcentajeController.text = nuevoPct % 1 == 0
+            ? nuevoPct.toInt().toString()
+            : nuevoPct.toStringAsFixed(2);
+      }
+    }
   }
 
   bool _isPrecioValido() {
@@ -107,7 +202,14 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   }
 
   Map<String, dynamic> _buildProductData() {
-    final data = {
+    final costoVal = _costoController.text.trim().isNotEmpty
+        ? double.tryParse(_costoController.text.trim().replaceAll(',', '.')) ?? 0.0
+        : 0.0;
+    final porcentajeVal = _porcentajeController.text.trim().isNotEmpty
+        ? double.tryParse(_porcentajeController.text.trim().replaceAll(',', '.')) ?? 0.0
+        : 0.0;
+
+    final data = <String, dynamic>{
       'codigo': _esEdicion
           ? widget.productoAEditar!.codigo
           : _codigoController.text.trim(),
@@ -115,7 +217,17 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
       'precioUnitario': double.parse(
           _precioController.text.trim().replaceAll(',', '.')), // aceptar coma
       'activo': _activo,
+      'unidadMedida': _unidadMedida,
+      'unidad_medida': _unidadMedida,
+      'precioCosto': costoVal,
+      'precio_costo': costoVal,
+      'porcentajeGanancia': porcentajeVal,
+      'porcentaje_ganancia': porcentajeVal,
     };
+
+    if (widget.productoAEditar?.categoria != null) {
+      data['categoria'] = widget.productoAEditar!.categoria;
+    }
 
     if (!_esEdicion) {
       data['stockActual'] = int.parse(_stockInicialController.text.trim());
@@ -212,28 +324,100 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                           value == null || value.isEmpty ? 'Requerido' : null,
                     ),
                     const SizedBox(height: 16),
-                    // Precio
+                    // Costo y Margen (% Ganancia)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            key: const ValueKey('producto_form_costo_field'),
+                            controller: _costoController,
+                            decoration: const InputDecoration(
+                              labelText: 'Precio de Costo (\$)',
+                              hintText: 'Ej: 100',
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            onChanged: _onCostoChanged,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) return null;
+                              final normalized = value.trim().replaceAll(',', '.');
+                              final costo = double.tryParse(normalized);
+                              if (costo == null) return 'Valor numérico';
+                              if (costo < 0) return 'No negativo';
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextFormField(
+                            key: const ValueKey('producto_form_porcentaje_field'),
+                            controller: _porcentajeController,
+                            decoration: const InputDecoration(
+                              labelText: '% Ganancia',
+                              hintText: 'Ej: 50',
+                              suffixText: '%',
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            onChanged: _onPorcentajeChanged,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) return null;
+                              final normalized = value.trim().replaceAll(',', '.');
+                              final pct = double.tryParse(normalized);
+                              if (pct == null) return 'Valor numérico';
+                              if (pct < 0) return 'No negativo';
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Precio de Venta
                     TextFormField(
+                      key: const ValueKey('producto_form_precio_field'),
                       controller: _precioController,
                       decoration: const InputDecoration(
                         labelText: 'Precio Unitario (\$)',
                         hintText: 'Debe ser mayor a 0',
                       ),
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: _onPrecioVentaChanged,
                       validator: (value) {
                         if (value == null || value.isEmpty)
                           return 'El precio es obligatorio.';
-                        final precio = double.tryParse(value);
+                        final normalized = value.trim().replaceAll(',', '.');
+                        final precio = double.tryParse(normalized);
                         if (precio == null)
                           return 'Ingrese un valor numérico válido.';
                         if (precio <= 0) {
                           return 'El precio debe ser mayor a \$0.';
                         }
-                        if (value.contains('.') &&
-                            value.split('.')[1].length > 2) {
+                        if (normalized.contains('.') &&
+                            normalized.split('.')[1].length > 2) {
                           return 'Máximo 2 decimales permitidos.';
                         }
                         return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // Unidad de Medida
+                    DropdownButtonFormField<String>(
+                      key: const ValueKey('producto_form_unidad_medida_dropdown'),
+                      value: _unidadMedida,
+                      decoration: const InputDecoration(
+                        labelText: 'Unidad de Medida',
+                      ),
+                      items: unidadesMedidaDisponibles.map((u) {
+                        return DropdownMenuItem<String>(
+                          key: ValueKey('unidad_item_$u'),
+                          value: u,
+                          child: Text(u),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setStateDialog(() => _unidadMedida = value);
+                        }
                       },
                     ),
                     const SizedBox(height: 16),
@@ -269,7 +453,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Stock actual: $_stockActualMostrado unidades',
+                            Text(
+                                'Stock actual: $_stockActualMostrado ${_unidadMedida == 'UNIDAD' ? 'unidades' : _unidadMedida}',
                                 style: const TextStyle(
                                     fontWeight: FontWeight.bold)),
                             const SizedBox(height: 12),
@@ -332,7 +517,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                               Padding(
                                 padding: const EdgeInsets.only(top: 8),
                                 child: Text(
-                                  'Stock resultante: ${_calcularStockResultante()} unidades',
+                                  'Stock resultante: ${_calcularStockResultante()} ${_unidadMedida == 'UNIDAD' ? 'unidades' : _unidadMedida}',
                                   style: const TextStyle(
                                       fontSize: 12, color: Colors.green),
                                 ),

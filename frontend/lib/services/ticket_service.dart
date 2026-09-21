@@ -5,6 +5,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../models/completed_sale.dart';
+import '../models/configuracion_negocio.dart';
+import 'api_service.dart';
 
 /// D.7.1: genera un ticket PDF a partir de una venta completada.
 /// Usa el precio congelado de CartItem (D.12).
@@ -14,31 +16,81 @@ class TicketService {
       NumberFormat.currency(locale: 'es_AR', symbol: r'$', decimalDigits: 2);
 
   /// Genera los bytes de un PDF con el ticket de la venta.
-  static Future<Uint8List> generarTicket({required CompletedSale sale}) async {
+  static Future<Uint8List> generarTicket({
+    required CompletedSale sale,
+    String? nombreNegocio,
+    Uint8List? logoBytes,
+    ConfiguracionNegocio? configuracion,
+  }) async {
     final pdf = pw.Document();
+
+    final String nombre = nombreNegocio ??
+        configuracion?.nombre ??
+        ApiService.configuracionActual?.nombre ??
+        'SGI-U';
+    final Uint8List? logo = logoBytes ??
+        configuracion?.logo ??
+        ApiService.configuracionActual?.logo;
+    final String? direccion =
+        configuracion?.direccion ?? ApiService.configuracionActual?.direccion;
+    final String? telefono =
+        configuracion?.telefono ?? ApiService.configuracionActual?.telefono;
 
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat(58 * PdfPageFormat.mm, 297 * PdfPageFormat.mm,
+        pageFormat: const PdfPageFormat(58 * PdfPageFormat.mm, 297 * PdfPageFormat.mm,
             marginAll: 4 * PdfPageFormat.mm),
         build: (pw.Context context) => [
+          // Logo (si existe)
+          if (logo != null && logo.isNotEmpty) ...[
+            pw.Center(
+              child: pw.Image(
+                pw.MemoryImage(logo),
+                width: 30 * PdfPageFormat.mm,
+                height: 18 * PdfPageFormat.mm,
+                fit: pw.BoxFit.contain,
+              ),
+            ),
+            pw.SizedBox(height: 3),
+          ],
           // Encabezado
           pw.Center(
             child: pw.Text(
-              'SGI-U',
+              nombre,
+              textAlign: pw.TextAlign.center,
               style: pw.TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: pw.FontWeight.bold,
-                color: PdfColor.fromInt(0xFF006B3D),
+                color: const PdfColor.fromInt(0xFF006B3D),
               ),
             ),
           ),
+          if (direccion != null && direccion.isNotEmpty) ...[
+            pw.SizedBox(height: 1),
+            pw.Center(
+              child: pw.Text(
+                direccion,
+                textAlign: pw.TextAlign.center,
+                style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+              ),
+            ),
+          ],
+          if (telefono != null && telefono.isNotEmpty) ...[
+            pw.SizedBox(height: 1),
+            pw.Center(
+              child: pw.Text(
+                'Tel: $telefono',
+                textAlign: pw.TextAlign.center,
+                style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+              ),
+            ),
+          ],
           pw.SizedBox(height: 2),
           pw.Center(
             child: pw.Text(
               'Ticket de Venta',
               style: pw.TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: pw.FontWeight.bold,
               ),
             ),

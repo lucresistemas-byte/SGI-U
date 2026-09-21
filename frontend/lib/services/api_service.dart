@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import '../models/product.dart';
+import '../models/configuracion_negocio.dart';
 import 'package:intl/intl.dart';
 
 /// Contrato de operaciones POS/productos usado por PosBloc.
@@ -88,6 +89,10 @@ class ApiService implements PosApi {
 
   /// URL base efectiva del cliente Dio interno (útil para diagnóstico/tests).
   String get effectiveBaseUrl => _dio.options.baseUrl;
+
+  /// Cliente Dio interno para configuración y testing (http_mock_adapter).
+  Dio get dio => _dio;
+  set dio(Dio newDio) => _dio = newDio;
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
@@ -326,6 +331,41 @@ class ApiService implements PosApi {
         return response.data as Map<String, dynamic>;
       } else {
         throw Exception('Error al cargar el dashboard');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  static ConfiguracionNegocio? configuracionActual;
+
+  Future<ConfiguracionNegocio> getConfiguracion() async {
+    try {
+      final response = await _dio.get('/api/configuracion');
+      if (response.statusCode == 200) {
+        final config = ConfiguracionNegocio.fromJson(
+            response.data as Map<String, dynamic>);
+        configuracionActual = config;
+        return config;
+      } else {
+        throw Exception('Error al cargar configuración');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red: ${e.message}');
+    }
+  }
+
+  Future<ConfiguracionNegocio> saveConfiguracion(ConfiguracionNegocio config) async {
+    try {
+      final response =
+          await _dio.put('/api/configuracion', data: config.toJson());
+      if (response.statusCode == 200) {
+        final saved = ConfiguracionNegocio.fromJson(
+            response.data as Map<String, dynamic>);
+        configuracionActual = saved;
+        return saved;
+      } else {
+        throw Exception('Error al guardar configuración');
       }
     } on DioException catch (e) {
       throw Exception('Error de red: ${e.message}');

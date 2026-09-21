@@ -30,13 +30,20 @@ public class LineaVenta extends BaseEntity {
     @Column(name = "precio_unitario", nullable = false, precision = 10, scale = 2)
     private BigDecimal precioUnitario;
 
+    // MVP (D3 / 5.1): Costo unitario congelado al momento de la venta
+    @Column(name = "costo_unitario", precision = 10, scale = 2)
+    private BigDecimal costoUnitario = BigDecimal.ZERO;
+
     public LineaVenta() {}
 
     public LineaVenta(Venta venta, EspProducto producto, Integer cantidad) {
         this.venta = venta;
         this.producto = producto;
         this.cantidad = cantidad;
-        this.precioUnitario = producto.getPrecioUnitario();
+        this.precioUnitario = producto != null ? producto.getPrecioUnitario() : BigDecimal.ZERO;
+        this.costoUnitario = (producto != null && producto.getPrecioCosto() != null)
+                ? producto.getPrecioCosto()
+                : BigDecimal.ZERO;
         calcularSubtotal();
     }
 
@@ -93,5 +100,20 @@ public class LineaVenta extends BaseEntity {
         return subtotal;
     }
 
-    // El subtotal no suele tener setter público directo para evitar inconsistencias
+    public BigDecimal getCostoUnitario() {
+        return costoUnitario;
+    }
+
+    public void setCostoUnitario(BigDecimal costoUnitario) {
+        this.costoUnitario = costoUnitario != null ? costoUnitario : BigDecimal.ZERO;
+    }
+
+    public BigDecimal calcularGanancia() {
+        if (this.subtotal == null || this.cantidad == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal costoTotal = (this.costoUnitario != null ? this.costoUnitario : BigDecimal.ZERO)
+                .multiply(new BigDecimal(this.cantidad));
+        return this.subtotal.subtract(costoTotal);
+    }
 }
