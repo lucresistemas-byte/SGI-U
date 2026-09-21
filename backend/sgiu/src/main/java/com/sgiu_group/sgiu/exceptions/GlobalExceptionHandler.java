@@ -20,7 +20,7 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getDefaultMessage())
                 .findFirst()
                 .orElse("Error de validación");
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(Map.of("error", mensaje));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", mensaje));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
