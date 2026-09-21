@@ -7,7 +7,9 @@ abstract class FinanzasEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class CargarResumen extends FinanzasEvent {}
+class CargarResumen extends FinanzasEvent {
+  const CargarResumen();
+}
 
 class CargarMovimientos extends FinanzasEvent {
   final int pagina;

@@ -6,7 +6,9 @@ abstract class PosEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadProducts extends PosEvent {}
+class LoadProducts extends PosEvent {
+  const LoadProducts();
+}
 
 class AddToCart extends PosEvent {
   final String productCode;
