@@ -5,9 +5,11 @@ import 'finanzas_state.dart';
 import '../../services/api_service.dart';
 
 class FinanzasBloc extends Bloc<FinanzasEvent, FinanzasState> {
-  final ApiService _apiService = ApiService();
+  final ApiService _apiService;
 
-  FinanzasBloc() : super(FinanzasInitial()) {
+  FinanzasBloc({ApiService? apiService})
+      : _apiService = apiService ?? ApiService(),
+        super(FinanzasInitial()) {
     on<CargarResumen>(_onCargarResumen);
     on<CargarMovimientos>(_onCargarMovimientos);
     on<CrearMovimiento>(_onCrearMovimiento);
