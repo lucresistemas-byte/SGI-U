@@ -307,74 +307,78 @@ class CartTable extends StatelessWidget {
           return const Center(child: Text('No hay productos agregados'));
         }
         return SingleChildScrollView(
-          child: DataTable(
-            columns: const [
-              DataColumn(label: Text('Producto')),
-              DataColumn(label: Text('Cantidad')),
-              DataColumn(label: Text('Precio Unit.')),
-              DataColumn(label: Text('Total')),
-              DataColumn(label: Text('')),
-            ],
-            rows: state.cart.entries.map((entry) {
-              final item = entry.value;
-              // Stock check necesita el producto actual del catálogo
-              final product = state.products.firstWhere(
-                (p) => p.codigo == entry.key,
-                orElse: () => Product(
-                    codigo: '', nombre: '', precioUnitario: 0, stockActual: 0),
-              );
-              return DataRow(cells: [
-                DataCell(Text(item.nombre)),
-                DataCell(
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.remove),
-                        onPressed: () {
-                          int newQty = item.cantidad - 1;
-                          if (newQty >= 0) {
-                            context.read<PosBloc>().add(
-                                UpdateCartItemQuantity(item.codigo, newQty));
-                          }
-                        },
-                      ),
-                      Text(item.cantidad.toString()),
-                      IconButton(
-                        icon: const Icon(Icons.add),
-                        onPressed: () {
-                          if (item.cantidad < product.stockActual) {
-                            context.read<PosBloc>().add(UpdateCartItemQuantity(
-                                item.codigo, item.cantidad + 1));
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    'No hay más stock de ${item.nombre}'),
-                                duration: const Duration(seconds: 1),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ],
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columns: const [
+                DataColumn(label: Text('Producto')),
+                DataColumn(label: Text('Cantidad')),
+                DataColumn(label: Text('Precio Unit.')),
+                DataColumn(label: Text('Total')),
+                DataColumn(label: Text('')),
+              ],
+              rows: state.cart.entries.map((entry) {
+                final item = entry.value;
+                // Stock check necesita el producto actual del catálogo
+                final product = state.products.firstWhere(
+                  (p) => p.codigo == entry.key,
+                  orElse: () => Product(
+                      codigo: '', nombre: '', precioUnitario: 0, stockActual: 0),
+                );
+                return DataRow(cells: [
+                  DataCell(Text(item.nombre)),
+                  DataCell(
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove),
+                          onPressed: () {
+                            int newQty = item.cantidad - 1;
+                            if (newQty >= 0) {
+                              context.read<PosBloc>().add(
+                                  UpdateCartItemQuantity(item.codigo, newQty));
+                            }
+                          },
+                        ),
+                        Text(item.cantidad.toString()),
+                        IconButton(
+                          icon: const Icon(Icons.add),
+                          onPressed: () {
+                            if (item.cantidad < product.stockActual) {
+                              context.read<PosBloc>().add(
+                                  UpdateCartItemQuantity(
+                                      item.codigo, item.cantidad + 1));
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'No hay más stock de ${item.nombre}'),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                DataCell(
-                    Text('\$${item.precioUnitario.toStringAsFixed(2)}')),
-                DataCell(Text(
-                    '\$${item.subtotal.toStringAsFixed(2)}')),
-                DataCell(
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      context
-                          .read<PosBloc>()
-                          .add(RemoveFromCart(item.codigo));
-                    },
+                  DataCell(
+                      Text('\$${item.precioUnitario.toStringAsFixed(2)}')),
+                  DataCell(
+                      Text('\$${item.subtotal.toStringAsFixed(2)}')),
+                  DataCell(
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () {
+                        context
+                            .read<PosBloc>()
+                            .add(RemoveFromCart(item.codigo));
+                      },
+                    ),
                   ),
-                ),
-              ]);
-            }).toList(),
+                ]);
+              }).toList(),
+            ),
           ),
         );
       },

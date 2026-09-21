@@ -13,13 +13,6 @@ ElevatedButton _btnGuardar(WidgetTester tester) =>
 
 Future<MockFinanzasApi> _pumpDialog(WidgetTester tester,
     {void Function(MockFinanzasApi api)? stub}) async {
-  /* TODO: el diálogo de movimiento desborda (overflow) con la altura por
-     defecto del viewport de test cuando se muestra el mensaje de error del
-     backend. Se amplía la superficie del test, no se toca producción. */
-  tester.view.physicalSize = const Size(800, 1400);
-  tester.view.devicePixelRatio = 1.0;
-  addTearDown(tester.view.reset);
-
   final api = MockFinanzasApi();
   when(() => api.getResumenFinanciero()).thenAnswer(
       (_) async => {'ingresosHoy': 0.0, 'egresosHoy': 0.0, 'saldoActual': 0.0});
@@ -102,10 +95,11 @@ void main() {
 
     testWidgets('cambiar el tipo a Egreso envía tipo EGRESO con monto '
         'positivo', (WidgetTester tester) async {
-      /* TODO: el spec pedía "monto en negativo para egresos", pero el código
-         real NO niega el monto: MovimientoFormDialog envía siempre el monto
-         en positivo y el tipo ('EGRESO'). La negación, si existe, la resuelve
-         el backend. Se documenta la discrepancia sin tocar producción. */
+      /* CONTRATO VERIFICADO (backend): MovimientoService.crearMovimiento
+         persiste dto.monto() tal cual (siempre positivo); el signo se infiere
+         del tipo vía MovFinancieroRepository.sumByTipoEnRango. La vista del
+         spec ("monto negativo para egresos") es un error de documentación, no
+         de código: el frontend envía monto positivo + tipo 'EGRESO'. */
       final capturados = <Map<String, dynamic>>[];
       await _pumpDialog(tester, stub: (api) {
         when(() => api.createMovimiento(any())).thenAnswer((inv) async {

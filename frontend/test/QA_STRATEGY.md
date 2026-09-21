@@ -57,9 +57,11 @@ con servicios inyectados (fakes), sin backend.
 
 - Dentro de `testWidgets` el cuerpo corre en una zona `FakeAsync`: **no** se debe esperar un evento de
   BLoC con `bloc.stream.firstWhere(...)` directamente (cuelga el test). Se siembra el BLoC con
-  `tester.pump()` hasta que `bloc.state` alcance la condición.
-- Si un test amplía el viewport para evitar un overflow, se documenta con `/* TODO */` porque puede
-  estar enmascarando un problema real de layout (p. ej. `MovimientoFormDialog` con mensaje de error).
+  `tester.pump()` hasta que `bloc.state` alcance la condición, y `bloc.close()` se ejecuta con
+  `await tester.runAsync(() => bloc.close())`.
+- Si un widget test detecta un overflow de layout, **no** se enmascara ampliando el viewport: se corrige
+  en producción y el test vuelve al viewport por defecto como regresión automática (Ronda 7:
+  `Dialog(scrollable: true)` en `MovimientoFormDialog` y scroll horizontal en `CartTable`).
 - `PosBloc._onAddToCart` **suma** cantidades para un producto ya presente (1 + 2 = 3): los tests de
   carrito esperan el total acumulado, no el valor enviado.
 

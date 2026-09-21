@@ -78,13 +78,6 @@ Future<PosBloc> _blocConCart(
 }
 
 Future<void> _pumpCart(WidgetTester tester, PosBloc bloc) async {
-  /* TODO: el CartTable (DataTable) desborda 15px a la derecha en el viewport
-     por defecto del tester (800x600). Se amplía la superficie del test; el
-     layout real de la pantalla en desktop puede requerir revisarse. */
-  tester.view.physicalSize = const Size(1200, 900);
-  tester.view.devicePixelRatio = 1.0;
-  addTearDown(tester.view.reset);
-
   await tester.pumpWidget(
     MaterialApp(
       home: BlocProvider.value(
