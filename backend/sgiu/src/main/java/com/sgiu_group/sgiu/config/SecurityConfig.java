@@ -1,6 +1,7 @@
 package com.sgiu_group.sgiu.config;
 
 import com.sgiu_group.sgiu.security.JwtFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,12 +33,12 @@ public class SecurityConfig {
         http
             // 1. Configuramos CORS de forma segura (restringido a tu puerto de Flutter)
             .cors(cors -> cors.configurationSource(request -> {
-    var config = new org.springframework.web.cors.CorsConfiguration();
-    config.setAllowedOriginPatterns(java.util.List.of("*")); // Permite cualquier puerto de Flutter
-    config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-    config.setAllowedHeaders(java.util.List.of("*"));
-    return config;
-}))
+                var config = new org.springframework.web.cors.CorsConfiguration();
+                config.setAllowedOriginPatterns(java.util.List.of("*")); // Permite cualquier puerto de Flutter
+                config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                config.setAllowedHeaders(java.util.List.of("*"));
+                return config;
+            }))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
@@ -46,6 +47,12 @@ public class SecurityConfig {
                 // 3. Todo lo demás (como /api/productos) requiere token JWT válido
                 .anyRequest().authenticated()
             )
+            // 4. Configuración del Entry Point para devolver 401 en JSON
+            .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"No autorizado\"}");
+            }))
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
