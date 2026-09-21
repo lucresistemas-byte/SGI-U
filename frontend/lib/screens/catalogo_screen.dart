@@ -284,10 +284,10 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                                 '\$${producto.precioUnitario.toStringAsFixed(2)}',
                                                 style: const TextStyle(
                                                     color: Color(0xFF475569)))),
-                                            DataCell(Text(
-                                                producto.stockActual.toString(),
-                                                style: const TextStyle(
-                                                    color: Color(0xFF475569)))),
+                                             DataCell(Text(
+                                                 '${producto.stockActual} ${producto.unidadMedida ?? 'UNIDAD'}',
+                                                 style: const TextStyle(
+                                                     color: Color(0xFF475569)))),
                                             DataCell(
                                                 _buildBadge(producto.activo)),
                                             DataCell(Row(

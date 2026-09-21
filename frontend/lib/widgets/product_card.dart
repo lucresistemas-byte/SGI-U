@@ -5,7 +5,7 @@ class ProductCard extends StatelessWidget {
   final Product product;
   final Function(int quantity) onAdd;
 
-  const ProductCard({Key? key, required this.product, required this.onAdd}) : super(key: key);
+  const ProductCard({super.key, required this.product, required this.onAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -37,15 +37,36 @@ class ProductCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text('\$${product.precioUnitario.toStringAsFixed(2)}'),
                 const SizedBox(height: 4),
-                // --- NUEVO: Indicador de Stock ---
+                // --- Indicador de Stock y Unidad de Medida ---
                 Text(
-                  isAgotado ? 'Agotado' : 'Stock: ${product.stockActual}',
+                  isAgotado
+                      ? 'Agotado'
+                      : 'Stock: ${product.stockActual} ${product.unidadMedida ?? 'UNIDAD'}',
+                  key: const ValueKey('product_card_stock_text'),
                   style: TextStyle(
                     color: isAgotado ? Colors.red : Colors.grey[600],
                     fontWeight: isAgotado ? FontWeight.bold : FontWeight.normal,
                     fontSize: 12,
                   ),
                 ),
+                if (product.unidadMedida != null && product.unidadMedida!.isNotEmpty)
+                  Container(
+                    key: const ValueKey('product_card_unidad_badge'),
+                    margin: const EdgeInsets.only(top: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.blueGrey.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      product.unidadMedida!,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blueGrey.shade700,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
