@@ -19,6 +19,25 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    // Muestra el aviso cuando se llega al login con la sesión ya expirada
+    // (el AuthError se emite antes de montar esta pantalla, por lo que el
+    // listener de BlocConsumer no llega a dispararse).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final state = context.read<AuthBloc>().state;
+      if (state is AuthError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(state.message),
+            backgroundColor: Colors.red.shade800,
+          ),
+        );
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
