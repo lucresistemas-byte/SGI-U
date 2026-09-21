@@ -20,6 +20,11 @@ public abstract class AbstractIntegrationTest {
         } catch (Exception ignored) {}
 
         List<String> tablas = List.of(
+                "pedidos_abonos",
+                "pedidos",
+                "recetas_detalles",
+                "recetas",
+                "materias_primas",
                 "movimientos_financieros",
                 "articulos_stock",
                 "lineas_venta",

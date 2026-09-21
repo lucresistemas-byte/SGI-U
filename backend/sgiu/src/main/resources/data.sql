@@ -79,3 +79,34 @@ INSERT IGNORE INTO movimientos_financieros (id, tipo, monto, metodo_pago, catego
 -- Actualizar stock para simular productos con stock bajo
 UPDATE articulos_stock SET cantidad = 3 WHERE id = 4;
 UPDATE articulos_stock SET cantidad = 0 WHERE id = 5;
+
+-- =========================
+-- INSERT: MATERIAS PRIMAS (INSUMOS) (EXTENSIÓN 1)
+-- =========================
+INSERT IGNORE INTO materias_primas (id, codigo, nombre, costo_unitario, unidad_medida, stock_actual, stock_minimo, esp_producto_id, activo, created_at, updated_at) VALUES
+(1, 'MP-001', 'Arroz Crudo a Granel', 35.00, 'KILO', 500, 50, NULL, 1, NOW(), NOW()),
+(2, 'MP-002', 'Bolsa de Empaque Biodegradable 1kg', 5.00, 'UNIDAD', 1000, 100, NULL, 1, NOW(), NOW()),
+(3, 'MP-003', 'Etiqueta Adhesiva Sandra', 2.50, 'UNIDAD', 2000, 200, NULL, 1, NOW(), NOW());
+
+-- =========================
+-- INSERT: RECETAS Y COSTEO POR ELABORADO (EXTENSIÓN 1)
+-- =========================
+INSERT IGNORE INTO recetas (id, esp_producto_id, nombre, descripcion, costos_adicionales, activo, created_at, updated_at) VALUES
+(1, 1, 'Receta Fraccionado Arroz Sandra', 'Fraccionado de arroz con empaque y etiqueta de marca', 5.00, 1, NOW(), NOW());
+
+INSERT IGNORE INTO recetas_detalles (id, receta_id, materia_prima_id, cantidad, unidad_medida, created_at, updated_at) VALUES
+(1, 1, 1, 1.000, 'KILO', NOW(), NOW()),
+(2, 1, 2, 1.000, 'UNIDAD', NOW(), NOW()),
+(3, 1, 3, 1.000, 'UNIDAD', NOW(), NOW());
+
+-- =========================
+-- INSERT: PEDIDOS CON SEÑA Y SALDO (EXTENSIÓN 2)
+-- =========================
+INSERT IGNORE INTO pedidos (id, cliente_nombre, cliente_telefono, descripcion, monto_total, senia, saldo, estado, fecha_entrega, activo, created_at, updated_at) VALUES
+(1, 'Carlos Pérez', '343-5112233', '10 bolsas de Arroz Integral especial para evento', 1000.00, 300.00, 700.00, 'PENDIENTE', '2026-07-01 18:00:00', 1, NOW(), NOW()),
+(2, 'Laura Gómez', '343-4998877', 'Pedido surtido aniversario', 5000.00, 5000.00, 0.00, 'PAGADO', '2026-06-25 12:00:00', 1, NOW(), NOW());
+
+INSERT IGNORE INTO pedidos_abonos (id, pedido_id, monto, metodo_pago, nota, created_at, updated_at) VALUES
+(1, 1, 300.00, 'EFECTIVO', 'Seña inicial del pedido', NOW(), NOW()),
+(2, 2, 2500.00, 'TRANSFERENCIA', 'Seña inicial del 50%', NOW(), NOW()),
+(3, 2, 2500.00, 'EFECTIVO', 'Cancelación total de saldo restante', NOW(), NOW());
