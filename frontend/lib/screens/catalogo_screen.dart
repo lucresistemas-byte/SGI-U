@@ -123,25 +123,73 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
               ),
               const SizedBox(height: 24),
 
-              // --- BUSCADOR SEPARADO DE LA TABLA ---
-              Container(
-                width: 350,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: const InputDecoration(
-                    hintText: 'Buscar producto...',
-                    hintStyle: TextStyle(color: Colors.grey),
-                    suffixIcon: Icon(Icons.search, color: Colors.grey),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+              // --- BUSCADOR Y CHIPS DE CATEGORÍA ---
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 320,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: const InputDecoration(
+                        hintText: 'Buscar producto...',
+                        hintStyle: TextStyle(color: Colors.grey),
+                        suffixIcon: Icon(Icons.search, color: Colors.grey),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: BlocBuilder<PosBloc, PosState>(
+                      builder: (context, state) {
+                        if (state.availableCategories.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        final categories = ['Todas', ...state.availableCategories];
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: categories.map((cat) {
+                              final isSelected =
+                                  (state.selectedCategory == null && cat == 'Todas') ||
+                                      state.selectedCategory == cat;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: FilterChip(
+                                  key: ValueKey('catalogo_category_chip_$cat'),
+                                  label: Text(cat),
+                                  selected: isSelected,
+                                  selectedColor: AppColors.verdeTeal.withOpacity(0.2),
+                                  checkmarkColor: AppColors.verdeTeal,
+                                  labelStyle: TextStyle(
+                                    color: isSelected ? AppColors.verdeTeal : Colors.black87,
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                    fontSize: 13,
+                                  ),
+                                  onSelected: (selected) {
+                                    final target = (selected && cat != 'Todas') ? cat : null;
+                                    setState(() {
+                                      _currentPage = 1;
+                                    });
+                                    context.read<PosBloc>().add(FilterByCategoryEvent(target));
+                                  },
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
 
@@ -166,11 +214,11 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                 color: Color(0xFF004D40)));
                       }
 
-                      // 1. Filtrar los productos por la búsqueda
+                      // 1. Filtrar los productos por categoría activa y búsqueda
                       final String query =
                           _searchController.text.toLowerCase();
                       final List<Product> filteredProducts =
-                          state.products.where((p) {
+                          state.filteredProducts.where((p) {
                         return p.nombre.toLowerCase().contains(query) ||
                             p.codigo.toLowerCase().contains(query);
                       }).toList();
@@ -194,97 +242,110 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                         children: [
                           // TABLA
                           Expanded(
-                            child: SingleChildScrollView(
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: DataTable(
-                                  headingTextStyle: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF1E293B)),
-                                  dataRowMaxHeight: 65,
-                                  columns: const [
-                                    DataColumn(label: Text('Código ↓')),
-                                    DataColumn(
-                                        label:
-                                            Text('Nombre del Producto')),
-                                    DataColumn(
-                                        label: Text('Precio Unit. (\$)')),
-                                    DataColumn(label: Text('Stock')),
-                                    DataColumn(label: Text('Estado')),
-                                    DataColumn(label: Text('Acciones')),
-                                  ],
-                                  rows: paginatedProducts.map((producto) {
-                                    return DataRow(cells: [
-                                      DataCell(Text(producto.codigo,
-                                          style: const TextStyle(
-                                              color: Color(0xFF475569)))),
-                                      DataCell(Text(producto.nombre,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w500,
-                                              color: Color(0xFF1E293B)))),
-                                      DataCell(Text(
-                                          '\$${producto.precioUnitario.toStringAsFixed(2)}',
-                                          style: const TextStyle(
-                                              color: Color(0xFF475569)))),
-                                      DataCell(Text(
-                                          producto.stockActual.toString(),
-                                          style: const TextStyle(
-                                              color: Color(0xFF475569)))),
-                                      DataCell(
-                                          _buildBadge(producto.activo)),
-                                      DataCell(Row(
-                                        children: [
-                                          // BOTÓN EDITAR
-                                          IconButton(
-                                            icon: const Icon(Icons.edit,
-                                                color: Color(0xFF004D40),
-                                                size: 20),
-                                            onPressed: () {
-                                              // ABRE EL MODAL DE EDICIÓN
-                                              showDialog(
-                                                context: context,
-                                                builder: (context) =>
-                                                    ProductoFormDialog(
-                                                        productoAEditar:
-                                                            producto),
-                                              );
-                                            },
-                                          ),
-                                          // BOTÓN ARCHIVAR/DESARCHIVAR
-                                          IconButton(
-                                            icon: Icon(
-                                                producto.activo
-                                                    ? Icons.delete_outline
-                                                    : Icons
-                                                        .restore_from_trash,
-                                                color: const Color(
-                                                    0xFF004D40),
-                                                size: 20),
-                                            onPressed: () {
-                                              context
-                                                  .read<PosBloc>()
-                                                  .add(UpdateProduct(
-                                                      producto.codigo, {
-                                                    'codigo': producto
-                                                        .codigo, // AGREGADO
-                                                    'nombre':
-                                                        producto.nombre,
-                                                    'precioUnitario':
-                                                        producto
-                                                            .precioUnitario,
-                                                    'stockActual': producto
-                                                        .stockActual, // ¡EL SALVAVIDAS!
-                                                    'activo':
-                                                        !producto.activo,
-                                                  }));
-                                            },
-                                          ),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                return SingleChildScrollView(
+                                  scrollDirection: Axis.vertical,
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                          minWidth: constraints.maxWidth),
+                                      child: DataTable(
+                                        headingTextStyle: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF1E293B)),
+                                        dataRowMaxHeight: 65,
+                                        columns: const [
+                                          DataColumn(label: Text('Código ↓')),
+                                          DataColumn(
+                                              label:
+                                                  Text('Nombre del Producto')),
+                                          DataColumn(label: Text('Categoría')),
+                                          DataColumn(
+                                              label: Text('Precio Unit. (\$)')),
+                                          DataColumn(label: Text('Stock')),
+                                          DataColumn(label: Text('Estado')),
+                                          DataColumn(label: Text('Acciones')),
                                         ],
-                                      )),
-                                    ]);
-                                  }).toList(),
-                                ),
-                              ),
+                                        rows: paginatedProducts.map((producto) {
+                                          return DataRow(cells: [
+                                            DataCell(Text(producto.codigo,
+                                                style: const TextStyle(
+                                                    color: Color(0xFF475569)))),
+                                            DataCell(Text(producto.nombre,
+                                                style: const TextStyle(
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Color(0xFF1E293B)))),
+                                            DataCell(Text(producto.categoria ?? '-',
+                                                style: const TextStyle(
+                                                    color: Color(0xFF475569)))),
+                                            DataCell(Text(
+                                                '\$${producto.precioUnitario.toStringAsFixed(2)}',
+                                                style: const TextStyle(
+                                                    color: Color(0xFF475569)))),
+                                            DataCell(Text(
+                                                producto.stockActual.toString(),
+                                                style: const TextStyle(
+                                                    color: Color(0xFF475569)))),
+                                            DataCell(
+                                                _buildBadge(producto.activo)),
+                                            DataCell(Row(
+                                              children: [
+                                                // BOTÓN EDITAR
+                                                IconButton(
+                                                  icon: const Icon(Icons.edit,
+                                                      color: Color(0xFF004D40),
+                                                      size: 20),
+                                                  onPressed: () {
+                                                    // ABRE EL MODAL DE EDICIÓN
+                                                    showDialog(
+                                                      context: context,
+                                                      builder: (context) =>
+                                                          ProductoFormDialog(
+                                                              productoAEditar:
+                                                                  producto),
+                                                    );
+                                                  },
+                                                ),
+                                                // BOTÓN ARCHIVAR/DESARCHIVAR
+                                                IconButton(
+                                                  icon: Icon(
+                                                      producto.activo
+                                                          ? Icons.delete_outline
+                                                          : Icons
+                                                              .restore_from_trash,
+                                                      color: const Color(
+                                                          0xFF004D40),
+                                                      size: 20),
+                                                  onPressed: () {
+                                                    context
+                                                        .read<PosBloc>()
+                                                        .add(UpdateProduct(
+                                                            producto.codigo, {
+                                                          'codigo': producto
+                                                              .codigo, // AGREGADO
+                                                          'nombre':
+                                                              producto.nombre,
+                                                          'precioUnitario':
+                                                              producto
+                                                                  .precioUnitario,
+                                                          'stockActual': producto
+                                                              .stockActual, // ¡EL SALVAVIDAS!
+                                                          'activo':
+                                                              !producto.activo,
+                                                        }));
+                                                  },
+                                                ),
+                                              ],
+                                            )),
+                                          ]);
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           // FOOTER (PAGINACIÓN)

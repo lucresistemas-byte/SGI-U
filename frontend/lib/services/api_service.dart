@@ -89,6 +89,10 @@ class ApiService implements PosApi {
   /// URL base efectiva del cliente Dio interno (útil para diagnóstico/tests).
   String get effectiveBaseUrl => _dio.options.baseUrl;
 
+  /// Cliente Dio interno para configuración y testing (http_mock_adapter).
+  Dio get dio => _dio;
+  set dio(Dio newDio) => _dio = newDio;
+
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
       final response = await _dio.post('/api/auth/login', data: {

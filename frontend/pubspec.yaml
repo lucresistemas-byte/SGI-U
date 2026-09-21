@@ -32,8 +32,6 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
-  bloc_test: ^9.1.7
-  mocktail: ^1.0.4
   flutter_lints: ^3.0.0
   flutter_launcher_icons: ^0.14.4
   bloc_test: ^9.1.7

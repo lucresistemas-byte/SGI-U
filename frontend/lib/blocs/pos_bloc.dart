@@ -61,6 +61,17 @@ class PosBloc extends Bloc<PosEvent, PosState> {
         emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
       }
     });
+
+    on<FilterByCategoryEvent>((event, emit) {
+      final category = (event.category == null || event.category == 'Todas')
+          ? null
+          : event.category;
+      emit(state.copyWith(selectedCategory: category));
+    });
+
+    on<SearchProductsEvent>((event, emit) {
+      emit(state.copyWith(searchQuery: event.query));
+    });
   }
 
   Future<void> _onLoadProducts(
