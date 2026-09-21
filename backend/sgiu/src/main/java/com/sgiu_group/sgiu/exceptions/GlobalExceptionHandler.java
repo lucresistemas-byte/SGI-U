@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 
 import java.util.Map;
 
@@ -89,6 +90,20 @@ public class GlobalExceptionHandler {
                 "codigo", "TOKEN_INVALIDO",
                 "mensaje", "Token inválido o expirado"
         ));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<?> handleMissingParam(MissingServletRequestParameterException e) {
+        return ResponseEntity.badRequest().body(Map.of(
+                "error", true,
+                "codigo", "PARAMETRO_REQUERIDO",
+                "mensaje", "Parámetro requerido no provisto: " + e.getParameterName()
+        ));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<?> handleIllegalArgument(IllegalArgumentException e) {
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
