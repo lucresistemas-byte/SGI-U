@@ -16,3 +16,8 @@ spring:
     init:
       mode: never
 
+sgiu:
+  backup:
+    catchup:
+      enabled: false
+

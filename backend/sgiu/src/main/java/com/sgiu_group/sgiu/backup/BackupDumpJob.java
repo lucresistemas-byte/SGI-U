@@ -30,6 +30,43 @@ public class BackupDumpJob {
     @Value("${spring.datasource.password:sgiu_1234}")
     private String dbPassword;
 
+    @Value("${sgiu.backup.catchup.enabled:true}")
+    private boolean catchupHabilitado;
+
+    // Se ejecuta al iniciar la aplicación (Catch-up si la PC estuvo apagada en el cron nocturno)
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void verificarYEjecutarCatchupAlIniciar() {
+        if (!catchupHabilitado) {
+            log.debug("[BACKUP CATCH-UP] Verificación de catch-up al inicio deshabilitada por configuración.");
+            return;
+        }
+
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                // Espera de gracia para que la app complete su arranque sin competencia de I/O
+                Thread.sleep(5000);
+                String prefijoHoy = "sgiu_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+                File dirBackups = new File("backups");
+                boolean existeHoy = false;
+                if (dirBackups.exists() && dirBackups.isDirectory()) {
+                    File[] archivos = dirBackups.listFiles((dir, name) -> name.startsWith(prefijoHoy) && name.endsWith(".sql.gz"));
+                    existeHoy = (archivos != null && archivos.length > 0);
+                }
+
+                if (!existeHoy) {
+                    log.info("[BACKUP CATCH-UP] No se encontró respaldo nocturno de hoy ({}). Computadora posiblemente apagada. Ejecutando respaldo automático en segundo plano...", prefijoHoy);
+                    ejecutarBackup();
+                } else {
+                    log.info("[BACKUP CATCH-UP] Respaldo del día ya presente ({}). No se requiere ejecución de contingencia.", prefijoHoy);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                log.warn("[BACKUP CATCH-UP] Error al ejecutar respaldo de contingencia al inicio: {}", e.getMessage());
+            }
+        });
+    }
+
     // Se ejecuta según cron (default: 03:30 AM todos los días)
     @Scheduled(cron = "${sgiu.backup.cron:0 30 3 * * *}")
     public void ejecutarBackupProgramado() {
