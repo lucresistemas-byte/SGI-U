@@ -1,0 +1,1139 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_source": "opencode",
+  "resources": [
+    {
+      "_type": "workspace",
+      "_id": "wrk_sgiu",
+      "parentId": "__WORKSPACE_ID__",
+      "name": "SGI-U Backend"
+    },
+    {
+      "_type": "environment",
+      "_id": "env_base_sgiu",
+      "parentId": "__ENV_ID__",
+      "name": "SGI-U Backend",
+      "data": {
+        "base_url": "http://localhost:3000",
+        "token": ""
+      }
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_auth",
+      "parentId": "wrk_sgiu",
+      "name": "Auth"
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_categorias",
+      "parentId": "wrk_sgiu",
+      "name": "Categorías"
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_productos",
+      "parentId": "wrk_sgiu",
+      "name": "Productos"
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_ventas",
+      "parentId": "wrk_sgiu",
+      "name": "Ventas"
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_insumos",
+      "parentId": "wrk_sgiu",
+      "name": "Insumos"
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_recetas",
+      "parentId": "wrk_sgiu",
+      "name": "Recetas"
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_pedidos",
+      "parentId": "wrk_sgiu",
+      "name": "Pedidos"
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_movimientos",
+      "parentId": "wrk_sgiu",
+      "name": "Movimientos"
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_balance",
+      "parentId": "wrk_sgiu",
+      "name": "Balance"
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_dashboard",
+      "parentId": "wrk_sgiu",
+      "name": "Dashboard"
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_configuracion",
+      "parentId": "wrk_sgiu",
+      "name": "Configuración"
+    },
+    {
+      "_type": "request_group",
+      "_id": "grp_backups",
+      "parentId": "wrk_sgiu",
+      "name": "Backups"
+    },
+
+    {
+      "_type": "request",
+      "_id": "req_auth_login",
+      "parentId": "grp_auth",
+      "name": "A-01 Login correcto",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/auth/login",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {},
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_auth_login_badpass",
+      "parentId": "grp_auth",
+      "name": "A-02 Login contraseña incorrecta",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/auth/login",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {},
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"admin\",\n  \"password\": \"mala\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_auth_login_noexist",
+      "parentId": "grp_auth",
+      "name": "A-03 Login usuario inexistente",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/auth/login",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {},
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"pepe\",\n  \"password\": \"x\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_auth_register",
+      "parentId": "grp_auth",
+      "name": "A-04 Register nuevo usuario",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/auth/register",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {},
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"test01\",\n  \"password\": \"clave123\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_auth_register_dup",
+      "parentId": "grp_auth",
+      "name": "A-05 Register usuario duplicado",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/auth/register",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {},
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"test01\",\n  \"password\": \"otra\"\n}"
+      }
+    },
+
+    {
+      "_type": "request",
+      "_id": "req_cat_list",
+      "parentId": "grp_categorias",
+      "name": "CAT-01 Listar categorías",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/categorias",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_cat_create",
+      "parentId": "grp_categorias",
+      "name": "CAT-02 Crear categoría",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/categorias",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nombre\": \"Limpieza\",\n  \"descripcion\": \"Artículos de limpieza e higiene\",\n  \"activo\": true\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_cat_create_dup",
+      "parentId": "grp_categorias",
+      "name": "CAT-03 Crear categoría duplicada",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/categorias",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nombre\": \"Alimentos\",\n  \"descripcion\": \"x\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_cat_create_noname",
+      "parentId": "grp_categorias",
+      "name": "CAT-04 Crear sin nombre",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/categorias",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nombre\": \"\",\n  \"descripcion\": \"x\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_cat_noauth",
+      "parentId": "grp_categorias",
+      "name": "CAT-05 Sin token (401)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/categorias",
+      "headers": [],
+      "authentication": {},
+      "parameters": [],
+      "body": {}
+    },
+
+    {
+      "_type": "request",
+      "_id": "req_prod_all",
+      "parentId": "grp_productos",
+      "name": "PROD-01 Catálogo completo",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/productos",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_prod_cat",
+      "parentId": "grp_productos",
+      "name": "PROD-02 Catálogo por categoría",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/productos",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [{ "name": "categoria", "value": "Alimentos" }],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_prod_create",
+      "parentId": "grp_productos",
+      "name": "PROD-03 Crear producto",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/productos/crear",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codigo\": \"PROD-006\",\n  \"nombre\": \"Azúcar 1kg\",\n  \"precioUnitario\": 120.00,\n  \"precioCosto\": 80.00,\n  \"porcentajeGanancia\": 50.00,\n  \"unidadMedida\": \"KILO\",\n  \"categoriaId\": 1,\n  \"stockActual\": 40,\n  \"stockMinimo\": 5,\n  \"activo\": true\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_prod_create_dup",
+      "parentId": "grp_productos",
+      "name": "PROD-04 Código duplicado (409)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/productos/crear",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codigo\": \"PROD-001\",\n  \"nombre\": \"Otro\",\n  \"precioUnitario\": 1.00\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_prod_create_price0",
+      "parentId": "grp_productos",
+      "name": "PROD-05 Precio cero (422)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/productos/crear",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codigo\": \"PROD-007\",\n  \"nombre\": \"X\",\n  \"precioUnitario\": 0\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_prod_create_unidad",
+      "parentId": "grp_productos",
+      "name": "PROD-06 Unidad inválida (422)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/productos/crear",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codigo\": \"PROD-008\",\n  \"nombre\": \"Y\",\n  \"precioUnitario\": 10,\n  \"unidadMedida\": \"KILAZO\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_prod_edit",
+      "parentId": "grp_productos",
+      "name": "PROD-07 Editar producto",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/productos/editar/PROD-006",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nombre\": \"Azúcar Blanca 1kg\",\n  \"precioUnitario\": 130.00\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_prod_edit_noexist",
+      "parentId": "grp_productos",
+      "name": "PROD-08 Editar inexistente (404)",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/productos/editar/PROD-999",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nombre\": \"X\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_prod_stock_plus",
+      "parentId": "grp_productos",
+      "name": "PROD-09 Ajustar stock (+)",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/productos/stock/PROD-006",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cantidad\": 10,\n  \"motivo\": \"Compra a proveedor\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_prod_stock_minus",
+      "parentId": "grp_productos",
+      "name": "PROD-10 Ajustar stock (menos)",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/productos/stock/PROD-004",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cantidad\": -2,\n  \"motivo\": \"Merma\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_prod_stock_negative",
+      "parentId": "grp_productos",
+      "name": "PROD-11 Stock negativo (422)",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/productos/stock/PROD-004",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cantidad\": -50,\n  \"motivo\": \"Error\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_prod_stock_nomotivo",
+      "parentId": "grp_productos",
+      "name": "PROD-12 Sin motivo (400)",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/productos/stock/PROD-001",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cantidad\": 5\n}"
+      }
+    },
+
+    {
+      "_type": "request",
+      "_id": "req_vent_feliz",
+      "parentId": "grp_ventas",
+      "name": "VENT-01 Venta feliz (201)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/ventas",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"metodoPago\": 1,\n  \"lineas\": [\n    { \"codigoProducto\": \"PROD-001\", \"cantidad\": 2 },\n    { \"codigoProducto\": \"PROD-003\", \"cantidad\": 3 }\n  ]\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_vent_stock",
+      "parentId": "grp_ventas",
+      "name": "VENT-02 Stock insuficiente (400, rollback)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/ventas",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"metodoPago\": 1,\n  \"lineas\": [\n    { \"codigoProducto\": \"PROD-005\", \"cantidad\": 1 }\n  ]\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_vent_noexist",
+      "parentId": "grp_ventas",
+      "name": "VENT-03 Producto inexistente (404)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/ventas",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"metodoPago\": 1,\n  \"lineas\": [\n    { \"codigoProducto\": \"PROD-999\", \"cantidad\": 1 }\n  ]\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_vent_cant0",
+      "parentId": "grp_ventas",
+      "name": "VENT-04 Cantidad inválida (400)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/ventas",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"metodoPago\": 1,\n  \"lineas\": [\n    { \"codigoProducto\": \"PROD-001\", \"cantidad\": 0 }\n  ]\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_vent_metodo_str",
+      "parentId": "grp_ventas",
+      "name": "VENT-05 metodoPago string (400)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/ventas",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"metodoPago\": \"EFECTIVO\",\n  \"lineas\": [\n    { \"codigoProducto\": \"PROD-001\", \"cantidad\": 1 }\n  ]\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_vent_receta",
+      "parentId": "grp_ventas",
+      "name": "VENT-06 Venta con receta (descuenta insumos)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/ventas",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"metodoPago\": 1,\n  \"lineas\": [\n    { \"codigoProducto\": \"PROD-001\", \"cantidad\": 5 }\n  ]\n}"
+      }
+    },
+
+    {
+      "_type": "request",
+      "_id": "req_ins_list",
+      "parentId": "grp_insumos",
+      "name": "INS-01 Listar insumos",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/insumos",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_ins_byid",
+      "parentId": "grp_insumos",
+      "name": "INS-02 Obtener por id",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/insumos/1",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_ins_notfound",
+      "parentId": "grp_insumos",
+      "name": "INS-03 Id inexistente (404)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/insumos/999",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_ins_create",
+      "parentId": "grp_insumos",
+      "name": "INS-04 Crear insumo",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/insumos",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codigo\": \"MP-004\",\n  \"nombre\": \"Harina 0000\",\n  \"costoUnitario\": 45.00,\n  \"unidadMedida\": \"KILO\",\n  \"stockActual\": 300,\n  \"stockMinimo\": 30\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_ins_create_dup",
+      "parentId": "grp_insumos",
+      "name": "INS-05 Código duplicado (400)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/insumos",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codigo\": \"MP-001\",\n  \"nombre\": \"Otro\",\n  \"costoUnitario\": 1.00\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_ins_edit",
+      "parentId": "grp_insumos",
+      "name": "INS-06 Editar insumo (recalcula receta)",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/insumos/1",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codigo\": \"MP-001\",\n  \"nombre\": \"Arroz Crudo Premium\",\n  \"costoUnitario\": 38.00,\n  \"unidadMedida\": \"KILO\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_ins_stock_plus",
+      "parentId": "grp_insumos",
+      "name": "INS-07 Ajustar stock (+)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/insumos/1/ajuste-stock",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cantidad\": 50,\n  \"motivo\": \"Reposición\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_ins_stock_negative",
+      "parentId": "grp_insumos",
+      "name": "INS-08 Ajuste en negativo (400)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/insumos/2/ajuste-stock",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cantidad\": -5000,\n  \"motivo\": \"Error\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_ins_stock_nomotivo",
+      "parentId": "grp_insumos",
+      "name": "INS-09 Ajuste sin motivo (400)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/insumos/1/ajuste-stock",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cantidad\": 10\n}"
+      }
+    },
+
+    {
+      "_type": "request",
+      "_id": "req_rec_list",
+      "parentId": "grp_recetas",
+      "name": "REC-01 Listar recetas",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/recetas",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_rec_byid",
+      "parentId": "grp_recetas",
+      "name": "REC-02 Por id",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/recetas/1",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_rec_byprod",
+      "parentId": "grp_recetas",
+      "name": "REC-03 Por código de producto",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/recetas/producto/PROD-001",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_rec_create",
+      "parentId": "grp_recetas",
+      "name": "REC-04 Crear receta",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/recetas",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"espProductoCodigo\": \"PROD-002\",\n  \"nombre\": \"Receta Leche Envasada\",\n  \"descripcion\": \"Reempaque 1L\",\n  \"costosAdicionales\": 10.00,\n  \"detalles\": [\n    { \"materiaPrimaId\": 1, \"cantidad\": 1.000, \"unidadMedida\": \"LITRO\" },\n    { \"materiaPrimaId\": 2, \"cantidad\": 1.000, \"unidadMedida\": \"UNIDAD\" }\n  ]\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_rec_create_empty",
+      "parentId": "grp_recetas",
+      "name": "REC-05 Receta sin detalles (400)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/recetas",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"espProductoCodigo\": \"PROD-003\",\n  \"nombre\": \"Sin insumos\",\n  \"detalles\": []\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_rec_edit",
+      "parentId": "grp_recetas",
+      "name": "REC-06 Editar receta",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/recetas/1",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"espProductoCodigo\": \"PROD-001\",\n  \"nombre\": \"Receta Fraccionado Arroz v2\",\n  \"descripcion\": \"Actualizada\",\n  \"costosAdicionales\": 6.00,\n  \"detalles\": [\n    { \"materiaPrimaId\": 1, \"cantidad\": 1.000, \"unidadMedida\": \"KILO\" },\n    { \"materiaPrimaId\": 2, \"cantidad\": 1.000, \"unidadMedida\": \"UNIDAD\" },\n    { \"materiaPrimaId\": 3, \"cantidad\": 1.000, \"unidadMedida\": \"UNIDAD\" }\n  ]\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_rec_delete",
+      "parentId": "grp_recetas",
+      "name": "REC-07 Eliminar receta (204)",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/recetas/2",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+
+    {
+      "_type": "request",
+      "_id": "req_ped_list",
+      "parentId": "grp_pedidos",
+      "name": "PED-01 Listar pedidos",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/pedidos",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_ped_search",
+      "parentId": "grp_pedidos",
+      "name": "PED-02 Buscar por nombre/teléfono",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/pedidos",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [{ "name": "q", "value": "Carlos" }],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_ped_byid",
+      "parentId": "grp_pedidos",
+      "name": "PED-03 Obtener por id",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/pedidos/1",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_ped_create",
+      "parentId": "grp_pedidos",
+      "name": "PED-04 Crear pedido con seña",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/pedidos",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"clienteNombre\": \"María López\",\n  \"clienteTelefono\": \"343-5559988\",\n  \"descripcion\": \"Pedido para cumpleaños\",\n  \"montoTotal\": 2000.00,\n  \"senia\": 500.00,\n  \"fechaEntrega\": \"2026-07-10T18:00:00\",\n  \"metodoPagoSenia\": \"EFECTIVO\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_ped_senia_mayor",
+      "parentId": "grp_pedidos",
+      "name": "PED-05 Seña mayor al total (400)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/pedidos",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"clienteNombre\": \"X\",\n  \"clienteTelefono\": \"343-5550000\",\n  \"descripcion\": \"Y\",\n  \"montoTotal\": 1000.00,\n  \"senia\": 1500.00\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_ped_abonar",
+      "parentId": "grp_pedidos",
+      "name": "PED-06 Abonar saldo (queda PAGADO)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/pedidos/1/abonar",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"monto\": 700.00,\n  \"metodoPago\": \"TRANSFERENCIA\",\n  \"nota\": \"Saldo total\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_ped_abonar_pagado",
+      "parentId": "grp_pedidos",
+      "name": "PED-07 Abonar pedido pagado (400)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/pedidos/2/abonar",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"monto\": 100.00\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_ped_cancelar",
+      "parentId": "grp_pedidos",
+      "name": "PED-08 Cancelar pedido",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/pedidos/4/cancelar",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_ped_cancelar_pagado",
+      "parentId": "grp_pedidos",
+      "name": "PED-09 Cancelar pedido pagado (400)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/pedidos/2/cancelar",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_ped_notfound",
+      "parentId": "grp_pedidos",
+      "name": "PED-10 Id inexistente (404)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/pedidos/999",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+
+    {
+      "_type": "request",
+      "_id": "req_mov_egreso",
+      "parentId": "grp_movimientos",
+      "name": "MOV-01 Crear EGRESO",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/movimientos",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tipo\": \"EGRESO\",\n  \"monto\": 2500.00,\n  \"metodoPago\": \"EFECTIVO\",\n  \"categoria\": \"PROVEEDOR\",\n  \"descripcion\": \"Compra de mercadería\",\n  \"fechaHora\": \"2026-09-20T10:00:00\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_mov_ingreso",
+      "parentId": "grp_movimientos",
+      "name": "MOV-02 Crear INGRESO",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/movimientos",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tipo\": \"INGRESO\",\n  \"monto\": 1200.00,\n  \"metodoPago\": \"MERCADO_PAGO\",\n  \"categoria\": \"VENTA\",\n  \"descripcion\": \"Pago recibido\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_mov_tipo_invalido",
+      "parentId": "grp_movimientos",
+      "name": "MOV-03 Tipo inválido (400)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/movimientos",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tipo\": \"GARBAGE\",\n  \"monto\": 100.00,\n  \"metodoPago\": \"EFECTIVO\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_mov_monto0",
+      "parentId": "grp_movimientos",
+      "name": "MOV-04 Monto cero (400)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/movimientos",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tipo\": \"EGRESO\",\n  \"monto\": 0,\n  \"metodoPago\": \"EFECTIVO\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_mov_list",
+      "parentId": "grp_movimientos",
+      "name": "MOV-05 Listar movimientos",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/movimientos",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+
+    {
+      "_type": "request",
+      "_id": "req_bal_ok",
+      "parentId": "grp_balance",
+      "name": "BAL-01 Balance del mes (datos demo)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/balance",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [
+        { "name": "fechaInicio", "value": "2026-06-01" },
+        { "name": "fechaFin", "value": "2026-06-30" }
+      ],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_bal_invertidas",
+      "parentId": "grp_balance",
+      "name": "BAL-02 Fechas invertidas (400)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/balance",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [
+        { "name": "fechaInicio", "value": "2026-06-30" },
+        { "name": "fechaFin", "value": "2026-06-01" }
+      ],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_bal_format",
+      "parentId": "grp_balance",
+      "name": "BAL-03 Fecha mal formateada (400)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/balance",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [
+        { "name": "fechaInicio", "value": "30-06-2026" },
+        { "name": "fechaFin", "value": "2026-06-30" }
+      ],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_bal_sinparams",
+      "parentId": "grp_balance",
+      "name": "BAL-04 Sin parámetros (400)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/balance",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+
+    {
+      "_type": "request",
+      "_id": "req_dash_ok",
+      "parentId": "grp_dashboard",
+      "name": "DASH-01 Dashboard completo",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/dashboard",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [
+        { "name": "fechaDesde", "value": "2026-06-01" },
+        { "name": "fechaHasta", "value": "2026-06-30" }
+      ],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_dash_mp",
+      "parentId": "grp_dashboard",
+      "name": "DASH-02 Filtro método de pago",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/dashboard",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [
+        { "name": "fechaDesde", "value": "2026-06-01" },
+        { "name": "fechaHasta", "value": "2026-06-30" },
+        { "name": "metodoPago", "value": "EFECTIVO" }
+      ],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_dash_prod",
+      "parentId": "grp_dashboard",
+      "name": "DASH-03 Filtro por producto",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/dashboard",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [
+        { "name": "fechaDesde", "value": "2026-06-01" },
+        { "name": "fechaHasta", "value": "2026-06-30" },
+        { "name": "productoId", "value": "1" }
+      ],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_dash_tipo",
+      "parentId": "grp_dashboard",
+      "name": "DASH-04 Filtro por tipo",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/dashboard",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [
+        { "name": "fechaDesde", "value": "2026-06-01" },
+        { "name": "fechaHasta", "value": "2026-06-30" },
+        { "name": "tipoTransaccion", "value": "INGRESO" }
+      ],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_dash_invalidas",
+      "parentId": "grp_dashboard",
+      "name": "DASH-05 Fechas inválidas (400)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/dashboard",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [
+        { "name": "fechaDesde", "value": "2026-06-30" },
+        { "name": "fechaHasta", "value": "2026-06-01" }
+      ],
+      "body": {}
+    },
+
+    {
+      "_type": "request",
+      "_id": "req_conf_get",
+      "parentId": "grp_configuracion",
+      "name": "CONF-01 Obtener configuración",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/configuracion",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_conf_update",
+      "parentId": "grp_configuracion",
+      "name": "CONF-02 Actualizar configuración",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/configuracion",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nombre\": \"Almacén de Sandra SA\",\n  \"codigoCliente\": \"SGIU-SANDRA-001\",\n  \"direccion\": \"Av. San Martín 1234\",\n  \"telefono\": \"343-5551234\",\n  \"descripcion\": \"Comercio minorista y punto de venta\"\n}"
+      }
+    },
+    {
+      "_type": "request",
+      "_id": "req_conf_partial",
+      "parentId": "grp_configuracion",
+      "name": "CONF-03 Actualización parcial",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/configuracion",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"telefono\": \"343-5550000\"\n}"
+      }
+    },
+
+    {
+      "_type": "request",
+      "_id": "req_bck_list",
+      "parentId": "grp_backups",
+      "name": "BCK-01 Listar backups",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/backups",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    },
+    {
+      "_type": "request",
+      "_id": "req_bck_run",
+      "parentId": "grp_backups",
+      "name": "BCK-02 Ejecutar backup manual",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/backups/ejecutar",
+      "headers": [],
+      "authentication": { "type": "bearer", "token": "{{ _.token }}" },
+      "parameters": [],
+      "body": {}
+    }
+  ]
+}
