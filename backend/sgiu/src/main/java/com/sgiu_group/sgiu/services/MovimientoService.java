@@ -74,6 +74,25 @@ public class MovimientoService {
                 repository.sumByTipoEnRango(desde, hasta, TipoMovimiento.EGRESO))
                 .orElse(BigDecimal.ZERO);
 
-        return new BalanceResponseDTO(ingresos, egresos, ingresos.subtract(egresos), List.of());
+        List<MovFinanciero> movimientosEntidad = repository.findEnRango(desde, hasta);
+        List<MovimientoResponseDTO> movimientosDTO = movimientosEntidad.stream()
+                .map(MovimientoResponseDTO::fromEntity)
+                .toList();
+
+        BigDecimal costoTotal = movimientosDTO.stream()
+                .filter(m -> "INGRESO".equalsIgnoreCase(m.tipo()))
+                .map(m -> m.costo() != null ? m.costo() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal gananciaReal = ingresos.subtract(costoTotal).subtract(egresos);
+
+        return new BalanceResponseDTO(
+                ingresos,
+                egresos,
+                ingresos.subtract(egresos),
+                costoTotal,
+                gananciaReal,
+                movimientosDTO
+        );
     }
 }

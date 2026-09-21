@@ -22,8 +22,8 @@ public class ProductoController {
     private final ProductoService productoService;
 
     @GetMapping
-    public ResponseEntity<List<ProductoCatalogoDTO>> listarProductos() {
-        return ResponseEntity.ok(productoService.getCatalogo());
+    public ResponseEntity<List<ProductoCatalogoDTO>> listarProductos(@RequestParam(required = false) String categoria) {
+        return ResponseEntity.ok(productoService.getCatalogo(categoria));
     }
 
     @PostMapping("/crear")

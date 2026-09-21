@@ -5,3 +5,13 @@ backend/sgiu/packaging/app/runtime/
 backend/sgiu/packaging/app/content/
 backend/sgiu/packaging/dist/
 backend/sgiu/packaging/portable/
+
+# Backups y dumps locales generados por BackupDumpJob
+backups/
+*.sql.gz
+*.log
+
+# Documentacion local propia (no se commitea ni sube al repo)
+documentacion.md
+documentacion/
+

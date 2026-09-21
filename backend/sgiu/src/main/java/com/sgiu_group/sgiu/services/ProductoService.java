@@ -3,13 +3,18 @@ package com.sgiu_group.sgiu.services;
 import com.sgiu_group.sgiu.models.dtos.ProductoCatalogoDTO;
 import com.sgiu_group.sgiu.models.dtos.ProductoRequestDTO;
 import com.sgiu_group.sgiu.models.entities.ArticuloStock;
+import com.sgiu_group.sgiu.models.entities.Categoria;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
+import com.sgiu_group.sgiu.models.entities.UnidadMedida;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
+import com.sgiu_group.sgiu.repositories.CategoriaRepository;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -17,20 +22,24 @@ import java.util.List;
 public class ProductoService {
 
     private final EspProductoRepository productoRepository;
-
-    // Repositorio para manejar el stock
     private final ArticuloStockRepository stockRepository;
+    private final CategoriaRepository categoriaRepository;
+
+    @Transactional(readOnly = true)
+    public List<ProductoCatalogoDTO> getCatalogo(String categoria) {
+        if (categoria != null && !categoria.isBlank()) {
+            return productoRepository.obtenerCatalogoPorCategoria(categoria.trim());
+        }
+        return productoRepository.obtenerCatalogo();
+    }
 
     @Transactional(readOnly = true)
     public List<ProductoCatalogoDTO> getCatalogo() {
-        return productoRepository.obtenerCatalogo();
+        return getCatalogo(null);
     }
 
     @Transactional
     public ProductoCatalogoDTO crearProducto(ProductoRequestDTO dto) {
-        if (dto.precioUnitario() == null) {
-            throw new IllegalArgumentException("El precio es obligatorio.");
-        }
         if (dto.stockActual() != null && dto.stockActual() < 0) {
             throw new IllegalArgumentException("El stock no puede ser negativo.");
         }
@@ -38,7 +47,45 @@ public class ProductoService {
             throw new IllegalArgumentException("El código de producto ya existe.");
         }
 
-        EspProducto nuevoProducto = new EspProducto(dto.codigo(), dto.nombre(), dto.precioUnitario());
+        BigDecimal costo = dto.precioCosto() != null ? dto.precioCosto() : BigDecimal.ZERO;
+        if (costo.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("El precio de costo no puede ser negativo.");
+        }
+
+        BigDecimal porcentaje = dto.porcentajeGanancia();
+        BigDecimal precioVenta = dto.precioUnitario();
+
+        // Cálculo recíproco según spec 4.2
+        if (costo.compareTo(BigDecimal.ZERO) > 0 && porcentaje != null && precioVenta == null) {
+            BigDecimal factor = BigDecimal.ONE.add(porcentaje.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
+            precioVenta = costo.multiply(factor).setScale(2, RoundingMode.HALF_UP);
+        } else if (costo.compareTo(BigDecimal.ZERO) > 0 && precioVenta != null && porcentaje == null) {
+            porcentaje = precioVenta.subtract(costo)
+                    .divide(costo, 4, RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal("100"))
+                    .setScale(2, RoundingMode.HALF_UP);
+        }
+
+        if (precioVenta == null || precioVenta.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("El precio debe ser un valor mayor a $0.");
+        }
+
+        UnidadMedida unidad = dto.unidadMedida() != null ? dto.unidadMedida() : UnidadMedida.UNIDAD;
+        Categoria categoria = null;
+        if (dto.categoriaId() != null) {
+            categoria = categoriaRepository.findById(dto.categoriaId()).orElse(null);
+        }
+
+        EspProducto nuevoProducto = new EspProducto(
+                dto.codigo(),
+                dto.nombre(),
+                precioVenta,
+                costo,
+                porcentaje,
+                unidad,
+                categoria
+        );
+
         if (dto.activo() != null) {
             nuevoProducto.setActivo(dto.activo());
         }
@@ -54,6 +101,10 @@ public class ProductoService {
                 nuevoProducto.getCodigo(),
                 nuevoProducto.getNombre(),
                 nuevoProducto.getPrecioUnitario(),
+                nuevoProducto.getPrecioCosto(),
+                nuevoProducto.getPorcentajeGanancia(),
+                nuevoProducto.getUnidadMedida(),
+                nuevoProducto.getCategoria() != null ? nuevoProducto.getCategoria().getNombre() : null,
                 Long.valueOf(nuevoStock.getCantidad()),
                 nuevoStock.getStockMinimo(),
                 nuevoProducto.isActivo()
@@ -68,12 +119,40 @@ public class ProductoService {
         if (dto.nombre() != null) {
             productoExistente.setNombre(dto.nombre());
         }
+
+        if (dto.precioCosto() != null) {
+            if (dto.precioCosto().compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("El precio de costo no puede ser negativo.");
+            }
+            productoExistente.setPrecioCosto(dto.precioCosto());
+        }
+
+        if (dto.porcentajeGanancia() != null) {
+            productoExistente.setPorcentajeGanancia(dto.porcentajeGanancia());
+            if (dto.precioUnitario() == null && productoExistente.getPrecioCosto().compareTo(BigDecimal.ZERO) > 0) {
+                productoExistente.recalcularPrecioDesdeCostoYMargen();
+            }
+        }
+
         if (dto.precioUnitario() != null) {
-            if (dto.precioUnitario().compareTo(new java.math.BigDecimal("0.01")) < 0) {
+            if (dto.precioUnitario().compareTo(new BigDecimal("0.01")) < 0) {
                 throw new IllegalArgumentException("El precio debe ser un valor mayor a $0.");
             }
             productoExistente.setPrecioUnitario(dto.precioUnitario());
+            if (dto.porcentajeGanancia() == null) {
+                productoExistente.recalcularMargenDesdePrecios();
+            }
         }
+
+        if (dto.unidadMedida() != null) {
+            productoExistente.setUnidadMedida(dto.unidadMedida());
+        }
+
+        if (dto.categoriaId() != null) {
+            Categoria categoria = categoriaRepository.findById(dto.categoriaId()).orElse(null);
+            productoExistente.setCategoria(categoria);
+        }
+
         if (dto.activo() != null) {
             productoExistente.setActivo(dto.activo());
         }
@@ -98,6 +177,10 @@ public class ProductoService {
                 productoExistente.getCodigo(),
                 productoExistente.getNombre(),
                 productoExistente.getPrecioUnitario(),
+                productoExistente.getPrecioCosto(),
+                productoExistente.getPorcentajeGanancia(),
+                productoExistente.getUnidadMedida(),
+                productoExistente.getCategoria() != null ? productoExistente.getCategoria().getNombre() : null,
                 Long.valueOf(stock.getCantidad()),
                 stock.getStockMinimo(),
                 productoExistente.isActivo()
@@ -129,6 +212,10 @@ public class ProductoService {
                 producto.getCodigo(),
                 producto.getNombre(),
                 producto.getPrecioUnitario(),
+                producto.getPrecioCosto(),
+                producto.getPorcentajeGanancia(),
+                producto.getUnidadMedida(),
+                producto.getCategoria() != null ? producto.getCategoria().getNombre() : null,
                 Long.valueOf(nuevoStock),
                 stock.getStockMinimo(),
                 producto.isActivo()
