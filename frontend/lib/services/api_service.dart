@@ -3,7 +3,18 @@ import 'package:dio/dio.dart';
 import '../models/product.dart';
 import 'package:intl/intl.dart';
 
-class ApiService {
+/// Contrato de operaciones POS/productos usado por PosBloc.
+/// Permite inyectar una implementación falsa en los tests.
+abstract interface class PosApi {
+  Future<List<dynamic>> getProducts();
+  Future<void> createSale(Map<String, dynamic> saleData);
+  Future<Product> createProduct(Map<String, dynamic> productData);
+  Future<Product> updateProduct(String codigo, Map<String, dynamic> productData);
+  Future<Product> ajustarStock(String codigo,
+      {required int cantidad, required String motivo});
+}
+
+class ApiService implements PosApi {
   // --- INICIO DEL FIX: PATRÓN SINGLETON ---
   static final ApiService _instance = ApiService._internal();
 
@@ -15,6 +26,11 @@ class ApiService {
   late Dio _dio;
   late String baseUrl;
   String? _authToken;
+
+  /// Callback invocado cuando una petición (que no sea /api/auth/login)
+  /// responde 401: el backend informa sesión expirada/credenciales inválidas.
+  void Function()? onSessionExpired;
+  bool _sessionExpiredNotified = false;
 
   // Constructor interno privado
   ApiService._internal() {
@@ -34,15 +50,33 @@ class ApiService {
         }
         return handler.next(options);
       },
+      onError: (error, handler) {
+        if (shouldNotifySessionExpired(error)) {
+          if (!_sessionExpiredNotified) {
+            _sessionExpiredNotified = true;
+            onSessionExpired?.call();
+          }
+        }
+        return handler.next(error);
+      },
     ));
+  }
+
+  /// Predicado puro: una respuesta 401 de un endpoint distinto al login
+  /// indica que la sesión expiró (el login maneja su propio error).
+  static bool shouldNotifySessionExpired(DioException error) {
+    if (error.response?.statusCode != 401) return false;
+    return !error.requestOptions.path.contains('/api/auth/login');
   }
 
   void setAuthToken(String token) {
     _authToken = token;
+    _sessionExpiredNotified = false;
   }
 
   void clearAuthToken() {
     _authToken = null;
+    _sessionExpiredNotified = false;
   }
 
   /// C.3.4: actualiza la URL base usada por el cliente Dio interno.
@@ -98,6 +132,7 @@ class ApiService {
     }
   }
 
+  @override
   Future<List<dynamic>> getProducts() async {
     try {
       final response = await _dio.get('/api/productos');
@@ -116,6 +151,7 @@ class ApiService {
     }
   }
 
+  @override
   Future<void> createSale(Map<String, dynamic> saleData) async {
     try {
       final response = await _dio.post('/api/ventas', data: saleData);
@@ -137,6 +173,7 @@ class ApiService {
     }
   }
 
+  @override
   Future<Product> createProduct(Map<String, dynamic> productData) async {
     try {
       final response = await _dio.post('/api/productos/crear', data: productData);
@@ -216,6 +253,7 @@ class ApiService {
     }
   }
 
+  @override
   Future<Product> updateProduct(
       String codigo, Map<String, dynamic> productData) async {
     try {
@@ -227,10 +265,38 @@ class ApiService {
         throw Exception('Error al actualizar el producto');
       }
     } on DioException catch (e) {
-      if (e.response?.statusCode == 422) {
+      if (e.response?.statusCode == 422 || e.response?.statusCode == 400) {
         throw Exception('Datos inválidos: verifique el precio o el stock.');
       }
       throw Exception('Error de red al actualizar: ${e.message}');
+    }
+  }
+
+  /// Ajusta el stock de un producto usando el endpoint dedicado del backend.
+  /// [cantidad] es un delta: positivo suma, negativo resta.
+  /// Devuelve el producto actualizado (con el stock resultante).
+  @override
+  Future<Product> ajustarStock(String codigo,
+      {required int cantidad, required String motivo}) async {
+    try {
+      final response = await _dio.put('/api/productos/stock/$codigo', data: {
+        'cantidad': cantidad,
+        'motivo': motivo,
+      });
+      if (response.statusCode == 200) {
+        return Product.fromJson(response.data);
+      } else {
+        throw Exception('Error al ajustar el stock');
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 422 || e.response?.statusCode == 400) {
+        final data = e.response?.data;
+        if (data is Map && data['error'] is String) {
+          throw Exception(data['error']);
+        }
+        throw Exception('Datos inválidos al ajustar el stock.');
+      }
+      throw Exception('Error de red al ajustar el stock: ${e.message}');
     }
   }
 
