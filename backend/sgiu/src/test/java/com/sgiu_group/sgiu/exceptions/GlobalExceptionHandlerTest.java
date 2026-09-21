@@ -109,4 +109,15 @@ class GlobalExceptionHandlerTest {
         assertThat(cuerpo(respuesta)).containsEntry("codigo", "ERROR_DASHBOARD");
         assertThat(cuerpo(respuesta)).containsEntry("mensaje", "No se pudo generar el Dashboard");
     }
+
+    @Test
+    void handleHttpMessageNotReadable_devuelve400ConMensajeFormatoInvalido() {
+        org.springframework.http.converter.HttpMessageNotReadableException ex =
+                new org.springframework.http.converter.HttpMessageNotReadableException("JSON parse error");
+
+        ResponseEntity<?> respuesta = handler.handleHttpMessageNotReadable(ex);
+
+        assertThat(respuesta.getStatusCode().value()).isEqualTo(400);
+        assertThat(cuerpo(respuesta)).containsEntry("error", "Error en el formato de los datos o valor inválido.");
+    }
 }
