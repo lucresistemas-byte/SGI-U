@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 import '../../repositories/auth_repository.dart';
+import '../../services/api_service.dart';
 import '../../services/discovery_service.dart';
 import '../../services/storage_service.dart';
 
@@ -16,6 +17,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<CheckAuthStatus>(_onCheckAuthStatus);
     on<LoginRequested>(_onLoginRequested);
     on<LogoutRequested>(_onLogoutRequested);
+    on<SessionExpired>(_onSessionExpired);
+
+    // Sesión expirada: el interceptor 401 de ApiService avisa a este bloc.
+    ApiService().onSessionExpired = () {
+      if (!isClosed) add(SessionExpired());
+    };
   }
 
   Future<void> _onCheckAuthStatus(
@@ -73,5 +80,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     await _storageService.deleteToken();
     _authRepository.clearAuthToken();
     emit(Unauthenticated());
+  }
+
+  /// Sesión expirada (401 en endpoints): limpia credenciales y muestra el
+  /// login con el aviso. AuthError redirige a LoginScreen (ver StartupDecider).
+  Future<void> _onSessionExpired(
+      SessionExpired event, Emitter<AuthState> emit) async {
+    await _storageService.deleteToken();
+    _authRepository.clearAuthToken();
+    emit(const AuthError('Su sesión ha expirado. Vuelva a iniciar sesión.'));
   }
 }
