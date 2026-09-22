@@ -27,7 +27,7 @@ class ApiService implements PosApi {
   }
   // --- FIN DEL FIX ---
 
-  late Dio _dio;
+  late Dio dio;
   late String baseUrl;
   String? _authToken;
 
@@ -39,14 +39,14 @@ class ApiService implements PosApi {
   // Constructor interno privado
   ApiService._internal() {
     baseUrl = 'http://localhost:3000';
-    _dio = Dio(BaseOptions(
+    dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
     ));
 
-    _dio.interceptors.add(InterceptorsWrapper(
+    dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
         if (_authToken != null) {
           // Acá se inyecta el token en CADA petición si existe
@@ -87,19 +87,16 @@ class ApiService implements PosApi {
   /// Preserva timeouts, headers y la inyección del token de autenticación.
   void setBaseUrl(String newBaseUrl) {
     baseUrl = newBaseUrl;
-    _dio.options.baseUrl = newBaseUrl;
+    dio.options.baseUrl = newBaseUrl;
   }
 
   /// URL base efectiva del cliente Dio interno (útil para diagnóstico/tests).
-  String get effectiveBaseUrl => _dio.options.baseUrl;
+  String get effectiveBaseUrl => dio.options.baseUrl;
 
-  /// Cliente Dio interno para configuración y testing (http_mock_adapter).
-  Dio get dio => _dio;
-  set dio(Dio newDio) => _dio = newDio;
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
-      final response = await _dio.post('/api/auth/login', data: {
+      final response = await dio.post('/api/auth/login', data: {
         'username': username,
         'password': password,
       }).timeout(const Duration(seconds: 10));
@@ -143,7 +140,7 @@ class ApiService implements PosApi {
   @override
   Future<List<dynamic>> getProducts() async {
     try {
-      final response = await _dio.get('/api/productos');
+      final response = await dio.get('/api/productos');
       if (response.statusCode == 200) {
         return response.data;
       } else {
@@ -162,7 +159,7 @@ class ApiService implements PosApi {
   @override
   Future<void> createSale(Map<String, dynamic> saleData) async {
     try {
-      final response = await _dio.post('/api/ventas', data: saleData);
+      final response = await dio.post('/api/ventas', data: saleData);
       if (response.statusCode == 201) {
         return;
       } else {
@@ -184,7 +181,7 @@ class ApiService implements PosApi {
   @override
   Future<Product> createProduct(Map<String, dynamic> productData) async {
     try {
-      final response = await _dio.post('/api/productos/crear', data: productData);
+      final response = await dio.post('/api/productos/crear', data: productData);
       if (response.statusCode == 201) {
         return Product.fromJson(response.data);
       } else {
@@ -201,7 +198,7 @@ class ApiService implements PosApi {
 
   Future<Map<String, dynamic>> getResumenFinanciero() async {
     try {
-      final response = await _dio.get('/api/finanzas/resumen');
+      final response = await dio.get('/api/finanzas/resumen');
       if (response.statusCode == 200) {
         return response.data;
       } else {
@@ -215,7 +212,7 @@ class ApiService implements PosApi {
   Future<List<dynamic>> getMovimientos(
       {int pagina = 1, int limite = 10}) async {
     try {
-      final response = await _dio.get('/api/movimientos', queryParameters: {
+      final response = await dio.get('/api/movimientos', queryParameters: {
         'page': pagina,
         'limit': limite,
       });
@@ -232,7 +229,7 @@ class ApiService implements PosApi {
 
   Future<void> createMovimiento(Map<String, dynamic> data) async {
     try {
-      final response = await _dio.post('/api/movimientos', data: data);
+      final response = await dio.post('/api/movimientos', data: data);
       if (response.statusCode != 201) {
         throw Exception('Error al crear movimiento');
       }
@@ -246,7 +243,7 @@ class ApiService implements PosApi {
 
   Future<Map<String, dynamic>> getBalance(DateTime inicio, DateTime fin) async {
     try {
-      final response = await _dio.get('/api/balance', queryParameters: {
+      final response = await dio.get('/api/balance', queryParameters: {
         // CUIDADO ACÁ: Tienen que llamarse igual que en el BalanceController de Java
         'fechaInicio': DateFormat('yyyy-MM-dd').format(inicio),
         'fechaFin': DateFormat('yyyy-MM-dd').format(fin),
@@ -266,7 +263,7 @@ class ApiService implements PosApi {
       String codigo, Map<String, dynamic> productData) async {
     try {
       final response =
-          await _dio.put('/api/productos/editar/$codigo', data: productData);
+          await dio.put('/api/productos/editar/$codigo', data: productData);
       if (response.statusCode == 200) {
         return Product.fromJson(response.data);
       } else {
@@ -287,7 +284,7 @@ class ApiService implements PosApi {
   Future<Product> ajustarStock(String codigo,
       {required int cantidad, required String motivo}) async {
     try {
-      final response = await _dio.put('/api/productos/stock/$codigo', data: {
+      final response = await dio.put('/api/productos/stock/$codigo', data: {
         'cantidad': cantidad,
         'motivo': motivo,
       });
@@ -321,7 +318,7 @@ class ApiService implements PosApi {
         "${fechaHasta.year}-${fechaHasta.month.toString().padLeft(2, '0')}-${fechaHasta.day.toString().padLeft(2, '0')}";
 
     try {
-      final response = await _dio.get('/api/dashboard', queryParameters: {
+      final response = await dio.get('/api/dashboard', queryParameters: {
         'fechaDesde': desdeStr,
         'fechaHasta': hastaStr,
         // Solo mandamos estos parámetros si el usuario eligió un filtro específico
@@ -344,7 +341,7 @@ class ApiService implements PosApi {
 
   Future<ConfiguracionNegocio> getConfiguracion() async {
     try {
-      final response = await _dio.get('/api/configuracion');
+      final response = await dio.get('/api/configuracion');
       if (response.statusCode == 200) {
         final config = ConfiguracionNegocio.fromJson(
             response.data as Map<String, dynamic>);
@@ -361,7 +358,7 @@ class ApiService implements PosApi {
   Future<ConfiguracionNegocio> saveConfiguracion(ConfiguracionNegocio config) async {
     try {
       final response =
-          await _dio.put('/api/configuracion', data: config.toJson());
+          await dio.put('/api/configuracion', data: config.toJson());
       if (response.statusCode == 200) {
         final saved = ConfiguracionNegocio.fromJson(
             response.data as Map<String, dynamic>);
@@ -378,7 +375,7 @@ class ApiService implements PosApi {
   // --- INSUMOS (MATERIA PRIMA) ---
   Future<List<Insumo>> getInsumos() async {
     try {
-      final response = await _dio.get('/api/insumos');
+      final response = await dio.get('/api/insumos');
       if (response.statusCode == 200) {
         final List list = response.data as List;
         return list.map((item) => Insumo.fromJson(item as Map<String, dynamic>)).toList();
@@ -392,7 +389,7 @@ class ApiService implements PosApi {
 
   Future<Insumo> createInsumo(Map<String, dynamic> data) async {
     try {
-      final response = await _dio.post('/api/insumos', data: data);
+      final response = await dio.post('/api/insumos', data: data);
       if (response.statusCode == 201) {
         return Insumo.fromJson(response.data as Map<String, dynamic>);
       } else {
@@ -411,7 +408,7 @@ class ApiService implements PosApi {
 
   Future<Insumo> updateInsumo(int id, Map<String, dynamic> data) async {
     try {
-      final response = await _dio.put('/api/insumos/$id', data: data);
+      final response = await dio.put('/api/insumos/$id', data: data);
       if (response.statusCode == 200) {
         return Insumo.fromJson(response.data as Map<String, dynamic>);
       } else {
@@ -424,7 +421,7 @@ class ApiService implements PosApi {
 
   Future<Insumo> ajustarStockInsumo(int id, {required int cantidad, required String motivo}) async {
     try {
-      final response = await _dio.post(
+      final response = await dio.post(
         '/api/insumos/$id/ajuste-stock',
         data: {'cantidad': cantidad, 'motivo': motivo},
       );
@@ -441,7 +438,7 @@ class ApiService implements PosApi {
   // --- RECETAS ---
   Future<List<Receta>> getRecetas() async {
     try {
-      final response = await _dio.get('/api/recetas');
+      final response = await dio.get('/api/recetas');
       if (response.statusCode == 200) {
         final List list = response.data as List;
         return list.map((item) => Receta.fromJson(item as Map<String, dynamic>)).toList();
@@ -455,7 +452,7 @@ class ApiService implements PosApi {
 
   Future<Receta?> getRecetaByProducto(String codigo) async {
     try {
-      final response = await _dio.get('/api/recetas/producto/$codigo');
+      final response = await dio.get('/api/recetas/producto/$codigo');
       if (response.statusCode == 200) {
         return Receta.fromJson(response.data as Map<String, dynamic>);
       }
@@ -468,7 +465,7 @@ class ApiService implements PosApi {
 
   Future<Receta> createReceta(Map<String, dynamic> data) async {
     try {
-      final response = await _dio.post('/api/recetas', data: data);
+      final response = await dio.post('/api/recetas', data: data);
       if (response.statusCode == 201) {
         return Receta.fromJson(response.data as Map<String, dynamic>);
       } else {
@@ -487,7 +484,7 @@ class ApiService implements PosApi {
 
   Future<Receta> updateReceta(int id, Map<String, dynamic> data) async {
     try {
-      final response = await _dio.put('/api/recetas/$id', data: data);
+      final response = await dio.put('/api/recetas/$id', data: data);
       if (response.statusCode == 200) {
         return Receta.fromJson(response.data as Map<String, dynamic>);
       } else {
@@ -500,7 +497,7 @@ class ApiService implements PosApi {
 
   Future<void> deleteReceta(int id) async {
     try {
-      final response = await _dio.delete('/api/recetas/$id');
+      final response = await dio.delete('/api/recetas/$id');
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception('Error al eliminar receta');
       }
@@ -516,7 +513,7 @@ class ApiService implements PosApi {
       if (query != null && query.trim().isNotEmpty) {
         queryParams['q'] = query.trim();
       }
-      final response = await _dio.get('/api/pedidos', queryParameters: queryParams);
+      final response = await dio.get('/api/pedidos', queryParameters: queryParams);
       if (response.statusCode == 200) {
         final List list = response.data as List;
         return list.map((item) => Pedido.fromJson(item as Map<String, dynamic>)).toList();
@@ -530,7 +527,7 @@ class ApiService implements PosApi {
 
   Future<Pedido> getPedidoById(int id) async {
     try {
-      final response = await _dio.get('/api/pedidos/$id');
+      final response = await dio.get('/api/pedidos/$id');
       if (response.statusCode == 200) {
         return Pedido.fromJson(response.data as Map<String, dynamic>);
       } else {
@@ -543,7 +540,7 @@ class ApiService implements PosApi {
 
   Future<Pedido> createPedido(Map<String, dynamic> data) async {
     try {
-      final response = await _dio.post('/api/pedidos', data: data);
+      final response = await dio.post('/api/pedidos', data: data);
       if (response.statusCode == 201) {
         return Pedido.fromJson(response.data as Map<String, dynamic>);
       } else {
@@ -572,7 +569,7 @@ class ApiService implements PosApi {
         if (metodoPago != null) 'metodoPago': metodoPago,
         if (nota != null) 'nota': nota,
       };
-      final response = await _dio.post('/api/pedidos/$id/abonar', data: payload);
+      final response = await dio.post('/api/pedidos/$id/abonar', data: payload);
       if (response.statusCode == 200) {
         return Pedido.fromJson(response.data as Map<String, dynamic>);
       } else {
@@ -591,7 +588,7 @@ class ApiService implements PosApi {
 
   Future<Pedido> cancelarPedido(int id) async {
     try {
-      final response = await _dio.post('/api/pedidos/$id/cancelar');
+      final response = await dio.post('/api/pedidos/$id/cancelar');
       if (response.statusCode == 200) {
         return Pedido.fromJson(response.data as Map<String, dynamic>);
       } else {

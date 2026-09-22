@@ -5,7 +5,7 @@ import '../blocs/pos_event.dart';
 import '../blocs/pos_state.dart';
 
 class PaymentMethodSelector extends StatelessWidget {
-  const PaymentMethodSelector({Key? key}) : super(key: key);
+  const PaymentMethodSelector({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,14 +24,14 @@ class PaymentMethodSelector extends StatelessWidget {
                       context.read<PosBloc>().add(SelectPaymentMethod(value));
                     }
                   },
-                  child: Column(
+                  child: const Column(
                     children: [
                       RadioListTile<String>(
-                        title: const Text('Efectivo'),
+                        title: Text('Efectivo'),
                         value: 'EFECTIVO',
                       ),
                       RadioListTile<String>(
-                        title: const Text('Mercado Pago'),
+                        title: Text('Mercado Pago'),
                         value: 'MERCADO_PAGO',
                       ),
                     ],

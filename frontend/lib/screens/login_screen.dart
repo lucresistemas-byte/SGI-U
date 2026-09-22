@@ -62,16 +62,16 @@ class _LoginScreenState extends State<LoginScreen> {
           return Stack(
             children: [
               Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   image: DecorationImage(
-                    image: const AssetImage('assets/images/login_background.png'),
+                    image: AssetImage('assets/images/login_background.png'),
                     fit: BoxFit.cover,
                   ),
                 ),
                 child: BackdropFilter(
                   filter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
                   child: Container(
-                    color: Colors.black.withOpacity(0.05), // opacidad reducida
+                    color: Colors.black.withValues(alpha: 0.05), // opacidad reducida
                   ),
                 ),
               ),
@@ -86,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(32),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         spreadRadius: 2,
                       ),

@@ -50,7 +50,7 @@ void main() {
       senia: 2000.0,
       saldo: 0.0,
       estado: 'PAGADO',
-      abonos: const [
+      abonos: [
         PedidoAbono(id: 1, monto: 2000.0, metodoPago: 'EFECTIVO'),
         PedidoAbono(id: 2, monto: 3000.0, metodoPago: 'TRANSFERENCIA'),
       ],
@@ -95,7 +95,7 @@ void main() {
             )).thenAnswer((_) async => pedidoAbonado2000);
         return pedidosBloc;
       },
-      seed: () => PedidosState(
+      seed: () => const PedidosState(
         pedidos: [pedidoInicial],
         filteredPedidos: [pedidoInicial],
       ),
@@ -127,10 +127,10 @@ void main() {
     blocTest<PedidosBloc, PedidosState>(
       'BuscarPedidos filtra instantáneamente por nombre o por teléfono',
       build: () => pedidosBloc,
-      seed: () => PedidosState(
+      seed: () => const PedidosState(
         pedidos: [
           pedidoInicial,
-          const Pedido(
+          Pedido(
             id: 20,
             clienteNombre: 'Silvia Fernández',
             clienteTelefono: '343-9876543',

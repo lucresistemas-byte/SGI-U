@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../models/pedido.dart';
 import '../../services/api_service.dart';
 import 'pedidos_event.dart';
 import 'pedidos_state.dart';

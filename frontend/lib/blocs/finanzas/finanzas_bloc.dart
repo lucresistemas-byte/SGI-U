@@ -24,7 +24,7 @@ class FinanzasBloc extends Bloc<FinanzasEvent, FinanzasState> {
       emit(ResumenLoaded(resumen));
     } catch (e) {
       // Si falla, emitimos un resumen vacío
-      emit(ResumenLoaded({'ingresosHoy': 0.0, 'egresosHoy': 0.0, 'saldoActual': 0.0}));
+      emit(const ResumenLoaded({'ingresosHoy': 0.0, 'egresosHoy': 0.0, 'saldoActual': 0.0}));
     }
   }
 
@@ -67,10 +67,10 @@ class FinanzasBloc extends Bloc<FinanzasEvent, FinanzasState> {
         'categoria': event.categoria,
         'descripcion': event.descripcion,
       });
-      emit(OperacionExitosa('Movimiento registrado correctamente'));
+      emit(const OperacionExitosa('Movimiento registrado correctamente'));
       // Recargar datos
-      add(CargarResumen());
-      add(CargarMovimientos());
+      add(const CargarResumen());
+      add(const CargarMovimientos());
     } catch (e) {
       emit(MovimientosError(e.toString()));
     }

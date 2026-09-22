@@ -29,7 +29,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
           isLoading: true, errorMessage: null, successMessage: null));
       try {
         await _apiService.createProduct(event.productData);
-        add(LoadProducts());
+        add(const LoadProducts());
         emit(state.copyWith(
             isLoading: false, successMessage: 'Producto guardado con éxito'));
       } catch (e) {
@@ -53,7 +53,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
           );
         }
 
-        add(LoadProducts());
+        add(const LoadProducts());
         emit(state.copyWith(
             isLoading: false,
             successMessage: 'Producto actualizado con éxito'));
@@ -191,7 +191,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
         completedSale: saleSnapshot,
         successMessage: 'Venta registrada correctamente',
       ));
-      add(LoadProducts());
+      add(const LoadProducts());
     } catch (e) {
       emit(state.copyWith(errorMessage: e.toString()));
     }

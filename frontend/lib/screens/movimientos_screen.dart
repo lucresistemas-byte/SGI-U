@@ -12,21 +12,21 @@ import '../utils/parsers.dart';
 import '../utils/finanzas_calculator.dart';
 
 class MovimientosScreen extends StatelessWidget {
-  const MovimientosScreen({Key? key}) : super(key: key);
+  const MovimientosScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     // La carga inicial la hace MovimientosContent en initState
-    return AppScaffold(
+    return const AppScaffold(
       title: 'Movimientos',
       rutaActual: '/movimientos',
-      body: const MovimientosContent(),
+      body: MovimientosContent(),
     );
   }
 }
 
 class MovimientosContent extends StatefulWidget {
-  const MovimientosContent({Key? key}) : super(key: key);
+  const MovimientosContent({super.key});
 
   @override
   State<MovimientosContent> createState() => _MovimientosContentState();
@@ -68,6 +68,7 @@ class _MovimientosContentState extends State<MovimientosContent> {
                     builder: (_) => const MovimientoFormDialog(),
                   );
                   if (result == true) {
+                    if (!context.mounted) return;
                     // Si guardó exitosamente, volvemos a la página 1 y recargamos
                     setState(() => _paginaActual = 1);
                     context.read<FinanzasBloc>().add(const CargarMovimientos());
@@ -196,13 +197,15 @@ class _MovimientosContentState extends State<MovimientosContent> {
                         if (totalPaginas == 0) totalPaginas = 1;
 
                         // Seguro por si borramos elementos y la página actual ya no existe
-                        if (_paginaActual > totalPaginas)
+                        if (_paginaActual > totalPaginas) {
                           _paginaActual = totalPaginas;
+                        }
 
                         int startIndex = (_paginaActual - 1) * _filasPorPagina;
                         int endIndex = startIndex + _filasPorPagina;
-                        if (endIndex > movimientos.length)
+                        if (endIndex > movimientos.length) {
                           endIndex = movimientos.length;
+                        }
 
                         // Cortamos la lista para mostrar solo las 7 filas correspondientes
                         List<dynamic> movimientosPaginados =
@@ -226,7 +229,7 @@ class _MovimientosContentState extends State<MovimientosContent> {
                                         horizontalMargin: 24,
                                         headingRowHeight: 42,
                                         headingRowColor:
-                                            MaterialStateProperty.resolveWith(
+                                            WidgetStateProperty.resolveWith(
                                                 (_) => const Color(0xFFF7F7F7)),
                                         headingTextStyle: const TextStyle(
                                             fontWeight: FontWeight.w600,
@@ -400,7 +403,7 @@ class _MovimientosContentState extends State<MovimientosContent> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4)
+            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4)
           ],
         ),
         child: Column(
@@ -439,7 +442,7 @@ class _MovimientosContentState extends State<MovimientosContent> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4)
+            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4)
           ],
         ),
         child: Column(
@@ -511,8 +514,9 @@ class _MovimientosContentState extends State<MovimientosContent> {
     if (normal.contains('efectivo') || normal == '1') return 'Efectivo';
     if (normal.contains('mercado') || normal == '2') return 'Mercado Pago';
     if (normal.contains('tarjeta') || normal == '3') return 'Tarjeta';
-    if (normal.contains('transferencia') || normal == '4')
+    if (normal.contains('transferencia') || normal == '4') {
       return 'Transferencia';
+    }
     return raw.isNotEmpty ? raw : 'N/A';
   }
 

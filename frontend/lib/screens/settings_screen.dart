@@ -9,7 +9,7 @@ import '../widgets/app_scaffold.dart';
 class SettingsScreen extends StatefulWidget {
   final ApiService? apiService;
 
-  const SettingsScreen({Key? key, this.apiService}) : super(key: key);
+  const SettingsScreen({super.key, this.apiService});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();

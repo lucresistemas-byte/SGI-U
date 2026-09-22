@@ -183,8 +183,9 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     final cantidad = int.tryParse(_ajusteCantidadController.text.trim()) ?? 0;
     // Sin cantidad ingresada: se guarda solo el dato, sin ajuste de stock.
     if (cantidad <= 0) return true;
-    if (_ajusteTipo == 'restar' && cantidad > _stockActualMostrado)
+    if (_ajusteTipo == 'restar' && cantidad > _stockActualMostrado) {
       return false;
+    }
     return true;
   }
 
@@ -282,7 +283,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
           setState(() => _backendError = state.errorMessage);
           // Opcional: limpiar el error global después de mostrarlo localmente
           Future.delayed(Duration.zero, () {
-            if (!mounted) return;
+            if (!context.mounted) return;
             context.read<PosBloc>().add(const ClearError());
           });
         }
@@ -384,12 +385,14 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       onChanged: _onPrecioVentaChanged,
                       validator: (value) {
-                        if (value == null || value.isEmpty)
+                        if (value == null || value.isEmpty) {
                           return 'El precio es obligatorio.';
+                        }
                         final normalized = value.trim().replaceAll(',', '.');
                         final precio = double.tryParse(normalized);
-                        if (precio == null)
+                        if (precio == null) {
                           return 'Ingrese un valor numérico válido.';
+                        }
                         if (precio <= 0) {
                           return 'El precio debe ser mayor a \$0.';
                         }
@@ -432,12 +435,14 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty)
+                          if (value == null || value.isEmpty) {
                             return 'Requerido';
+                          }
                           final stock = int.tryParse(value);
                           if (stock == null) return 'Debe ser un número entero';
-                          if (stock < 0)
+                          if (stock < 0) {
                             return 'El stock no puede ser negativo';
+                          }
                           return null;
                         },
                       ),
@@ -490,12 +495,14 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                                     ),
                                     keyboardType: TextInputType.number,
                                     validator: (value) {
-                                      if (value == null || value.isEmpty)
+                                      if (value == null || value.isEmpty) {
                                         return null;
+                                      }
                                       final cant = int.tryParse(value);
                                       if (cant == null) return 'Número entero';
-                                      if (cant <= 0)
+                                      if (cant <= 0) {
                                         return 'Debe ser mayor a 0';
+                                      }
                                       if (_ajusteTipo == 'restar' &&
                                           cant > _stockActualMostrado) {
                                         return 'No puede quedar stock negativo';

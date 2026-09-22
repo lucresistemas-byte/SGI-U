@@ -102,7 +102,7 @@ class TicketService {
           // Fecha
           pw.Text(
             _formatterFecha.format(sale.timestamp),
-            style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+            style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
           ),
           pw.SizedBox(height: 8),
 
@@ -121,8 +121,8 @@ class TicketService {
               fontSize: 8,
               fontWeight: pw.FontWeight.bold,
             ),
-            cellStyle: pw.TextStyle(fontSize: 8),
-            headerDecoration: pw.BoxDecoration(
+            cellStyle: const pw.TextStyle(fontSize: 8),
+            headerDecoration: const pw.BoxDecoration(
               color: PdfColor.fromInt(0xFFF0F0F0),
             ),
             headers: ['Prod.', 'Cant.', 'P.U.', 'Subt.'],
@@ -168,14 +168,14 @@ class TicketService {
           pw.SizedBox(height: 2),
           pw.Text(
             _formatMetodoPago(sale.paymentMethod),
-            style: pw.TextStyle(fontSize: 9),
+            style: const pw.TextStyle(fontSize: 9),
           ),
           pw.SizedBox(height: 8),
           pw.Divider(thickness: 1),
           pw.Center(
             child: pw.Text(
               'Documento generado automáticamente por SGI-U',
-              style: pw.TextStyle(fontSize: 7, color: PdfColors.grey600),
+              style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600),
             ),
           ),
         ],

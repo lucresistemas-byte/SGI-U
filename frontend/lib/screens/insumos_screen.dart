@@ -136,7 +136,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
                               flex: 2,
                               child: DropdownButtonFormField<String>(
                                 key: const Key('insumo_unidad_dropdown'),
-                                value: unidadSeleccionada,
+                                initialValue: unidadSeleccionada,
                                 decoration: const InputDecoration(
                                   labelText: 'Unidad',
                                   border: OutlineInputBorder(),
@@ -355,10 +355,10 @@ class _InsumosScreenState extends State<InsumosScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
+                      const Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
+                          children: [
                             Text(
                               'Stock de Materia Prima',
                               style: TextStyle(
@@ -407,7 +407,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withValues(alpha: 0.04),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -453,10 +453,10 @@ class _InsumosScreenState extends State<InsumosScreen> {
     }
 
     if (items.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(Icons.inventory_2_outlined, size: 64, color: Color(0xFF94A3B8)),
             SizedBox(height: 12),
             Text(
@@ -478,7 +478,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -490,7 +490,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-            headingRowColor: MaterialStateProperty.all(const Color(0xFFF1F5F9)),
+            headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
             columns: const [
               DataColumn(label: Text('Código', style: TextStyle(fontWeight: FontWeight.bold))),
               DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.bold))),

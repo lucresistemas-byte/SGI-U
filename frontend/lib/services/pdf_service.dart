@@ -20,10 +20,10 @@ class PdfService {
     ConfiguracionNegocio? configuracion,
   }) async {
     final pdf = pw.Document();
-    final _formatterFecha = DateFormat('dd/MM/yyyy');
-    final _formatterCurrency =
+    final formatterFecha = DateFormat('dd/MM/yyyy');
+    final formatterCurrency =
         NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
-    final _formatterFechaHora = DateFormat('dd/MM/yyyy HH:mm');
+    final formatterFechaHora = DateFormat('dd/MM/yyyy HH:mm');
 
     final String nombre = nombreNegocio ??
         configuracion?.nombre ??
@@ -53,7 +53,7 @@ class PdfService {
                       style: pw.TextStyle(
                         fontSize: 26,
                         fontWeight: pw.FontWeight.bold,
-                        color: PdfColor.fromInt(0xFF006B3D),
+                        color: const PdfColor.fromInt(0xFF006B3D),
                       ),
                     ),
                     pw.Image(
@@ -70,7 +70,7 @@ class PdfService {
                   style: pw.TextStyle(
                     fontSize: 28,
                     fontWeight: pw.FontWeight.bold,
-                    color: PdfColor.fromInt(0xFF006B3D),
+                    color: const PdfColor.fromInt(0xFF006B3D),
                   ),
                 ),
               ],
@@ -101,8 +101,8 @@ class PdfService {
                         ),
                       ),
                       pw.Text(
-                        '${_formatterFecha.format(fechaInicio)} - ${_formatterFecha.format(fechaFin)}',
-                        style: pw.TextStyle(fontSize: 12),
+                        '${formatterFecha.format(fechaInicio)} - ${formatterFecha.format(fechaFin)}',
+                        style: const pw.TextStyle(fontSize: 12),
                       ),
                     ],
                   ),
@@ -118,8 +118,8 @@ class PdfService {
                         ),
                       ),
                       pw.Text(
-                        _formatterFechaHora.format(DateTime.now()),
-                        style: pw.TextStyle(fontSize: 12),
+                        formatterFechaHora.format(DateTime.now()),
+                        style: const pw.TextStyle(fontSize: 12),
                       ),
                     ],
                   ),
@@ -131,15 +131,15 @@ class PdfService {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildKpiCard('Total Ingresos', totalIngresos,
-                      PdfColor.fromInt(0xFF008A3D)),
+                      const PdfColor.fromInt(0xFF008A3D)),
                   _buildKpiCard('Total Egresos', totalEgresos,
-                      PdfColor.fromInt(0xFFFF2E2E)),
+                      const PdfColor.fromInt(0xFFFF2E2E)),
                   _buildKpiCard(
                     'Margen Neto',
                     margenNeto,
                     margenNeto >= 0
-                        ? PdfColor.fromInt(0xFF008A3D)
-                        : PdfColor.fromInt(0xFFFF2E2E),
+                        ? const PdfColor.fromInt(0xFF008A3D)
+                        : const PdfColor.fromInt(0xFFFF2E2E),
                   ),
                 ],
               ),
@@ -154,14 +154,14 @@ class PdfService {
               pw.TableHelper.fromTextArray(
                 cellAlignment: pw.Alignment.centerLeft,
                 headerDecoration: pw.BoxDecoration(
-                  color: PdfColor.fromInt(0xFFF6F6F6),
+                  color: const PdfColor.fromInt(0xFFF6F6F6),
                   border: pw.Border.all(color: PdfColors.grey300),
                 ),
                 headerStyle: pw.TextStyle(
                   fontSize: 10,
                   fontWeight: pw.FontWeight.bold,
                 ),
-                cellStyle: pw.TextStyle(fontSize: 9),
+                cellStyle: const pw.TextStyle(fontSize: 9),
                 rowDecoration: pw.BoxDecoration(
                   border: pw.Border.all(color: PdfColors.grey200),
                 ),
@@ -189,7 +189,7 @@ class PdfService {
                   return [
                     fechaHora,
                     tipoDisplay,
-                    _formatterCurrency.format(monto),
+                    formatterCurrency.format(monto),
                     metodoDisplay,
                     categoria,
                     descripcion,
@@ -201,7 +201,7 @@ class PdfService {
               pw.SizedBox(height: 8),
               pw.Text(
                 'Documento generado automáticamente por SGI-U',
-                style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+                style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
               ),
             ],
           ),
@@ -213,12 +213,12 @@ class PdfService {
     await Printing.sharePdf(
       bytes: await pdf.save(),
       filename:
-          'Balance_${_formatterFecha.format(fechaInicio)}_a_${_formatterFecha.format(fechaFin)}.pdf',
+          'Balance_${formatterFecha.format(fechaInicio)}_a_${formatterFecha.format(fechaFin)}.pdf',
     );
   }
 
   static pw.Widget _buildKpiCard(String titulo, double valor, PdfColor color) {
-    final _formatterCurrency =
+    final formatterCurrency =
         NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
     return pw.Container(
       width: 150,
@@ -240,7 +240,7 @@ class PdfService {
           ),
           pw.SizedBox(height: 6),
           pw.Text(
-            _formatterCurrency.format(valor),
+            formatterCurrency.format(valor),
             style: pw.TextStyle(
               fontSize: 14,
               fontWeight: pw.FontWeight.bold,

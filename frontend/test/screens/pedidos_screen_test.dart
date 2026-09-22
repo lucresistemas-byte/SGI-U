@@ -66,7 +66,7 @@ void main() {
         final stateController = StreamController<PedidosState>.broadcast();
         addTearDown(stateController.close);
 
-        final initialState = PedidosState(
+        const initialState = PedidosState(
           pedidos: [pedidoGonzalo, pedidoSilvia],
           filteredPedidos: [pedidoGonzalo, pedidoSilvia],
         );

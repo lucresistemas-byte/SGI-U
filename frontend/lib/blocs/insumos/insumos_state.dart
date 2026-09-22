@@ -17,7 +17,7 @@ class InsumosLoaded extends InsumosState {
   final List<Insumo> filteredInsumos;
   final String searchQuery;
 
-  InsumosLoaded({
+  const InsumosLoaded({
     required this.insumos,
     List<Insumo>? filteredInsumos,
     this.searchQuery = '',

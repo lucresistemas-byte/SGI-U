@@ -24,7 +24,7 @@ class _PosScreenState extends State<PosScreen> {
     super.initState();
     // Usa el PosBloc global provisto en main.dart (evita una segunda
     // instancia desincronizada con Catálogo) y refresca el stock
-    context.read<PosBloc>().add(LoadProducts());
+    context.read<PosBloc>().add(const LoadProducts());
   }
 
   @override
@@ -106,7 +106,7 @@ class PosView extends StatelessWidget {
           );
         }
       },
-      child: AppScaffold(
+      child: const AppScaffold(
         title: 'Punto de Venta',
         rutaActual: '/pos',
         body: FractionallySizedBox(
@@ -114,8 +114,8 @@ class PosView extends StatelessWidget {
           heightFactor: 1.0,
           child: Row(
             children: [
-              const Expanded(flex: 7, child: LeftPanel()),
-              const Expanded(flex: 3, child: RightPanel()),
+              Expanded(flex: 7, child: LeftPanel()),
+              Expanded(flex: 3, child: RightPanel()),
             ],
           ),
         ),
@@ -223,7 +223,7 @@ class PosCategoryFilter extends StatelessWidget {
                 key: ValueKey('pos_category_chip_$cat'),
                 label: Text(cat),
                 selected: isSelected,
-                selectedColor: AppColors.verdeTeal.withOpacity(0.2),
+                selectedColor: AppColors.verdeTeal.withValues(alpha: 0.2),
                 checkmarkColor: AppColors.verdeTeal,
                 labelStyle: TextStyle(
                   color: isSelected ? AppColors.verdeTeal : Colors.black87,
@@ -475,7 +475,7 @@ class RightPanel extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          PaymentMethodSelector(),
+          const PaymentMethodSelector(),
           const Spacer(),
           BlocBuilder<PosBloc, PosState>(
             builder: (context, state) {

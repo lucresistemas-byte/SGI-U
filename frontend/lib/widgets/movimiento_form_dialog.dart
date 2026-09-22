@@ -5,7 +5,7 @@ import '../blocs/finanzas/finanzas_event.dart';
 import '../blocs/finanzas/finanzas_state.dart';
 
 class MovimientoFormDialog extends StatefulWidget {
-  const MovimientoFormDialog({Key? key}) : super(key: key);
+  const MovimientoFormDialog({super.key});
 
   @override
   State<MovimientoFormDialog> createState() => _MovimientoFormDialogState();
@@ -134,7 +134,7 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
 
                       // Categoría
                       DropdownButtonFormField<String>(
-                        value: _categoria,
+                        initialValue: _categoria,
                         decoration: const InputDecoration(
                             labelText: 'Categoría',
                             border: OutlineInputBorder()),
@@ -149,7 +149,7 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
 
                       // Método de pago
                       DropdownButtonFormField<String>(
-                        value: _metodoPago,
+                        initialValue: _metodoPago,
                         decoration: const InputDecoration(
                             labelText: 'Método de Pago',
                             border: OutlineInputBorder()),
@@ -175,13 +175,15 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
                         validator: (value) {
-                          if (value == null || value.isEmpty)
+                          if (value == null || value.isEmpty) {
                             return 'El monto es obligatorio';
+                          }
                           final monto =
                               double.tryParse(value.replaceAll(',', '.'));
                           if (monto == null) return 'Ingrese un número válido';
-                          if (monto <= 0)
+                          if (monto <= 0) {
                             return 'El monto debe ser mayor a cero';
+                          }
                           return null;
                         },
                       ),

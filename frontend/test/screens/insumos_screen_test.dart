@@ -45,7 +45,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       when(() => mockInsumosBloc.state).thenReturn(
-        InsumosLoaded(insumos: const [testInsumo]),
+        const InsumosLoaded(insumos: [testInsumo]),
       );
 
       await tester.pumpWidget(

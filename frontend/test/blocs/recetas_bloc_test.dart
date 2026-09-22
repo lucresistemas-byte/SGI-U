@@ -156,7 +156,7 @@ void main() {
       const detalle = insumoHarina;
       recetasBloc.add(const CambiarProductoReceta(codigo: 'PROD-001', nombre: 'Torta'));
       recetasBloc.add(const CambiarNombreReceta('Torta Especial'));
-      recetasBloc.add(AgregarFilaInsumo(insumo: detalle, cantidad: 2.0));
+      recetasBloc.add(const AgregarFilaInsumo(insumo: detalle, cantidad: 2.0));
       await pumpEventQueue();
 
       expect(recetasBloc.state.selectedProductoCodigo, equals('PROD-001'));

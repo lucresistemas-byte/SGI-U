@@ -220,7 +220,7 @@ void main() {
         now: () => DateTime(2026, 8, 26, 11),
       );
       // Reescribimos la entrada directamente para no cambiar la fecha real
-      await FlutterSecureStorage().write(
+      await const FlutterSecureStorage().write(
         key: 'server_cache',
         value:
             '{"url":"http://10.0.0.9:3000","savedAt":"2026-08-25T10:00:00.000"}',

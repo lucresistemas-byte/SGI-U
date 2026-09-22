@@ -10,7 +10,7 @@ import '../theme/app_colors.dart';
 import '../utils/parsers.dart';
 
 class BalanceScreen extends StatefulWidget {
-  const BalanceScreen({Key? key}) : super(key: key);
+  const BalanceScreen({super.key});
 
   @override
   State<BalanceScreen> createState() => _BalanceScreenState();
@@ -170,10 +170,12 @@ class _BalanceScreenState extends State<BalanceScreen> {
             Expanded(
               child: BlocBuilder<FinanzasBloc, FinanzasState>(
                 builder: (context, state) {
-                  if (state is BalanceLoading)
+                  if (state is BalanceLoading) {
                     return const Center(child: CircularProgressIndicator());
-                  if (state is BalanceLoaded)
+                  }
+                  if (state is BalanceLoaded) {
                     return _buildMetricasYTabla(state.balance);
+                  }
                   if (state is MovimientosError) {
                     return Center(
                       child: Column(
@@ -205,7 +207,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
         ],
       ),
       child: Column(
@@ -520,7 +522,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
                         columnSpacing: 40,
                         horizontalMargin: 24,
                         headingRowHeight: 50,
-                        headingRowColor: MaterialStateProperty.resolveWith(
+                        headingRowColor: WidgetStateProperty.resolveWith(
                             (_) => const Color(0xFFF6F6F6)),
                         headingTextStyle: const TextStyle(
                             fontWeight: FontWeight.w600, color: Colors.black87),
@@ -607,17 +609,17 @@ class _BalanceScreenState extends State<BalanceScreen> {
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
             decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: Colors.grey.shade200))),
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const Text('Página 1 de 1',
+                Text('Página 1 de 1',
                     style: TextStyle(color: Colors.grey)),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 IconButton(
-                    icon: const Icon(Icons.chevron_left, color: Colors.grey),
+                    icon: Icon(Icons.chevron_left, color: Colors.grey),
                     onPressed: null),
                 IconButton(
-                    icon: const Icon(Icons.chevron_right, color: Colors.grey),
+                    icon: Icon(Icons.chevron_right, color: Colors.grey),
                     onPressed: null),
               ],
             ),
@@ -632,8 +634,9 @@ class _BalanceScreenState extends State<BalanceScreen> {
     if (normal.contains('efectivo') || normal == '1') return 'Efectivo';
     if (normal.contains('mercado') || normal == '2') return 'Mercado Pago';
     if (normal.contains('tarjeta') || normal == '3') return 'Tarjeta';
-    if (normal.contains('transferencia') || normal == '4')
+    if (normal.contains('transferencia') || normal == '4') {
       return 'Transferencia';
+    }
     return raw;
   }
 

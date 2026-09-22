@@ -5,7 +5,6 @@ import '../blocs/recetas/recetas_bloc.dart';
 import '../blocs/recetas/recetas_event.dart';
 import '../blocs/recetas/recetas_state.dart';
 import '../models/insumo.dart';
-import '../models/product.dart';
 import '../models/receta.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
@@ -126,9 +125,9 @@ class _RecetasScreenState extends State<RecetasScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
+            const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
                   'Recetas de Fabricación',
                   style: TextStyle(
@@ -170,11 +169,11 @@ class _RecetasScreenState extends State<RecetasScreen> {
         if (state.isLoading && state.recetas.isEmpty)
           const Expanded(child: Center(child: CircularProgressIndicator()))
         else if (state.recetas.isEmpty)
-          Expanded(
+          const Expanded(
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
+                children: [
                   Icon(Icons.menu_book_outlined, size: 64, color: Color(0xFF94A3B8)),
                   SizedBox(height: 12),
                   Text(
@@ -197,7 +196,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -207,7 +206,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                 borderRadius: BorderRadius.circular(12),
                 child: SingleChildScrollView(
                   child: DataTable(
-                    headingRowColor: MaterialStateProperty.all(const Color(0xFFF1F5F9)),
+                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
                     columns: const [
                       DataColumn(label: Text('Producto Elaborado', style: TextStyle(fontWeight: FontWeight.bold))),
                       DataColumn(label: Text('Nombre Receta', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -339,7 +338,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                             ? DropdownButtonFormField<String>(
                                 key: const Key('selector_producto_receta'),
                                 isExpanded: true,
-                                value: state.selectedProductoCodigo.isNotEmpty
+                                initialValue: state.selectedProductoCodigo.isNotEmpty
                                     ? state.selectedProductoCodigo
                                     : null,
                                 decoration: const InputDecoration(
@@ -513,7 +512,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                               ? DropdownButtonFormField<int>(
                                   key: Key('selector_insumo_fila_$index'),
                                   isExpanded: true,
-                                  value: detalle.materiaPrimaId > 0
+                                  initialValue: detalle.materiaPrimaId > 0
                                       ? detalle.materiaPrimaId
                                       : state.availableInsumos.first.id,
                                   decoration: const InputDecoration(

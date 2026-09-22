@@ -172,7 +172,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
                           key: const Key('pedido_metodo_pago_dropdown'),
-                          value: metodoPagoSenia,
+                          initialValue: metodoPagoSenia,
                           isExpanded: true,
                           decoration: const InputDecoration(
                             labelText: 'Método de Pago de la Seña',
@@ -329,7 +329,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         key: const Key('abono_metodo_pago_dropdown'),
-                        value: metodoPago,
+                        initialValue: metodoPago,
                         isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Método de Pago',
@@ -429,10 +429,10 @@ class _PedidosScreenState extends State<PedidosScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
+                      const Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
+                          children: [
                             Text(
                               'Pedidos por Encargo',
                               style: TextStyle(
@@ -481,7 +481,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withValues(alpha: 0.04),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -522,10 +522,10 @@ class _PedidosScreenState extends State<PedidosScreen> {
     final items = state.filteredPedidos;
 
     if (items.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(Icons.assignment_outlined, size: 64, color: Color(0xFF94A3B8)),
             SizedBox(height: 12),
             Text(
@@ -547,7 +547,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -559,7 +559,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              headingRowColor: MaterialStateProperty.all(const Color(0xFFF1F5F9)),
+              headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
               columns: const [
                 DataColumn(label: Text('Cliente', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -607,9 +607,9 @@ class _PedidosScreenState extends State<PedidosScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: estadoColor.withOpacity(0.12),
+                          color: estadoColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: estadoColor.withOpacity(0.3)),
+                          border: Border.all(color: estadoColor.withValues(alpha: 0.3)),
                         ),
                         child: Text(
                           estadoVisual,

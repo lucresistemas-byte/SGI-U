@@ -24,7 +24,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<PosBloc>().add(LoadProducts());
+    context.read<PosBloc>().add(const LoadProducts());
 
     // Si el usuario escribe en el buscador, redibujamos la pantalla y volvemos a la página 1
     _searchController.addListener(() {
@@ -167,7 +167,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                   key: ValueKey('catalogo_category_chip_$cat'),
                                   label: Text(cat),
                                   selected: isSelected,
-                                  selectedColor: AppColors.verdeTeal.withOpacity(0.2),
+                                  selectedColor: AppColors.verdeTeal.withValues(alpha: 0.2),
                                   checkmarkColor: AppColors.verdeTeal,
                                   labelStyle: TextStyle(
                                     color: isSelected ? AppColors.verdeTeal : Colors.black87,
@@ -202,7 +202,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
+                          color: Colors.black.withValues(alpha: 0.03),
                           blurRadius: 10)
                     ],
                   ),
@@ -228,8 +228,9 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                           (filteredProducts.length / _itemsPerPage)
                               .ceil();
                       if (totalPages == 0) totalPages = 1;
-                      if (_currentPage > totalPages)
+                      if (_currentPage > totalPages) {
                         _currentPage = totalPages;
+                      }
 
                       // 3. Extraer solo los 10 productos de la página actual
                       final List<Product> paginatedProducts =
