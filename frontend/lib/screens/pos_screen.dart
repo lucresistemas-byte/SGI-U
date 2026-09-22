@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:printing/printing.dart';
 import '../blocs/pos_bloc.dart';
 import '../blocs/pos_event.dart';
 import '../blocs/pos_state.dart';
 import '../models/product.dart';
+import '../models/cart_item.dart';
 import '../widgets/product_card.dart';
 import '../widgets/payment_method_selector.dart';
 import '../widgets/app_scaffold.dart';
@@ -243,7 +245,7 @@ class PosCategoryFilter extends StatelessWidget {
   }
 }
 
-// Barra de búsqueda + cantidad + botón Agregar
+// Barra de búsqueda de productos (Punto 1: sin campo de cantidad ni botón Agregar)
 class SearchAddBar extends StatefulWidget {
   const SearchAddBar({super.key});
 
@@ -252,122 +254,311 @@ class SearchAddBar extends StatefulWidget {
 }
 
 class _SearchAddBarState extends State<SearchAddBar> {
-  final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _quantityController =
-      TextEditingController(text: '1');
-  String? _selectedProductCode;
+  TextEditingController? _searchController;
 
-  @override
-  void initState() {
-    super.initState();
-    _searchController.addListener(() {
-      final query = _searchController.text.trim();
-      context.read<PosBloc>().add(SearchProductsEvent(query));
-      if (query.isEmpty && _selectedProductCode != null) {
-        setState(() => _selectedProductCode = null);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _quantityController.dispose();
-    super.dispose();
+  void _addProductToCart(BuildContext context, PosState state, Product product) {
+    final currentCartQty = state.cart[product.codigo]?.cantidad ?? 0;
+    if (currentCartQty + 1 <= product.stockActual) {
+      context.read<PosBloc>().add(AddToCart(product.codigo, 1));
+      _searchController?.clear();
+      context.read<PosBloc>().add(const SearchProductsEvent(''));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Stock insuficiente. Quedan ${product.stockActual} unidades de "${product.nombre}".'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<PosBloc, PosState>(
       builder: (context, state) {
-        return Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: Autocomplete<String>(
-                optionsBuilder: (TextEditingValue textEditingValue) {
-                  if (textEditingValue.text.isEmpty) return [];
-                  return state.filteredProducts
-                      .where((product) =>
-                          product.nombre
-                              .toLowerCase()
-                              .contains(textEditingValue.text.toLowerCase()) ||
-                          product.codigo
-                              .toLowerCase()
-                              .contains(textEditingValue.text.toLowerCase()))
-                      .map((product) => product.codigo)
-                      .toList();
-                },
-                onSelected: (String selection) {
-                  setState(() {
-                    _selectedProductCode = selection;
-                    _searchController.text = selection;
-                  });
-                },
-                fieldViewBuilder:
-                    (context, controller, focusNode, onFieldSubmitted) {
-                  return TextField(
-                    controller: _searchController,
-                    focusNode: focusNode,
-                    decoration: const InputDecoration(
-                      hintText: 'Buscar producto (código o nombre)',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 100,
-              child: TextField(
-                controller: _quantityController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  hintText: 'Cant.',
-                  border: OutlineInputBorder(),
+        return Autocomplete<Product>(
+          displayStringForOption: (Product product) =>
+              '${product.codigo} - ${product.nombre}',
+          optionsBuilder: (TextEditingValue textEditingValue) {
+            if (textEditingValue.text.isEmpty) return const [];
+            final text = textEditingValue.text.toLowerCase();
+            return state.products
+                .where((product) =>
+                    product.nombre.toLowerCase().contains(text) ||
+                    product.codigo.toLowerCase().contains(text))
+                .toList();
+          },
+          onSelected: (Product product) {
+            _addProductToCart(context, state, product);
+          },
+          optionsViewBuilder: (context, onSelected, options) {
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 4.0,
+                borderRadius: BorderRadius.circular(8),
+                child: ConstrainedBox(
+                  constraints:
+                      const BoxConstraints(maxHeight: 250, maxWidth: 450),
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final Product option = options.elementAt(index);
+                      return ListTile(
+                        dense: true,
+                        title: Text(
+                          option.nombre,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          '${option.codigo} • Stock: ${option.stockActual} • \$${option.precioUnitario.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: option.stockActual <= 0
+                                ? Colors.red
+                                : Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        trailing: const Icon(Icons.add_shopping_cart,
+                            size: 20, color: AppColors.verdeTeal),
+                        onTap: () => onSelected(option),
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: () {
-                final quantity = int.tryParse(_quantityController.text) ?? 1;
-                if (quantity <= 0) return;
-
-                if (_selectedProductCode != null) {
-                  // FIX: Validamos stock al agregar por búsqueda
-                  final product = state.products
-                      .firstWhere((p) => p.codigo == _selectedProductCode);
-                  final currentCartQty = state.cart[_selectedProductCode]?.cantidad ?? 0;
-
-                  if (currentCartQty + quantity <= product.stockActual) {
+            );
+          },
+          fieldViewBuilder:
+              (context, controller, focusNode, onFieldSubmitted) {
+            _searchController = controller;
+            return ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, val, _) {
+                return TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar producto (código o nombre)...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: val.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 20),
+                            onPressed: () {
+                              controller.clear();
+                              context
+                                  .read<PosBloc>()
+                                  .add(const SearchProductsEvent(''));
+                            },
+                          )
+                        : null,
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (text) {
                     context
                         .read<PosBloc>()
-                        .add(AddToCart(_selectedProductCode!, quantity));
-                    _searchController.clear();
-                    setState(() => _selectedProductCode = null);
-                    _quantityController.text = '1';
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(
-                              'Stock insuficiente. Quedan ${product.stockActual} unidades.')),
-                    );
-                  }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Seleccione un producto de la lista')),
-                  );
-                }
+                        .add(SearchProductsEvent(text.trim()));
+                  },
+                  onSubmitted: (value) {
+                    final query = value.trim();
+                    if (query.isEmpty) return;
+                    final exactMatch = state.products
+                        .where((p) =>
+                            p.codigo.toLowerCase() == query.toLowerCase() ||
+                            p.nombre.toLowerCase() == query.toLowerCase())
+                        .firstOrNull;
+                    if (exactMatch != null) {
+                      _addProductToCart(context, state, exactMatch);
+                    } else {
+                      onFieldSubmitted();
+                    }
+                  },
+                );
               },
-              child: const Text('Agregar'),
-            ),
-          ],
+            );
+          },
         );
       },
+    );
+  }
+}
+
+// Control de cantidad en carrito: [-] [caja editable directa] [+] (Punto 1)
+class CartQuantityInput extends StatefulWidget {
+  final CartItem item;
+  final Product product;
+
+  const CartQuantityInput({
+    super.key,
+    required this.item,
+    required this.product,
+  });
+
+  @override
+  State<CartQuantityInput> createState() => _CartQuantityInputState();
+}
+
+class _CartQuantityInputState extends State<CartQuantityInput> {
+  late TextEditingController _controller;
+  late FocusNode _focusNode;
+  int? _lastAppliedQty;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastAppliedQty = widget.item.cantidad;
+    _controller = TextEditingController(text: widget.item.cantidad.toString());
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) {
+      _applyQuantity(_controller.text);
+    }
+  }
+
+  @override
+  void didUpdateWidget(CartQuantityInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.item.cantidad != oldWidget.item.cantidad) {
+      _lastAppliedQty = widget.item.cantidad;
+      if (_controller.text != widget.item.cantidad.toString()) {
+        _controller.text = widget.item.cantidad.toString();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _applyQuantity(String value) {
+    final newQty = int.tryParse(value.trim());
+    if (newQty == null || newQty <= 0) {
+      // Si el valor ingresado es vacío o inválido (<= 0), restauramos la cantidad actual
+      _controller.text = widget.item.cantidad.toString();
+      return;
+    }
+
+    if (newQty > widget.product.stockActual) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Stock máximo para "${widget.item.nombre}" es ${widget.product.stockActual} unidades.'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      _controller.text = widget.product.stockActual.toString();
+      if (_lastAppliedQty != widget.product.stockActual) {
+        _lastAppliedQty = widget.product.stockActual;
+        context.read<PosBloc>().add(
+            UpdateCartItemQuantity(widget.item.codigo, widget.product.stockActual));
+      }
+      return;
+    }
+
+    if (newQty != _lastAppliedQty) {
+      _lastAppliedQty = newQty;
+      context
+          .read<PosBloc>()
+          .add(UpdateCartItemQuantity(widget.item.codigo, newQty));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.remove, size: 16),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          splashRadius: 16,
+          tooltip: 'Restar unidad',
+          onPressed: () {
+            final newQty = widget.item.cantidad - 1;
+            if (newQty >= 0) {
+              context
+                  .read<PosBloc>()
+                  .add(UpdateCartItemQuantity(widget.item.codigo, newQty));
+            }
+          },
+        ),
+        const SizedBox(width: 2),
+        SizedBox(
+          width: 44,
+          height: 32,
+          child: TextField(
+            key: ValueKey('cart_qty_field_${widget.item.codigo}'),
+            controller: _controller,
+            focusNode: _focusNode,
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+            ],
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            decoration: InputDecoration(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+              isDense: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: Colors.grey.shade400),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide:
+                    const BorderSide(color: AppColors.verdeTeal, width: 1.5),
+              ),
+            ),
+            onChanged: (val) {
+              final qty = int.tryParse(val.trim());
+              if (qty != null &&
+                  qty > 0 &&
+                  qty <= widget.product.stockActual &&
+                  qty != _lastAppliedQty) {
+                _lastAppliedQty = qty;
+                context
+                    .read<PosBloc>()
+                    .add(UpdateCartItemQuantity(widget.item.codigo, qty));
+              }
+            },
+            onSubmitted: _applyQuantity,
+          ),
+        ),
+        const SizedBox(width: 2),
+        IconButton(
+          icon: const Icon(Icons.add, size: 16),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          splashRadius: 16,
+          tooltip: 'Sumar unidad',
+          onPressed: () {
+            if (widget.item.cantidad < widget.product.stockActual) {
+              context.read<PosBloc>().add(UpdateCartItemQuantity(
+                  widget.item.codigo, widget.item.cantidad + 1));
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                      'Stock máximo alcanzado. Solo quedan ${widget.product.stockActual} de ${widget.item.nombre}'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            }
+          },
+        ),
+      ],
     );
   }
 }
@@ -387,6 +578,8 @@ class CartTable extends StatelessWidget {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
+              columnSpacing: 16,
+              horizontalMargin: 12,
               columns: const [
                 DataColumn(label: Text('Producto')),
                 DataColumn(label: Text('Cantidad')),
@@ -405,38 +598,10 @@ class CartTable extends StatelessWidget {
                 return DataRow(cells: [
                   DataCell(Text(item.nombre)),
                   DataCell(
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove),
-                          onPressed: () {
-                            int newQty = item.cantidad - 1;
-                            if (newQty >= 0) {
-                              context.read<PosBloc>().add(
-                                  UpdateCartItemQuantity(item.codigo, newQty));
-                            }
-                          },
-                        ),
-                        Text(item.cantidad.toString()),
-                        IconButton(
-                          icon: const Icon(Icons.add),
-                          onPressed: () {
-                            if (item.cantidad < product.stockActual) {
-                              context.read<PosBloc>().add(
-                                  UpdateCartItemQuantity(
-                                      item.codigo, item.cantidad + 1));
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      'No hay más stock de ${item.nombre}'),
-                                  duration: const Duration(seconds: 1),
-                                ),
-                              );
-                            }
-                          },
-                        ),
-                      ],
+                    CartQuantityInput(
+                      key: ValueKey('cart_qty_${item.codigo}'),
+                      item: item,
+                      product: product,
                     ),
                   ),
                   DataCell(

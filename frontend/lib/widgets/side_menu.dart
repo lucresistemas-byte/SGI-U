@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_event.dart';
+import '../screens/login_screen.dart';
 import '../screens/catalogo_screen.dart';
 import '../screens/pos_screen.dart';
 import '../screens/movimientos_screen.dart';
@@ -33,7 +37,10 @@ class _SideMenuState extends State<SideMenu> {
         _isCollapsed ? CrossAxisAlignment.center : CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: EdgeInsets.symmetric(
+              horizontal: _isCollapsed ? 12.0 : 24.0,
+              vertical: 24.0,
+            ),
             child: Row(
               mainAxisAlignment: _isCollapsed
                   ? MainAxisAlignment.center
@@ -154,6 +161,15 @@ class _SideMenuState extends State<SideMenu> {
                   MaterialPageRoute(builder: (_) => const SettingsScreen()));
             }
           }),
+
+          // 7. Cerrar Sesión
+          _buildMenuItem(Icons.logout, 'Cerrar Sesión', false, () {
+            context.read<AuthBloc>().add(LogoutRequested());
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (route) => false,
+            );
+          }),
           const SizedBox(height: 20),
         ],
       ),
@@ -162,7 +178,7 @@ class _SideMenuState extends State<SideMenu> {
 
   Widget _buildMenuItem(IconData icon, String title, bool isSelected, VoidCallback onTap) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: _isCollapsed ? 8 : 16, vertical: 4),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),

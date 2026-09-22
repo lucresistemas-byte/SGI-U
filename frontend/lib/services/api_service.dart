@@ -93,6 +93,21 @@ class ApiService implements PosApi {
   /// URL base efectiva del cliente Dio interno (útil para diagnóstico/tests).
   String get effectiveBaseUrl => dio.options.baseUrl;
 
+  String _formatDioError(DioException e, [String defaultMsg = 'Error de conexión con el servidor']) {
+    if (e.response?.statusCode == 401) {
+      return 'Sesión expirada o no autorizada. Inicie sesión nuevamente.';
+    }
+    final msg = e.message;
+    if (msg != null && msg.trim().isNotEmpty && msg.trim() != 'null') {
+      return msg;
+    }
+    final statusMsg = e.response?.statusMessage;
+    if (statusMsg != null && statusMsg.trim().isNotEmpty) {
+      return statusMsg;
+    }
+    return defaultMsg;
+  }
+
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
@@ -191,7 +206,7 @@ class ApiService implements PosApi {
       if (e.response?.statusCode == 409) {
         throw Exception('El código de producto ya existe.');
       }
-      throw Exception('Error de red al crear el producto: ${e.message}');
+      throw Exception('Error de red al crear el producto: ${_formatDioError(e)}');
     }
   }
 // dentro de ApiService
@@ -205,7 +220,7 @@ class ApiService implements PosApi {
         throw Exception('Error al cargar resumen');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -223,7 +238,7 @@ class ApiService implements PosApi {
         throw Exception('Error al cargar movimientos');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -254,7 +269,7 @@ class ApiService implements PosApi {
         throw Exception('Error al cargar balance');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -273,7 +288,7 @@ class ApiService implements PosApi {
       if (e.response?.statusCode == 422 || e.response?.statusCode == 400) {
         throw Exception('Datos inválidos: verifique el precio o el stock.');
       }
-      throw Exception('Error de red al actualizar: ${e.message}');
+      throw Exception('Error de red al actualizar: ${_formatDioError(e)}');
     }
   }
 
@@ -301,7 +316,7 @@ class ApiService implements PosApi {
         }
         throw Exception('Datos inválidos al ajustar el stock.');
       }
-      throw Exception('Error de red al ajustar el stock: ${e.message}');
+      throw Exception('Error de red al ajustar el stock: ${_formatDioError(e)}');
     }
   }
 
@@ -333,7 +348,7 @@ class ApiService implements PosApi {
         throw Exception('Error al cargar el dashboard');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -351,7 +366,7 @@ class ApiService implements PosApi {
         throw Exception('Error al cargar configuración');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -368,7 +383,7 @@ class ApiService implements PosApi {
         throw Exception('Error al guardar configuración');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -383,7 +398,7 @@ class ApiService implements PosApi {
         throw Exception('Error al obtener insumos');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -415,7 +430,7 @@ class ApiService implements PosApi {
         throw Exception('Error al actualizar insumo');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -431,7 +446,7 @@ class ApiService implements PosApi {
         throw Exception('Error al ajustar stock de insumo');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -446,7 +461,7 @@ class ApiService implements PosApi {
         throw Exception('Error al obtener recetas');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -459,7 +474,7 @@ class ApiService implements PosApi {
       return null;
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) return null;
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -491,7 +506,7 @@ class ApiService implements PosApi {
         throw Exception('Error al actualizar receta');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -502,7 +517,7 @@ class ApiService implements PosApi {
         throw Exception('Error al eliminar receta');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -521,7 +536,7 @@ class ApiService implements PosApi {
         throw Exception('Error al obtener pedidos');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -534,7 +549,7 @@ class ApiService implements PosApi {
         throw Exception('Error al obtener pedido');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 
@@ -595,7 +610,7 @@ class ApiService implements PosApi {
         throw Exception('Error al cancelar pedido');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception('Error de red: ${_formatDioError(e)}');
     }
   }
 }

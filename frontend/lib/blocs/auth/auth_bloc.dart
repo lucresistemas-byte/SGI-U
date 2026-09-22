@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -29,10 +30,36 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       CheckAuthStatus event, Emitter<AuthState> emit) async {
     final token = await _storageService.getToken();
     if (token != null && token.isNotEmpty) {
+      if (_isTokenExpired(token)) {
+        await _storageService.deleteToken();
+        _authRepository.clearAuthToken();
+        emit(Unauthenticated());
+        return;
+      }
       emit(Authenticated(token));
       _authRepository.setAuthToken(token);
     } else {
       emit(Unauthenticated());
+    }
+  }
+
+  static bool _isTokenExpired(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return false;
+      final normalized = base64Url.normalize(parts[1]);
+      final payloadString = utf8.decode(base64Url.decode(normalized));
+      final payload = jsonDecode(payloadString);
+      if (payload is Map && payload.containsKey('exp')) {
+        final exp = payload['exp'];
+        if (exp is int) {
+          final expiryDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+          return DateTime.now().isAfter(expiryDate);
+        }
+      }
+      return false;
+    } catch (_) {
+      return false;
     }
   }
 

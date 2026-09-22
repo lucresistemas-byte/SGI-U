@@ -66,6 +66,8 @@ Future<void> initializeBackendUrl({
   // If no URL is available, ApiService will use its default (localhost:3000)
 }
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -84,6 +86,7 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (context) => PedidosBloc()),
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         title: 'SGI-U',
         theme: ThemeData(
           useMaterial3: true,
@@ -99,7 +102,19 @@ class MyApp extends StatelessWidget {
           Locale('es'),
           Locale('en'),
         ],
-        home: const StartupDecider(),
+        home: BlocListener<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is Unauthenticated ||
+                (state is AuthError &&
+                    state.message.toLowerCase().contains('expirad'))) {
+              navigatorKey.currentState?.pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+            }
+          },
+          child: const StartupDecider(),
+        ),
       ),
     );
   }

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sgi_u_frontend/blocs/pos_bloc.dart';
@@ -140,6 +140,37 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('3'), findsOneWidget);
+      await tester.runAsync(() => bloc.close());
+    });
+
+    testWidgets('el botón - decrementa la cantidad',
+        (WidgetTester tester) async {
+      final bloc = await _blocConCart(tester);
+      await _pumpCart(tester, bloc);
+
+      // Café (cantidad 2) -> -1 = 1
+      await tester.tap(find.byIcon(Icons.remove).first);
+      await tester.pumpAndSettle();
+
+      expect(bloc.state.cart['P1']?.cantidad, 1);
+      await tester.runAsync(() => bloc.close());
+    });
+
+    testWidgets('permite editar la cantidad directamente desde la caja de texto (Punto 1)',
+        (WidgetTester tester) async {
+      final bloc = await _blocConCart(tester);
+      await _pumpCart(tester, bloc);
+
+      // Buscamos la cajita de cantidad de Café ('cart_qty_field_P1')
+      final qtyFinder = find.byKey(const ValueKey('cart_qty_field_P1'));
+      expect(qtyFinder, findsOneWidget);
+
+      // Ingresamos directamente la cantidad 5
+      await tester.enterText(qtyFinder, '5');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(bloc.state.cart['P1']?.cantidad, 5);
       await tester.runAsync(() => bloc.close());
     });
   });
