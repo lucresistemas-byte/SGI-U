@@ -282,6 +282,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
           setState(() => _backendError = state.errorMessage);
           // Opcional: limpiar el error global después de mostrarlo localmente
           Future.delayed(Duration.zero, () {
+            if (!mounted) return;
             context.read<PosBloc>().add(const ClearError());
           });
         }
