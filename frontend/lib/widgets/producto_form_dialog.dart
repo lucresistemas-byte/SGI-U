@@ -403,7 +403,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                     // Unidad de Medida
                     DropdownButtonFormField<String>(
                       key: const ValueKey('producto_form_unidad_medida_dropdown'),
-                      value: _unidadMedida,
+                      initialValue: _unidadMedida,
                       decoration: const InputDecoration(
                         labelText: 'Unidad de Medida',
                       ),
@@ -462,7 +462,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                               children: [
                                 Expanded(
                                   child: DropdownButtonFormField<String>(
-                                    value: _ajusteTipo,
+                                    initialValue: _ajusteTipo,
                                     decoration: const InputDecoration(
                                         labelText: 'Acción'),
                                     items: const [

@@ -17,21 +17,25 @@ class PaymentMethodSelector extends StatelessWidget {
             child: Column(
               children: [
                 const Text('Método de pago', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                RadioListTile<String>(
-                  title: const Text('Efectivo'),
-                  value: 'EFECTIVO',
+                RadioGroup<String>(
                   groupValue: state.selectedPaymentMethod,
                   onChanged: (value) {
-                    context.read<PosBloc>().add(SelectPaymentMethod(value!));
+                    if (value != null) {
+                      context.read<PosBloc>().add(SelectPaymentMethod(value));
+                    }
                   },
-                ),
-                RadioListTile<String>(
-                  title: const Text('Mercado Pago'),
-                  value: 'MERCADO_PAGO',
-                  groupValue: state.selectedPaymentMethod,
-                  onChanged: (value) {
-                    context.read<PosBloc>().add(SelectPaymentMethod(value!));
-                  },
+                  child: Column(
+                    children: [
+                      RadioListTile<String>(
+                        title: const Text('Efectivo'),
+                        value: 'EFECTIVO',
+                      ),
+                      RadioListTile<String>(
+                        title: const Text('Mercado Pago'),
+                        value: 'MERCADO_PAGO',
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

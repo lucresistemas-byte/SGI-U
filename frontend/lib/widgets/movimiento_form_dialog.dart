@@ -121,7 +121,7 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
                     children: [
                       // Tipo
                       DropdownButtonFormField<String>(
-                        value: _tipo,
+                        initialValue: _tipo,
                         decoration: const InputDecoration(
                             labelText: 'Tipo', border: OutlineInputBorder()),
                         items: _tipos
