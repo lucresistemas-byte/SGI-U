@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -24,13 +25,29 @@ public class PedidoService {
 
     @Transactional(readOnly = true)
     public List<PedidoResponseDTO> buscarPedidos(String q) {
-        List<Pedido> pedidos;
+        List<Pedido> pedidos = pedidoRepository.findByActivoTrueOrderByIdDesc();
         if (q != null && !q.isBlank()) {
-            pedidos = pedidoRepository.buscarPorNombreOTelefono(q.trim());
-        } else {
-            pedidos = pedidoRepository.findByActivoTrueOrderByIdDesc();
+            pedidos = pedidos.stream().filter(p -> coincide(p, q.trim())).toList();
         }
         return pedidos.stream().map(this::toResponseDTO).toList();
+    }
+
+    /**
+     * Busca en nombre y descripción (sin distinguir mayúsculas) y en el
+     * teléfono comparando solo dígitos: "1155550001" encuentra "11-5555-0001".
+     */
+    private static boolean coincide(Pedido p, String q) {
+        String texto = q.toLowerCase();
+        if (p.getClienteNombre().toLowerCase().contains(texto)
+                || p.getDescripcion().toLowerCase().contains(texto)) {
+            return true;
+        }
+        String digitos = soloDigitos(q);
+        return !digitos.isEmpty() && soloDigitos(p.getClienteTelefono()).contains(digitos);
+    }
+
+    private static String soloDigitos(String valor) {
+        return valor == null ? "" : valor.replaceAll("\\D", "");
     }
 
     @Transactional(readOnly = true)
@@ -45,6 +62,10 @@ public class PedidoService {
     public PedidoResponseDTO crearPedido(PedidoRequestDTO dto) {
         if (dto.montoTotal() == null || dto.montoTotal().compareTo(BigDecimal.ZERO) <= 0) {
             throw new PedidoInvalidoException("El monto total del pedido debe ser mayor a cero");
+        }
+
+        if (dto.fechaEntrega() != null && dto.fechaEntrega().isBefore(LocalDateTime.now())) {
+            throw new PedidoInvalidoException("La fecha de entrega no puede ser anterior al momento actual.");
         }
 
         BigDecimal senia = dto.senia() != null ? dto.senia() : BigDecimal.ZERO;
@@ -129,6 +150,9 @@ public class PedidoService {
 
         if (pedido.getEstado() == EstadoPedido.PAGADO) {
             throw new PedidoInvalidoException("No se puede cancelar un pedido que ya ha sido completamente pagado");
+        }
+        if (pedido.getEstado() == EstadoPedido.CANCELADO) {
+            throw new PedidoInvalidoException("El pedido ya está cancelado.");
         }
 
         pedido.setEstado(EstadoPedido.CANCELADO);

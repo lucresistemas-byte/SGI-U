@@ -195,7 +195,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
                           title: Text(
                             fechaEntregaSeleccionada == null
                                 ? 'Fecha de Entrega: No especificada'
-                                : 'Fecha de Entrega: ${DateFormat('dd/MM/yyyy').format(fechaEntregaSeleccionada!)}',
+                                : 'Fecha de Entrega: ${DateFormat('dd/MM/yyyy HH:mm').format(fechaEntregaSeleccionada!)}',
                           ),
                           trailing: const Icon(Icons.calendar_today),
                           onTap: () async {
@@ -205,9 +205,24 @@ class _PedidosScreenState extends State<PedidosScreen> {
                               firstDate: DateTime.now(),
                               lastDate: DateTime.now().add(const Duration(days: 365)),
                             );
-                            if (picked != null) {
-                              setDialogState(() => fechaEntregaSeleccionada = picked);
+                            if (picked == null || !dialogContext.mounted) return;
+                            final hora = await showTimePicker(
+                              context: dialogContext,
+                              initialTime: const TimeOfDay(hour: 12, minute: 0),
+                            );
+                            if (hora == null || !dialogContext.mounted) return;
+                            final fecha = DateTime(picked.year, picked.month,
+                                picked.day, hora.hour, hora.minute);
+                            if (fecha.isBefore(DateTime.now())) {
+                              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                const SnackBar(
+                                  content: Text('La fecha de entrega no puede ser '
+                                      'anterior al momento actual.'),
+                                ),
+                              );
+                              return;
                             }
+                            setDialogState(() => fechaEntregaSeleccionada = fecha);
                           },
                         ),
                       ],
@@ -391,6 +406,32 @@ class _PedidosScreenState extends State<PedidosScreen> {
     );
   }
 
+  /// Cancelar pide confirmación. Por ahora no registra la devolución de la seña.
+  Future<void> _confirmarCancelar(Pedido pedido) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancelar pedido'),
+        content: Text('¿Cancelar el pedido de ${pedido.clienteNombre} '
+            '(${pedido.descripcion})? No se puede deshacer.'
+            '${pedido.totalPagado > 0 ? '\n\nLa seña cobrada no se registra como devuelta.' : ''}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Volver'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Cancelar pedido'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado == true && mounted) {
+      _bloc.add(CancelarPedidoEvent(pedido.id!));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
@@ -563,6 +604,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
                 DataColumn(label: Text('Cliente', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('Detalle', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('Entrega', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('Monto Total', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('Abonado', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('Saldo Restante', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -591,6 +633,9 @@ class _PedidosScreenState extends State<PedidosScreen> {
                         child: Text(pedido.descripcion, overflow: TextOverflow.ellipsis),
                       ),
                     ),
+                    DataCell(Text(pedido.fechaEntrega != null
+                        ? DateFormat('dd/MM/yyyy HH:mm').format(pedido.fechaEntrega!)
+                        : '-')),
                     DataCell(Text(_currencyFormat.format(pedido.montoTotal))),
                     DataCell(Text(_currencyFormat.format(pedido.totalPagado))),
                     DataCell(
@@ -624,7 +669,12 @@ class _PedidosScreenState extends State<PedidosScreen> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (pedido.saldo > 0 && pedido.estado.toUpperCase() != 'CANCELADO')
+                          if (pedido.estado.toUpperCase() == 'CANCELADO')
+                            const Text(
+                              'Cancelado',
+                              style: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+                            )
+                          else if (pedido.saldo > 0) ...[
                             ElevatedButton.icon(
                               key: Key('abonar_pedido_${pedido.id}'),
                               icon: const Icon(Icons.attach_money, size: 16),
@@ -636,8 +686,15 @@ class _PedidosScreenState extends State<PedidosScreen> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                               ),
                               onPressed: () => _mostrarDialogoAbono(pedido),
-                            )
-                          else
+                            ),
+                            const SizedBox(width: 8),
+                            TextButton(
+                              key: Key('cancelar_pedido_${pedido.id}'),
+                              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                              onPressed: pedido.id == null ? null : () => _confirmarCancelar(pedido),
+                              child: const Text('Cancelar pedido'),
+                            ),
+                          ] else
                             const Text(
                               'Saldado',
                               style: TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.w600),
