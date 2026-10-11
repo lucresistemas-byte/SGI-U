@@ -209,21 +209,6 @@ class ApiService implements PosApi {
       throw Exception('Error de red al crear el producto: ${_formatDioError(e)}');
     }
   }
-// dentro de ApiService
-
-  Future<Map<String, dynamic>> getResumenFinanciero() async {
-    try {
-      final response = await dio.get('/api/finanzas/resumen');
-      if (response.statusCode == 200) {
-        return response.data;
-      } else {
-        throw Exception('Error al cargar resumen');
-      }
-    } on DioException catch (e) {
-      throw Exception('Error de red: ${_formatDioError(e)}');
-    }
-  }
-
   Future<List<dynamic>> getMovimientos(
       {int pagina = 1, int limite = 10}) async {
     try {

@@ -10,22 +10,9 @@ class FinanzasBloc extends Bloc<FinanzasEvent, FinanzasState> {
   FinanzasBloc({ApiService? apiService})
       : _apiService = apiService ?? ApiService(),
         super(FinanzasInitial()) {
-    on<CargarResumen>(_onCargarResumen);
     on<CargarMovimientos>(_onCargarMovimientos);
     on<CrearMovimiento>(_onCrearMovimiento);
     on<CargarBalance>(_onCargarBalance);
-  }
-
-  Future<void> _onCargarResumen(
-      CargarResumen event, Emitter<FinanzasState> emit) async {
-    emit(ResumenLoading());
-    try {
-      final resumen = await _apiService.getResumenFinanciero();
-      emit(ResumenLoaded(resumen));
-    } catch (e) {
-      // Si falla, emitimos un resumen vacío
-      emit(const ResumenLoaded({'ingresosHoy': 0.0, 'egresosHoy': 0.0, 'saldoActual': 0.0}));
-    }
   }
 
   Future<void> _onCargarMovimientos(
@@ -68,8 +55,7 @@ class FinanzasBloc extends Bloc<FinanzasEvent, FinanzasState> {
         'descripcion': event.descripcion,
       });
       emit(const OperacionExitosa('Movimiento registrado correctamente'));
-      // Recargar datos
-      add(const CargarResumen());
+      // Recarga la tabla y las tarjetas (que salen de /api/balance).
       add(const CargarMovimientos());
     } catch (e) {
       emit(MovimientosError(e.toString()));

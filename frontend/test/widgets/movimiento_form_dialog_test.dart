@@ -14,8 +14,6 @@ ElevatedButton _btnGuardar(WidgetTester tester) =>
 Future<MockFinanzasApi> _pumpDialog(WidgetTester tester,
     {void Function(MockFinanzasApi api)? stub}) async {
   final api = MockFinanzasApi();
-  when(() => api.getResumenFinanciero()).thenAnswer(
-      (_) async => {'ingresosHoy': 0.0, 'egresosHoy': 0.0, 'saldoActual': 0.0});
   when(() => api.getMovimientos(
           pagina: any(named: 'pagina'), limite: any(named: 'limite')))
       .thenAnswer((_) async => []);

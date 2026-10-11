@@ -9,15 +9,6 @@ abstract class FinanzasState extends Equatable {
 
 class FinanzasInitial extends FinanzasState {}
 
-class ResumenLoading extends FinanzasState {}
-
-class ResumenLoaded extends FinanzasState {
-  final Map<String, dynamic> resumen;
-  const ResumenLoaded(this.resumen);
-  @override
-  List<Object?> get props => [resumen];
-}
-
 class MovimientosLoading extends FinanzasState {}
 
 class MovimientosLoaded extends FinanzasState {
