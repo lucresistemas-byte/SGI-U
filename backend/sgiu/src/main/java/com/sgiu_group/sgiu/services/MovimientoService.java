@@ -3,8 +3,10 @@ package com.sgiu_group.sgiu.services;
 import com.sgiu_group.sgiu.models.dtos.BalanceResponseDTO;
 import com.sgiu_group.sgiu.models.dtos.MovimientoRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.MovimientoResponseDTO;
+import com.sgiu_group.sgiu.models.entities.CategoriaMovimiento;
 import com.sgiu_group.sgiu.models.entities.MovFinanciero;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
+import com.sgiu_group.sgiu.repositories.LineaVentaRepository;
 import com.sgiu_group.sgiu.repositories.MovFinancieroRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,16 +14,22 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
 public class MovimientoService {
 
     private final MovFinancieroRepository repository;
+    private final LineaVentaRepository lineaVentaRepository;
 
-    public MovimientoService(MovFinancieroRepository repository) {
+    public MovimientoService(MovFinancieroRepository repository,
+                             LineaVentaRepository lineaVentaRepository) {
         this.repository = repository;
+        this.lineaVentaRepository = lineaVentaRepository;
     }
 
     @Transactional
@@ -33,13 +41,14 @@ public class MovimientoService {
             throw new IllegalArgumentException("El tipo de movimiento debe ser INGRESO o EGRESO.");
         }
 
+        String categoria = validarCategoria(tipo, dto.categoria());
         LocalDateTime fechaHora = dto.fechaHora() != null ? dto.fechaHora() : LocalDateTime.now();
 
         MovFinanciero mov = new MovFinanciero(
                 tipo,
                 dto.monto(),
                 dto.metodoPago(),
-                dto.categoria(),
+                categoria,
                 dto.descripcion(),
                 fechaHora,
                 null
@@ -51,10 +60,7 @@ public class MovimientoService {
 
     @Transactional(readOnly = true)
     public List<MovimientoResponseDTO> listarMovimientos() {
-        return repository.findAllByOrderByFechaHoraDesc()
-                .stream()
-                .map(MovimientoResponseDTO::fromEntity)
-                .toList();
+        return aDTOs(repository.findAllByOrderByFechaHoraDesc());
     }
 
     @Transactional(readOnly = true)
@@ -75,9 +81,7 @@ public class MovimientoService {
                 .orElse(BigDecimal.ZERO);
 
         List<MovFinanciero> movimientosEntidad = repository.findEnRango(desde, hasta);
-        List<MovimientoResponseDTO> movimientosDTO = movimientosEntidad.stream()
-                .map(MovimientoResponseDTO::fromEntity)
-                .toList();
+        List<MovimientoResponseDTO> movimientosDTO = aDTOs(movimientosEntidad);
 
         BigDecimal costoTotal = movimientosDTO.stream()
                 .filter(m -> "INGRESO".equalsIgnoreCase(m.tipo()))
@@ -94,5 +98,47 @@ public class MovimientoService {
                 gananciaReal,
                 movimientosDTO
         );
+    }
+
+    /** Normaliza la categoría a su código y verifica que corresponda al tipo. */
+    private static String validarCategoria(TipoMovimiento tipo, String categoria) {
+        if (categoria == null || categoria.isBlank()) {
+            throw new IllegalArgumentException("La categoría es obligatoria.");
+        }
+        String codigo = categoria.trim().toUpperCase();
+        List<CategoriaMovimiento> validas = CategoriaMovimiento.para(tipo);
+        if (validas.stream().noneMatch(c -> c.name().equals(codigo))) {
+            String opciones = String.join(", ", validas.stream().map(Enum::name).toList());
+            throw new IllegalArgumentException("La categoría " + codigo + " no corresponde a un "
+                    + tipo.name() + ". Categorías válidas: " + opciones + ".");
+        }
+        return codigo;
+    }
+
+    /** Arma los DTO con el costo de cada venta en una sola consulta agregada. */
+    private List<MovimientoResponseDTO> aDTOs(List<MovFinanciero> movimientos) {
+        List<Long> ventaIds = movimientos.stream()
+                .map(MovimientoService::ventaId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<Long, BigDecimal> costoPorVenta = new HashMap<>();
+        if (!ventaIds.isEmpty()) {
+            for (Object[] fila : lineaVentaRepository.sumarCostoPorVenta(ventaIds)) {
+                costoPorVenta.put((Long) fila[0], new BigDecimal(fila[1].toString()));
+            }
+        }
+
+        return movimientos.stream()
+                .map(m -> MovimientoResponseDTO.fromEntity(m, costoPorVenta.get(ventaId(m))))
+                .toList();
+    }
+
+    private static Long ventaId(MovFinanciero mov) {
+        if (mov.getPago() == null || mov.getPago().getVenta() == null) {
+            return null;
+        }
+        return mov.getPago().getVenta().getId();
     }
 }

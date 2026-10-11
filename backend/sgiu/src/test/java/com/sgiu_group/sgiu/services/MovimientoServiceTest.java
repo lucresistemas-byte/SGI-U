@@ -4,8 +4,12 @@ import com.sgiu_group.sgiu.models.dtos.BalanceResponseDTO;
 import com.sgiu_group.sgiu.models.dtos.MovimientoRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.MovimientoResponseDTO;
 import com.sgiu_group.sgiu.models.entities.MovFinanciero;
+import com.sgiu_group.sgiu.models.entities.PagoVenta;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
+import com.sgiu_group.sgiu.models.entities.Venta;
+import com.sgiu_group.sgiu.repositories.LineaVentaRepository;
 import com.sgiu_group.sgiu.repositories.MovFinancieroRepository;
+import org.hibernate.FetchNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -22,6 +26,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,6 +37,8 @@ class MovimientoServiceTest {
 
     @Mock
     private MovFinancieroRepository repository;
+    @Mock
+    private LineaVentaRepository lineaVentaRepository;
 
     @InjectMocks
     private MovimientoService movimientoService;
@@ -50,7 +58,7 @@ class MovimientoServiceTest {
     @Test
     void crearMovimiento_sinFechaHora_usaFechaActual() {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "INGRESO", new BigDecimal("150.00"), "TRANSFERENCIA", "Ventas", "Nota", null);
+                "INGRESO", new BigDecimal("150.00"), "TRANSFERENCIA", "VENTA", "Nota", null);
         when(repository.save(any(MovFinanciero.class))).thenAnswer(inv -> inv.getArgument(0));
 
         MovimientoResponseDTO response = movimientoService.crearMovimiento(dto);
@@ -63,7 +71,7 @@ class MovimientoServiceTest {
         assertThat(response.tipo()).isEqualTo("INGRESO");
         assertThat(response.monto()).isEqualByComparingTo("150.00");
         assertThat(response.metodoPago()).isEqualTo("TRANSFERENCIA");
-        assertThat(response.categoria()).isEqualTo("Ventas");
+        assertThat(response.categoria()).isEqualTo("VENTA");
         assertThat(response.descripcion()).isEqualTo("Nota");
     }
 
@@ -71,7 +79,7 @@ class MovimientoServiceTest {
     void crearMovimiento_conFechaHora_preservaLaFecha() {
         LocalDateTime fija = LocalDateTime.of(2026, 9, 20, 15, 30);
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "EGRESO", new BigDecimal("50.00"), "TARJETA", "Compras", null, fija);
+                "EGRESO", new BigDecimal("50.00"), "TARJETA", "COMPRA", null, fija);
         when(repository.save(any(MovFinanciero.class))).thenAnswer(inv -> inv.getArgument(0));
 
         MovimientoResponseDTO response = movimientoService.crearMovimiento(dto);
@@ -142,5 +150,32 @@ class MovimientoServiceTest {
         assertThat(balance.totalIngresos()).isEqualByComparingTo("0");
         assertThat(balance.totalEgresos()).isEqualByComparingTo("0");
         assertThat(balance.margenNeto()).isEqualByComparingTo("0");
+    }
+
+    /**
+     * Base de desarrollo con líneas de venta de productos que ya no existen:
+     * cargar las líneas lanza FetchNotFoundException. Antes eso hacía fallar todo
+     * el listado con 500; el costo debe salir de la consulta agregada, sin cargar
+     * las líneas ni sus productos.
+     */
+    @Test
+    void listarMovimientos_ventaConLineasDeProductoInexistente_noFallaYUsaElCostoCongelado() {
+        Venta venta = mock(Venta.class);
+        when(venta.getId()).thenReturn(7L);
+        lenient().when(venta.getLineas())
+                .thenThrow(new FetchNotFoundException("EspProducto", 999999L));
+        PagoVenta pago = new PagoVenta(venta, new BigDecimal("200.00"), "EFECTIVO");
+        MovFinanciero mov = new MovFinanciero(
+                TipoMovimiento.INGRESO, new BigDecimal("200.00"), "EFECTIVO", "VENTA", "Venta 7",
+                LocalDateTime.of(2026, 9, 21, 10, 0), pago);
+        when(repository.findAllByOrderByFechaHoraDesc()).thenReturn(List.of(mov));
+        when(lineaVentaRepository.sumarCostoPorVenta(List.of(7L)))
+                .thenReturn(List.<Object[]>of(new Object[]{7L, new BigDecimal("80.00")}));
+
+        List<MovimientoResponseDTO> lista = movimientoService.listarMovimientos();
+
+        assertThat(lista).hasSize(1);
+        assertThat(lista.getFirst().costo()).isEqualByComparingTo("80.00");
+        assertThat(lista.getFirst().ganancia()).isEqualByComparingTo("120.00");
     }
 }

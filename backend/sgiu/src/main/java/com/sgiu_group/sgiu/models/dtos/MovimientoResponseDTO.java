@@ -28,18 +28,23 @@ public record MovimientoResponseDTO(
         this(id, tipo, monto, metodoPago, categoria, descripcion, fechaHora, BigDecimal.ZERO, monto);
     }
 
+    /** Movimiento sin venta asociada (alta manual). */
     public static MovimientoResponseDTO fromEntity(MovFinanciero mov) {
+        return fromEntity(mov, null);
+    }
+
+    /**
+     * @param costoVenta costo congelado de la venta del movimiento (de
+     *        LineaVentaRepository.sumarCostoPorVenta); se ignora si el movimiento
+     *        no viene de una venta. No se cargan las líneas: una línea de un
+     *        producto inexistente hacía fallar todo el listado.
+     */
+    public static MovimientoResponseDTO fromEntity(MovFinanciero mov, BigDecimal costoVenta) {
         BigDecimal costo = BigDecimal.ZERO;
         BigDecimal ganancia = mov.getMonto();
 
         if (mov.getPago() != null && mov.getPago().getVenta() != null) {
-            var venta = mov.getPago().getVenta();
-            if (venta.getLineas() != null && !venta.getLineas().isEmpty()) {
-                costo = venta.getLineas().stream()
-                        .map(l -> (l.getCostoUnitario() != null ? l.getCostoUnitario() : BigDecimal.ZERO)
-                                .multiply(BigDecimal.valueOf(l.getCantidad())))
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-            }
+            costo = costoVenta != null ? costoVenta : BigDecimal.ZERO;
             ganancia = mov.getMonto().subtract(costo);
         } else if (mov.getTipo() == TipoMovimiento.EGRESO) {
             costo = mov.getMonto();

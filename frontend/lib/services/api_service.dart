@@ -18,6 +18,16 @@ abstract interface class PosApi {
       {required int cantidad, required String motivo});
 }
 
+/// Error de la API con un mensaje listo para mostrar al usuario: en español y
+/// sin el texto técnico de Dio. `toString()` devuelve solo el mensaje.
+class ApiException implements Exception {
+  final String mensaje;
+  const ApiException(this.mensaje);
+
+  @override
+  String toString() => mensaje;
+}
+
 class ApiService implements PosApi {
   // --- INICIO DEL FIX: PATRÓN SINGLETON ---
   static final ApiService _instance = ApiService._internal();
@@ -92,6 +102,27 @@ class ApiService implements PosApi {
 
   /// URL base efectiva del cliente Dio interno (útil para diagnóstico/tests).
   String get effectiveBaseUrl => dio.options.baseUrl;
+
+  /// Mensaje para el usuario a partir de un error de Dio: el que manda el
+  /// backend en un 4xx ({"error": "..."} o {"mensaje": "..."}) o [generico].
+  /// Los 5xx usan siempre [generico]: su texto no le sirve al usuario.
+  static String mensajeDeError(DioException e, String generico) {
+    final status = e.response?.statusCode;
+    if (status == null) {
+      return 'No se pudo conectar con el servidor. Verifique que esté encendido.';
+    }
+    if (status == 401) {
+      return 'Sesión expirada o no autorizada. Inicie sesión nuevamente.';
+    }
+    final data = e.response?.data;
+    if (status < 500 && data is Map) {
+      for (final clave in ['error', 'mensaje', 'message']) {
+        final valor = data[clave];
+        if (valor is String && valor.trim().isNotEmpty) return valor;
+      }
+    }
+    return generico;
+  }
 
   String _formatDioError(DioException e, [String defaultMsg = 'Error de conexión con el servidor']) {
     if (e.response?.statusCode == 401) {
@@ -209,20 +240,12 @@ class ApiService implements PosApi {
       throw Exception('Error de red al crear el producto: ${_formatDioError(e)}');
     }
   }
-// dentro de ApiService
-
-  Future<Map<String, dynamic>> getResumenFinanciero() async {
-    try {
-      final response = await dio.get('/api/finanzas/resumen');
-      if (response.statusCode == 200) {
-        return response.data;
-      } else {
-        throw Exception('Error al cargar resumen');
-      }
-    } on DioException catch (e) {
-      throw Exception('Error de red: ${_formatDioError(e)}');
-    }
-  }
+  static const _errorMovimientos =
+      'No se pudieron cargar los movimientos. Intente nuevamente.';
+  static const _errorCrearMovimiento =
+      'No se pudo registrar el movimiento. Intente nuevamente.';
+  static const _errorBalance =
+      'No se pudo cargar el balance. Intente nuevamente.';
 
   Future<List<dynamic>> getMovimientos(
       {int pagina = 1, int limite = 10}) async {
@@ -235,10 +258,10 @@ class ApiService implements PosApi {
         // Ahora devolvemos directamente la lista que manda el backend
         return response.data as List<dynamic>;
       } else {
-        throw Exception('Error al cargar movimientos');
+        throw const ApiException(_errorMovimientos);
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(e, _errorMovimientos));
     }
   }
 
@@ -246,13 +269,10 @@ class ApiService implements PosApi {
     try {
       final response = await dio.post('/api/movimientos', data: data);
       if (response.statusCode != 201) {
-        throw Exception('Error al crear movimiento');
+        throw const ApiException(_errorCrearMovimiento);
       }
     } on DioException catch (e) {
-      if (e.response?.statusCode == 400) {
-        throw Exception('Datos inválidos: ${e.response?.data['message']}');
-      }
-      throw Exception('Error de conexión');
+      throw ApiException(mensajeDeError(e, _errorCrearMovimiento));
     }
   }
 
@@ -266,10 +286,10 @@ class ApiService implements PosApi {
       if (response.statusCode == 200) {
         return response.data;
       } else {
-        throw Exception('Error al cargar balance');
+        throw const ApiException(_errorBalance);
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(e, _errorBalance));
     }
   }
 

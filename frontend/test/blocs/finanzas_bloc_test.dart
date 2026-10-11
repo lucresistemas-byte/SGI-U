@@ -8,12 +8,6 @@ import 'package:sgi_u_frontend/services/api_service.dart';
 
 class MockApiService extends Mock implements ApiService {}
 
-final _resumenEspectado = {
-  'ingresosHoy': 1000.0,
-  'egresosHoy': 200.0,
-  'saldoActual': 800.0,
-};
-
 final _resumenMovimientosEspectado = {
   'ingresosHoy': 1000.0,
   'egresosHoy': 200.0,
@@ -31,43 +25,6 @@ final _balanceMes = {
 };
 
 void main() {
-  group('FinanzasBloc - CargarResumen (N1)', () {
-    late MockApiService api;
-
-    blocTest<FinanzasBloc, FinanzasState>(
-      'CargarResumen exitoso emite ResumenLoaded con los datos del servicio',
-      build: () {
-        api = MockApiService();
-        when(() => api.getResumenFinanciero())
-            .thenAnswer((_) async => Map.of(_resumenEspectado));
-        return FinanzasBloc(apiService: api);
-      },
-      act: (bloc) => bloc.add(const CargarResumen()),
-      expect: () => [
-        isA<ResumenLoading>(),
-        isA<ResumenLoaded>().having((s) => s.resumen, 'resumen', _resumenEspectado),
-      ],
-    );
-
-    blocTest<FinanzasBloc, FinanzasState>(
-      'CargarResumen con error del servicio emite ResumenLoaded con ceros',
-      build: () {
-        api = MockApiService();
-        when(() => api.getResumenFinanciero())
-            .thenThrow(Exception('Error de red'));
-        return FinanzasBloc(apiService: api);
-      },
-      act: (bloc) => bloc.add(const CargarResumen()),
-      expect: () => [
-        isA<ResumenLoading>(),
-        isA<ResumenLoaded>().having(
-            (s) => s.resumen,
-            'resumen en cero',
-            {'ingresosHoy': 0.0, 'egresosHoy': 0.0, 'saldoActual': 0.0}),
-      ],
-    );
-  });
-
   group('FinanzasBloc - CargarMovimientos (N1)', () {
     late MockApiService api;
 
@@ -119,12 +76,11 @@ void main() {
     late MockApiService api;
 
     blocTest<FinanzasBloc, FinanzasState>(
-      'CrearMovimiento exitoso emite OperacionExitosa y recarga resumen y movimientos',
+      'CrearMovimiento exitoso emite OperacionExitosa y recarga movimientos y tarjetas '
+      'sin pedir /api/finanzas/resumen (R-10: no existe en el backend)',
       build: () {
         api = MockApiService();
         when(() => api.createMovimiento(any())).thenAnswer((_) async {});
-        when(() => api.getResumenFinanciero())
-            .thenAnswer((_) async => Map.of(_resumenEspectado));
         when(() => api.getMovimientos(
                 pagina: any(named: 'pagina'), limite: any(named: 'limite')))
             .thenAnswer(
@@ -145,8 +101,6 @@ void main() {
       expect: () => [
         isA<OperacionExitosa>().having(
             (s) => s.mensaje, 'mensaje', 'Movimiento registrado correctamente'),
-        isA<ResumenLoading>(),
-        isA<ResumenLoaded>(),
         isA<MovimientosLoading>(),
         isA<MovimientosLoaded>(),
       ],

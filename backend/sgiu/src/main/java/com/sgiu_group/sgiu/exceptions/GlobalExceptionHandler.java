@@ -1,5 +1,6 @@
 package com.sgiu_group.sgiu.exceptions;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 
 import java.util.Map;
 
+@Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -108,6 +110,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGeneral(Exception e) {
+        // Sin esto el error inesperado se pierde: la respuesta es genérica.
+        log.error("Error no controlado", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 "error", true,
                 "codigo", "ERROR_DASHBOARD",
