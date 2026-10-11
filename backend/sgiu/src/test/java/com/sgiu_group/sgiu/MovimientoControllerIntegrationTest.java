@@ -2,6 +2,7 @@ package com.sgiu_group.sgiu;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sgiu_group.sgiu.models.dtos.MovimientoRequestDTO;
+import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
 import com.sgiu_group.sgiu.repositories.MovFinancieroRepository;
 import com.sgiu_group.sgiu.support.TestDataFactory;
@@ -103,5 +104,20 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].categoria").value("POSTERIOR"))
                 .andExpect(jsonPath("$[1].categoria").value("ANTERIOR"));
+    }
+
+    @Test
+    void listar_ventaConCosto_devuelveCostoYGananciaDeLaVenta() throws Exception {
+        EspProducto producto = datos.crearProducto(
+                "MOV-COSTO", "Producto con costo", new BigDecimal("100.00"), 10, 0);
+        producto.setPrecioCosto(new BigDecimal("40.00"));
+        datos.crearVenta(producto, 2, "EFECTIVO", LocalDateTime.of(2026, 9, 21, 10, 0));
+
+        mockMvc.perform(get("/api/movimientos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].monto").value(200.00))
+                .andExpect(jsonPath("$[0].costo").value(80.00))
+                .andExpect(jsonPath("$[0].ganancia").value(120.00));
     }
 }

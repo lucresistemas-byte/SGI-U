@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 public interface LineaVentaRepository extends JpaRepository<LineaVenta, Long> {
@@ -38,4 +39,12 @@ public interface LineaVentaRepository extends JpaRepository<LineaVenta, Long> {
             @Param("fechaDesde") LocalDateTime fechaDesde,
             @Param("fechaHasta") LocalDateTime fechaHasta,
             @Param("categoriaId") Long categoriaId);
+
+    /**
+     * Costo congelado (costo_unitario × cantidad) de cada venta, sin cargar las
+     * líneas ni sus productos. Devuelve filas [ventaId, costo].
+     */
+    @Query("SELECT lv.venta.id, SUM(COALESCE(lv.costoUnitario, 0) * lv.cantidad) " +
+           "FROM LineaVenta lv WHERE lv.venta.id IN :ventaIds GROUP BY lv.venta.id")
+    List<Object[]> sumarCostoPorVenta(@Param("ventaIds") Collection<Long> ventaIds);
 }
