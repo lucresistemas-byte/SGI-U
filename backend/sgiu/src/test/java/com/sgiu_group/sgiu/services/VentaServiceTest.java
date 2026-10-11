@@ -44,10 +44,6 @@ class VentaServiceTest {
     private PagoVentaRepository pagoRepository;
     @Mock
     private MovFinancieroRepository movFinancieroRepository;
-    @Mock
-    private com.sgiu_group.sgiu.repositories.RecetaRepository recetaRepository;
-    @Mock
-    private com.sgiu_group.sgiu.repositories.MateriaPrimaRepository materiaPrimaRepository;
 
     @InjectMocks
     private VentaService ventaService;
@@ -84,7 +80,7 @@ class VentaServiceTest {
 
         assertThatThrownBy(() -> ventaService.procesarVenta(request))
                 .isInstanceOf(StockInsuficienteException.class)
-                .hasMessage("Stock insuficiente para: P1");
+                .hasMessage("Stock insuficiente para Producto Uno (código P1): disponible 5, solicitado 10.");
 
         assertThat(stock.getCantidad()).isEqualTo(5);
         verify(stockRepository, never()).save(any());
