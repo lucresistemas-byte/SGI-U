@@ -9,6 +9,7 @@ import '../models/insumo.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/cargando_diferido.dart';
 
 class InsumosScreen extends StatefulWidget {
   final InsumosBloc? insumosBloc;
@@ -325,8 +326,6 @@ class _InsumosScreenState extends State<InsumosScreen> {
     return BlocProvider.value(
       value: _bloc,
       child: AppScaffold(
-        title: 'Materia Prima / Insumos',
-        rutaActual: '/insumos',
         body: BlocConsumer<InsumosBloc, InsumosState>(
           listener: (context, state) {
             if (state is InsumoOperacionExitosa) {
@@ -444,7 +443,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
 
   Widget _buildBody(InsumosState state) {
     if (state is InsumosLoading && state is! InsumosLoaded) {
-      return const Center(child: CircularProgressIndicator());
+      return const CargandoDiferido();
     }
 
     List<Insumo> items = [];

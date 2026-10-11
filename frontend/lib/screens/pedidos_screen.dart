@@ -8,6 +8,7 @@ import '../models/pedido.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/cargando_diferido.dart';
 
 class PedidosScreen extends StatefulWidget {
   final PedidosBloc? pedidosBloc;
@@ -395,8 +396,6 @@ class _PedidosScreenState extends State<PedidosScreen> {
     return BlocProvider.value(
       value: _bloc,
       child: AppScaffold(
-        title: 'Pedidos con Seña',
-        rutaActual: '/pedidos',
         body: BlocConsumer<PedidosBloc, PedidosState>(
           bloc: _bloc,
           listener: (context, state) {
@@ -516,7 +515,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
 
   Widget _buildBody(PedidosState state) {
     if (state.isLoading && state.pedidos.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const CargandoDiferido();
     }
 
     final items = state.filteredPedidos;

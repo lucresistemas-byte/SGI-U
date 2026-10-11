@@ -5,6 +5,7 @@ import '../models/configuracion_negocio.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/cargando_diferido.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ApiService? apiService;
@@ -142,10 +143,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Configuración',
-      rutaActual: '/settings',
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const CargandoDiferido()
           : _errorMessage != null
               ? Center(
                   child: Column(

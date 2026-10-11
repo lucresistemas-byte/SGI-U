@@ -12,6 +12,7 @@ import '../widgets/payment_method_selector.dart';
 import '../widgets/app_scaffold.dart';
 import '../theme/app_colors.dart';
 import '../services/ticket_service.dart';
+import '../widgets/cargando_diferido.dart';
 
 class PosScreen extends StatefulWidget {
   const PosScreen({super.key});
@@ -109,8 +110,6 @@ class PosView extends StatelessWidget {
         }
       },
       child: const AppScaffold(
-        title: 'Punto de Venta',
-        rutaActual: '/pos',
         body: FractionallySizedBox(
           widthFactor: 1.0,
           heightFactor: 1.0,
@@ -145,7 +144,7 @@ class LeftPanel extends StatelessWidget {
             child: BlocBuilder<PosBloc, PosState>(
               builder: (context, state) {
                 if (state.isLoading && state.products.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const CargandoDiferido();
                 }
                 final displayProducts = state.filteredProducts;
                 if (displayProducts.isEmpty) {

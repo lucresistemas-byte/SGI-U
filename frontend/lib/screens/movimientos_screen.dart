@@ -10,6 +10,7 @@ import '../widgets/app_scaffold.dart';
 import '../theme/app_colors.dart';
 import '../utils/parsers.dart';
 import '../utils/finanzas_calculator.dart';
+import '../widgets/cargando_diferido.dart';
 
 class MovimientosScreen extends StatelessWidget {
   const MovimientosScreen({super.key});
@@ -18,8 +19,6 @@ class MovimientosScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // La carga inicial la hace MovimientosContent en initState
     return const AppScaffold(
-      title: 'Movimientos',
-      rutaActual: '/movimientos',
       body: MovimientosContent(),
     );
   }
@@ -97,7 +96,7 @@ class _MovimientosContentState extends State<MovimientosContent> {
               if (state is MovimientosLoading) {
                 return const SizedBox(
                     height: 88,
-                    child: Center(child: CircularProgressIndicator()));
+                    child: CargandoDiferido());
               }
 
               double ingresosHoy = 0.0;
@@ -161,8 +160,7 @@ class _MovimientosContentState extends State<MovimientosContent> {
                     child: BlocBuilder<FinanzasBloc, FinanzasState>(
                       builder: (context, state) {
                         if (state is MovimientosLoading) {
-                          return const Center(
-                              child: CircularProgressIndicator());
+                          return const CargandoDiferido();
                         }
                         if (state is MovimientosError) {
                           return Center(

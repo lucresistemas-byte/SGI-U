@@ -11,53 +11,21 @@ import 'package:sgi_u_frontend/main.dart';
 import 'package:sgi_u_frontend/repositories/auth_repository.dart';
 import 'package:sgi_u_frontend/screens/login_screen.dart';
 import 'package:sgi_u_frontend/services/api_service.dart';
-import 'package:sgi_u_frontend/widgets/app_scaffold.dart';
+import 'package:sgi_u_frontend/navigation/app_shell.dart';
+import 'package:sgi_u_frontend/navigation/seccion.dart';
 
 /// Flujo de navegación de sesión (login, logout, sesión vencida) sobre la app
-/// real (MyApp + AuthBloc + StartupDecider + SideMenu). Solo se simulan el
-/// repositorio de auth y la API del POS (sin red) y la pantalla principal.
+/// real (MyApp + AuthBloc + StartupDecider + AppShell + SideMenu). Solo se
+/// simulan el repositorio de auth, la API del POS (sin red) y el contenido de
+/// las secciones.
 
 class _MockAuthRepository extends Mock implements AuthRepository {}
 
 class _MockPosApi extends Mock implements PosApi {}
 
-class _PantallaPrincipalFalsa extends StatelessWidget {
-  const _PantallaPrincipalFalsa();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppScaffold(
-      title: 'Principal',
-      rutaActual: '/principal',
-      body: Column(
-        children: [
-          const Text('PANTALLA PRINCIPAL'),
-          // Igual que el menú lateral: pushReplacement reemplaza la ruta home.
-          ElevatedButton(
-            onPressed: () => Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const _OtraPantallaFalsa()),
-            ),
-            child: const Text('Ir a otra pantalla'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OtraPantallaFalsa extends StatelessWidget {
-  const _OtraPantallaFalsa();
-
-  @override
-  Widget build(BuildContext context) {
-    return const AppScaffold(
-      title: 'Otra',
-      rutaActual: '/otra',
-      body: Text('OTRA PANTALLA'),
-    );
-  }
-}
+/// AppShell real con el contenido de cada sección reemplazado por un texto
+/// (sin red).
+Widget _seccionFalsa(Seccion seccion) => Text('SECCION ${seccion.name}');
 
 /// JWT sin firma válida, pero con `exp` legible por AuthBloc._isTokenExpired.
 String _jwt({required Duration expiraEn}) {
@@ -67,7 +35,7 @@ String _jwt({required Duration expiraEn}) {
   return '${b64({'alg': 'HS256'})}.${b64({'sub': 'admin', 'exp': exp})}.firma';
 }
 
-final _principal = find.text('PANTALLA PRINCIPAL');
+final _principal = find.byType(AppShell);
 final _botonLogin = find.widgetWithText(ElevatedButton, 'Iniciar sesión');
 
 void main() {
@@ -93,7 +61,7 @@ void main() {
   });
 
   Future<void> arrancar(WidgetTester tester) async {
-    // Ancho de escritorio: AppScaffold muestra el SideMenu fijo.
+    // Ancho de escritorio: AppShell muestra el SideMenu fijo.
     tester.view.physicalSize = const Size(1400, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -101,7 +69,7 @@ void main() {
     await tester.pumpWidget(MyApp(
       authRepository: repo,
       posApi: posApi,
-      pantallaPrincipal: const _PantallaPrincipalFalsa(),
+      pantallaPrincipal: const AppShell(construirSeccion: _seccionFalsa),
     ));
     await tester.pumpAndSettle();
   }
@@ -153,20 +121,39 @@ void main() {
     expect(_principal, findsOneWidget);
   });
 
-  testWidgets(
-      'cerrar sesión después de navegar con pushReplacement (home reemplazada) '
-      'también permite reingresar', (tester) async {
+  testWidgets('cerrar sesión desde otra sección también permite reingresar',
+      (tester) async {
     await arrancar(tester);
     await ingresar(tester);
-    await tester.tap(find.text('Ir a otra pantalla'));
+    await tester.tap(find.text(Seccion.pedidos.etiqueta));
     await tester.pumpAndSettle();
-    expect(find.text('OTRA PANTALLA'), findsOneWidget);
+    expect(find.text('SECCION pedidos'), findsOneWidget);
 
     await cerrarSesion(tester);
     expect(find.byType(LoginScreen), findsOneWidget);
 
     await ingresar(tester);
     expect(_principal, findsOneWidget);
+  });
+
+  testWidgets(
+      'cerrar sesión desde cada sección vuelve al login y reingresar funciona',
+      (tester) async {
+    await arrancar(tester);
+    await ingresar(tester);
+
+    for (final seccion in Seccion.values) {
+      await tester.tap(find.text(seccion.etiqueta));
+      await tester.pumpAndSettle();
+      expect(find.text('SECCION ${seccion.name}'), findsOneWidget);
+
+      await cerrarSesion(tester);
+      expect(find.byType(LoginScreen), findsOneWidget, reason: seccion.name);
+      expect(_principal, findsNothing, reason: seccion.name);
+
+      await ingresar(tester);
+      expect(_principal, findsOneWidget, reason: seccion.name);
+    }
   });
 
   testWidgets(

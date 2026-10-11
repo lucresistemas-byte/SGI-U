@@ -9,6 +9,7 @@ import '../models/receta.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/cargando_diferido.dart';
 
 class RecetasScreen extends StatefulWidget {
   final RecetasBloc? recetasBloc;
@@ -82,8 +83,6 @@ class _RecetasScreenState extends State<RecetasScreen> {
     return BlocProvider.value(
       value: _bloc,
       child: AppScaffold(
-        title: 'Recetas de Producción',
-        rutaActual: '/recetas',
         body: BlocConsumer<RecetasBloc, RecetasState>(
           bloc: _bloc,
           listener: (context, state) {
@@ -167,7 +166,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
         ),
         const SizedBox(height: 24),
         if (state.isLoading && state.recetas.isEmpty)
-          const Expanded(child: Center(child: CircularProgressIndicator()))
+          const Expanded(child: CargandoDiferido())
         else if (state.recetas.isEmpty)
           const Expanded(
             child: Center(
