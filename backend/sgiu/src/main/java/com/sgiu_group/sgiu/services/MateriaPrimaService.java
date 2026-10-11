@@ -76,7 +76,11 @@ public class MateriaPrimaService {
         mp.setNombre(dto.nombre().trim());
         mp.setCostoUnitario(dto.costoUnitario());
         if (dto.unidadMedida() != null) {
-            mp.setUnidadMedida(parseUnidad(dto.unidadMedida()));
+            UnidadMedida nueva = parseUnidad(dto.unidadMedida());
+            if (nueva != mp.getUnidadMedida()) {
+                validarCambioDeUnidad(mp, nueva);
+            }
+            mp.setUnidadMedida(nueva);
         }
         if (dto.stockMinimo() != null) {
             mp.setStockMinimo(dto.stockMinimo());
@@ -108,6 +112,29 @@ public class MateriaPrimaService {
                 guardada.getNombre(), dto.cantidad(), dto.motivo(), guardada.getStockActual());
 
         return toResponseDTO(guardada);
+    }
+
+    /**
+     * E-10: el stock y las recetas no se convierten de unidad, así que solo se
+     * permite cambiarla sin stock y sin recetas activas que usen el insumo.
+     */
+    private void validarCambioDeUnidad(MateriaPrima mp, UnidadMedida nueva) {
+        List<String> motivos = new java.util.ArrayList<>();
+        if (mp.getStockActual() > 0) {
+            motivos.add("tiene stock (" + mp.getStockActual() + ")");
+        }
+        List<String> recetas = recetaRepository.findRecetasByMateriaPrimaId(mp.getId()).stream()
+                .map(Receta::getNombre)
+                .toList();
+        if (!recetas.isEmpty()) {
+            motivos.add("se usa en recetas activas (" + String.join(", ", recetas) + ")");
+        }
+        if (!motivos.isEmpty()) {
+            throw new RecetaInvalidaException("No se puede cambiar la unidad de " + mp.getNombre()
+                    + " (" + mp.getUnidadMedida() + " a " + nueva + ") porque el stock y las recetas "
+                    + "no se convierten: " + String.join(" y ", motivos) + ". Lleve el stock a 0 con "
+                    + "un ajuste o cree un insumo nuevo con la otra unidad.");
+        }
     }
 
     /** Activa o desactiva el insumo (los insumos no se eliminan). */
