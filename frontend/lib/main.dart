@@ -111,6 +111,9 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF13894E)),
+          // Ninguna navegación de pantalla completa se anima, en ninguna
+          // plataforma (los diálogos tienen su propia animación).
+          pageTransitionsTheme: transicionesInstantaneas,
         ),
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
