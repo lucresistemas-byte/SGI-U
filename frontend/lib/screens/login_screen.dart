@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _passwordFocus = FocusNode();
   bool _obscurePassword = true;
 
   @override
@@ -47,10 +48,14 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
   void _login() {
+    // Enter puede llegar mientras el login anterior sigue en curso (el botón
+    // ya está deshabilitado en ese caso, el teclado no).
+    if (context.read<AuthBloc>().state is AuthLoading) return;
     if (_formKey.currentState!.validate()) {
       context.read<AuthBloc>().add(LoginRequested(
         _usernameController.text.trim(),
@@ -186,6 +191,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _usernameController,
                   hintText: 'Usuario',
                   prefixIcon: Icons.person_outline,
+                  textInputAction: TextInputAction.next,
+                  // Enter en Usuario: pasa a Contraseña si está vacía; si no,
+                  // inicia sesión.
+                  onFieldSubmitted: (_) => _passwordController.text.isEmpty
+                      ? _passwordFocus.requestFocus()
+                      : _login(),
                 ),
                 const SizedBox(height: 20),
                 _buildPasswordField(),
@@ -205,6 +216,8 @@ class _LoginScreenState extends State<LoginScreen> {
     required IconData prefixIcon,
     bool obscureText = false,
     Widget? suffixIcon,
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onFieldSubmitted,
   }) {
     return Container(
       height: 60,
@@ -215,6 +228,8 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextFormField(
         controller: controller,
         obscureText: obscureText,
+        textInputAction: textInputAction,
+        onFieldSubmitted: onFieldSubmitted,
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: const TextStyle(fontSize: 16, color: Color(0xFF8C8C8C)),
@@ -238,7 +253,10 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       child: TextFormField(
         controller: _passwordController,
+        focusNode: _passwordFocus,
         obscureText: _obscurePassword,
+        textInputAction: TextInputAction.done,
+        onFieldSubmitted: (_) => _login(),
         decoration: InputDecoration(
           hintText: 'Contraseña',
           hintStyle: const TextStyle(fontSize: 16, color: Color(0xFF8C8C8C)),

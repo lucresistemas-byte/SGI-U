@@ -236,4 +236,47 @@ void main() {
     expect(_principal, findsOneWidget);
     expect(posBloc(tester).state.cart['P1']?.cantidad, 2);
   });
+
+  group('Enter en el formulario de login', () {
+    final usuario = find.byType(TextFormField).at(0);
+    final contrasena = find.byType(TextFormField).at(1);
+
+    testWidgets('Enter en Contraseña inicia sesión', (tester) async {
+      await arrancar(tester);
+      await tester.enterText(usuario, 'admin');
+      await tester.enterText(contrasena, 'admin123');
+
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(_principal, findsOneWidget);
+      verify(() => repo.login('admin', 'admin123')).called(1);
+    });
+
+    testWidgets('Enter en Usuario con Contraseña vacía pasa el foco, no inicia',
+        (tester) async {
+      await arrancar(tester);
+      await tester.enterText(usuario, 'admin');
+
+      await tester.testTextInput.receiveAction(TextInputAction.next);
+      await tester.pumpAndSettle();
+
+      verifyNever(() => repo.login(any(), any()));
+      final campo = tester.widget<EditableText>(
+          find.descendant(of: contrasena, matching: find.byType(EditableText)));
+      expect(campo.focusNode.hasFocus, isTrue);
+    });
+
+    testWidgets('Enter en Usuario con Contraseña completa inicia sesión',
+        (tester) async {
+      await arrancar(tester);
+      await tester.enterText(contrasena, 'admin123');
+      await tester.enterText(usuario, 'admin');
+
+      await tester.testTextInput.receiveAction(TextInputAction.next);
+      await tester.pumpAndSettle();
+
+      expect(_principal, findsOneWidget);
+    });
+  });
 }
