@@ -22,7 +22,25 @@ abstract interface class PosApi {
 /// sin el texto técnico de Dio. `toString()` devuelve solo el mensaje.
 class ApiException implements Exception {
   final String mensaje;
-  const ApiException(this.mensaje);
+
+  /// "codigo" que manda el backend para distinguir casos (p. ej.
+  /// RECETA_INACTIVA_EXISTENTE) y el cuerpo completo de la respuesta.
+  final String? codigo;
+  final Map<String, dynamic>? datos;
+
+  const ApiException(this.mensaje, {this.codigo, this.datos});
+
+  /// ApiException a partir de un error de Dio, con mensaje, código y cuerpo.
+  factory ApiException.de(DioException e, String generico) {
+    final data = e.response?.data;
+    final cuerpo = data is Map ? Map<String, dynamic>.from(data) : null;
+    final codigo = cuerpo?['codigo'];
+    return ApiException(
+      ApiService.mensajeDeError(e, generico),
+      codigo: codigo is String ? codigo : null,
+      datos: cuerpo,
+    );
+  }
 
   @override
   String toString() => mensaje;
@@ -448,9 +466,12 @@ class ApiService implements PosApi {
   }
 
   // --- RECETAS ---
-  Future<List<Receta>> getRecetas() async {
+  /// Con [incluirInactivas] trae también las recetas desactivadas.
+  Future<List<Receta>> getRecetas({bool incluirInactivas = false}) async {
     try {
-      final response = await dio.get('/api/recetas');
+      final response = await dio.get('/api/recetas',
+          queryParameters:
+              incluirInactivas ? {'incluirInactivas': true} : null);
       if (response.statusCode == 200) {
         final List list = response.data as List;
         return list.map((item) => Receta.fromJson(item as Map<String, dynamic>)).toList();
@@ -486,8 +507,8 @@ class ApiService implements PosApi {
         throw const ApiException('No se pudo crear la receta. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      throw ApiException(mensajeDeError(
-          e, 'No se pudo crear la receta. Intente nuevamente.'));
+      throw ApiException.de(
+          e, 'No se pudo crear la receta. Intente nuevamente.');
     }
   }
 
@@ -505,15 +526,20 @@ class ApiService implements PosApi {
     }
   }
 
-  Future<void> deleteReceta(int id) async {
+  /// Activa o desactiva una receta (las recetas no se eliminan).
+  Future<Receta> cambiarEstadoReceta(int id, {required bool activo}) async {
     try {
-      final response = await dio.delete('/api/recetas/$id');
-      if (response.statusCode != 200 && response.statusCode != 204) {
-        throw const ApiException('No se pudo eliminar la receta. Intente nuevamente.');
+      final response =
+          await dio.patch('/api/recetas/$id/estado', data: {'activo': activo});
+      if (response.statusCode == 200) {
+        return Receta.fromJson(response.data as Map<String, dynamic>);
+      } else {
+        throw const ApiException(
+            'No se pudo cambiar el estado de la receta. Intente nuevamente.');
       }
     } on DioException catch (e) {
       throw ApiException(mensajeDeError(
-          e, 'No se pudo eliminar la receta. Intente nuevamente.'));
+          e, 'No se pudo cambiar el estado de la receta. Intente nuevamente.'));
     }
   }
 

@@ -23,7 +23,10 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
     on<RemoverFilaInsumo>(_onRemoverFilaInsumo);
     on<ActualizarCantidadFilaInsumo>(_onActualizarCantidadFilaInsumo);
     on<GuardarReceta>(_onGuardarReceta);
-    on<EliminarReceta>(_onEliminarReceta);
+    on<CambiarEstadoReceta>(_onCambiarEstadoReceta);
+    on<ReactivarRecetaConDatos>(_onReactivarRecetaConDatos);
+    on<DescartarRecetaInactivaExistente>((event, emit) =>
+        emit(state.copyWith(clearRecetaInactivaExistente: true)));
   }
 
   double _calcularCostoTotal(List<RecetaDetalle> detalles, double adicionales) {
@@ -35,7 +38,8 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       CargarRecetas event, Emitter<RecetasState> emit) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
-      final recetas = await _apiService.getRecetas();
+      // Se listan también las desactivadas, para poder reactivarlas.
+      final recetas = await _apiService.getRecetas(incluirInactivas: true);
       emit(state.copyWith(isLoading: false, recetas: recetas));
     } catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
@@ -181,17 +185,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
 
     emit(state.copyWith(isSaving: true, clearError: true));
     try {
-      final payload = {
-        'espProductoCodigo': state.selectedProductoCodigo,
-        'nombre': state.nombre,
-        if (state.descripcion.isNotEmpty) 'descripcion': state.descripcion,
-        'costosAdicionales': state.costosAdicionales,
-        'detalles': state.detalles.map((d) => {
-          'materiaPrimaId': d.materiaPrimaId,
-          'cantidad': d.cantidad,
-          'unidadMedida': d.unidadMedida,
-        }).toList(),
-      };
+      final payload = _payloadDelBorrador();
 
       if (state.editingRecetaId == null) {
         await _apiService.createReceta(payload);
@@ -207,23 +201,64 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
         ));
       }
       add(const CargarRecetas());
+    } on ApiException catch (e) {
+      final recetaId = e.datos?['recetaId'];
+      if (e.codigo == 'RECETA_INACTIVA_EXISTENTE' && recetaId is int) {
+        emit(state.copyWith(
+          isSaving: false,
+          recetaInactivaExistenteId: recetaId,
+          recetaInactivaExistenteMensaje: e.mensaje,
+        ));
+      } else {
+        emit(state.copyWith(isSaving: false, errorMessage: e.toString()));
+      }
     } catch (e) {
       emit(state.copyWith(isSaving: false, errorMessage: e.toString()));
     }
   }
 
-  Future<void> _onEliminarReceta(
-      EliminarReceta event, Emitter<RecetasState> emit) async {
+  Map<String, dynamic> _payloadDelBorrador() => {
+        'espProductoCodigo': state.selectedProductoCodigo,
+        'nombre': state.nombre,
+        if (state.descripcion.isNotEmpty) 'descripcion': state.descripcion,
+        'costosAdicionales': state.costosAdicionales,
+        'detalles': state.detalles.map((d) => {
+          'materiaPrimaId': d.materiaPrimaId,
+          'cantidad': d.cantidad,
+          'unidadMedida': d.unidadMedida,
+        }).toList(),
+      };
+
+  Future<void> _onCambiarEstadoReceta(
+      CambiarEstadoReceta event, Emitter<RecetasState> emit) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
-      await _apiService.deleteReceta(event.id);
+      await _apiService.cambiarEstadoReceta(event.id, activo: event.activo);
       emit(state.copyWith(
         isLoading: false,
-        successMessage: 'Receta eliminada exitosamente',
+        successMessage:
+            event.activo ? 'Receta activada' : 'Receta desactivada',
       ));
       add(const CargarRecetas());
     } catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onReactivarRecetaConDatos(
+      ReactivarRecetaConDatos event, Emitter<RecetasState> emit) async {
+    emit(state.copyWith(
+        isSaving: true, clearError: true, clearRecetaInactivaExistente: true));
+    try {
+      await _apiService.updateReceta(event.id, _payloadDelBorrador());
+      await _apiService.cambiarEstadoReceta(event.id, activo: true);
+      emit(state.copyWith(
+        isSaving: false,
+        successMessage: 'Receta reactivada con los datos cargados',
+      ));
+      add(const CargarRecetas());
+    } catch (e) {
+      emit(state.copyWith(isSaving: false, errorMessage: e.toString()));
     }
   }
 }

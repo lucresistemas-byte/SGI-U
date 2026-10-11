@@ -78,6 +78,65 @@ class _RecetasScreenState extends State<RecetasScreen> {
     });
   }
 
+  Future<void> _confirmarDesactivar(Receta receta) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Desactivar receta'),
+        content: Text(
+            '¿Desactivar la receta "${receta.nombre}"? Deja de usarse para el '
+            'costo del producto. Podrá reactivarla cuando quiera.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Desactivar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado == true && mounted) {
+      _bloc.add(CambiarEstadoReceta(receta.id!, activo: false));
+    }
+  }
+
+  /// El producto ya tenía una receta desactivada: ofrece reactivarla con los
+  /// datos cargados en lugar de crear otra.
+  bool _ofreciendoReactivar = false;
+
+  Future<void> _ofrecerReactivar(RecetasState state) async {
+    // El listener puede volver a dispararse mientras el diálogo está abierto.
+    if (_ofreciendoReactivar) return;
+    _ofreciendoReactivar = true;
+    final id = state.recetaInactivaExistenteId!;
+    final reactivar = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Receta desactivada'),
+        content: Text('${state.recetaInactivaExistenteMensaje ?? ''}\n\n'
+            '¿Reactivarla guardando los datos que cargó?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Reactivar con estos datos'),
+          ),
+        ],
+      ),
+    );
+    _ofreciendoReactivar = false;
+    if (!mounted) return;
+    _bloc.add(reactivar == true
+        ? ReactivarRecetaConDatos(id)
+        : const DescartarRecetaInactivaExistente());
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
@@ -86,6 +145,10 @@ class _RecetasScreenState extends State<RecetasScreen> {
         body: BlocConsumer<RecetasBloc, RecetasState>(
           bloc: _bloc,
           listener: (context, state) {
+            if (state.recetaInactivaExistenteId != null) {
+              _ofrecerReactivar(state);
+              return;
+            }
             if (state.successMessage != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -215,13 +278,34 @@ class _RecetasScreenState extends State<RecetasScreen> {
                       DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold))),
                     ],
                     rows: state.recetas.map((r) {
+                      // Las desactivadas se ven atenuadas y se pueden reactivar.
+                      final atenuado = r.activo
+                          ? null
+                          : const TextStyle(color: Color(0xFF94A3B8));
                       return DataRow(
+                        key: ValueKey('fila_receta_${r.id}'),
                         cells: [
-                          DataCell(Text(r.espProductoNombre ?? r.espProductoCodigo, style: const TextStyle(fontWeight: FontWeight.w600))),
-                          DataCell(Text(r.nombre)),
-                          DataCell(Text('${r.detalles.length} insumos')),
-                          DataCell(Text(_currencyFormat.format(r.costosAdicionales))),
-                          DataCell(Text(_currencyFormat.format(r.costoTotal), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF13894E)))),
+                          DataCell(Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(r.espProductoNombre ?? r.espProductoCodigo,
+                                  style: (atenuado ?? const TextStyle())
+                                      .copyWith(fontWeight: FontWeight.w600)),
+                              if (!r.activo) ...[
+                                const SizedBox(width: 8),
+                                const Chip(
+                                  label: Text('Inactiva'),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ],
+                            ],
+                          )),
+                          DataCell(Text(r.nombre, style: atenuado)),
+                          DataCell(Text('${r.detalles.length} insumos', style: atenuado)),
+                          DataCell(Text(_currencyFormat.format(r.costosAdicionales), style: atenuado)),
+                          DataCell(Text(_currencyFormat.format(r.costoTotal),
+                              style: atenuado ??
+                                  const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF13894E)))),
                           DataCell(
                             Row(
                               mainAxisSize: MainAxisSize.min,
@@ -231,15 +315,22 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                   icon: const Icon(Icons.edit, color: Color(0xFF64748B)),
                                   onPressed: () => _editarReceta(r),
                                 ),
-                                IconButton(
-                                  key: Key('eliminar_receta_${r.id}'),
-                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                  onPressed: () {
-                                    if (r.id != null) {
-                                      _bloc.add(EliminarReceta(r.id!));
-                                    }
-                                  },
-                                ),
+                                if (r.activo)
+                                  IconButton(
+                                    key: Key('desactivar_receta_${r.id}'),
+                                    tooltip: 'Desactivar',
+                                    icon: const Icon(Icons.toggle_on, color: Color(0xFF13894E)),
+                                    onPressed: r.id == null ? null : () => _confirmarDesactivar(r),
+                                  )
+                                else
+                                  IconButton(
+                                    key: Key('activar_receta_${r.id}'),
+                                    tooltip: 'Activar',
+                                    icon: const Icon(Icons.toggle_off, color: Color(0xFF94A3B8)),
+                                    onPressed: r.id == null
+                                        ? null
+                                        : () => _bloc.add(CambiarEstadoReceta(r.id!, activo: true)),
+                                  ),
                               ],
                             ),
                           ),
