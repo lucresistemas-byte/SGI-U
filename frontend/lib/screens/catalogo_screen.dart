@@ -61,8 +61,6 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Productos',
-      rutaActual: '/catalogo',
       body: BlocListener<PosBloc, PosState>(
         listenWhen: (previous, current) =>
             previous.errorMessage != current.errorMessage ||

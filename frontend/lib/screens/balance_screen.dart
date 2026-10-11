@@ -133,8 +133,6 @@ class _BalanceScreenState extends State<BalanceScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Balance',
-      rutaActual: '/balance',
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
         child: Column(

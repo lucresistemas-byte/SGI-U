@@ -10,7 +10,8 @@ import 'blocs/finanzas/finanzas_bloc.dart';
 import 'blocs/insumos/insumos_bloc.dart';
 import 'blocs/recetas/recetas_bloc.dart';
 import 'blocs/pedidos/pedidos_bloc.dart';
-import 'screens/catalogo_screen.dart';
+import 'navigation/app_shell.dart';
+import 'navigation/seccion.dart';
 import 'screens/login_screen.dart';
 import 'repositories/auth_repository.dart';
 import 'services/api_service.dart';
@@ -69,9 +70,10 @@ Future<void> initializeBackendUrl({
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-/// Pantalla que se muestra al iniciar sesión. Para cambiar la pantalla de
+/// Pantalla que se muestra al iniciar sesión. Para cambiar la sección de
 /// inicio de la app alcanza con modificar esta línea.
-const Widget pantallaPrincipalPorDefecto = CatalogoScreen();
+const Widget pantallaPrincipalPorDefecto =
+    AppShell(seccionInicial: Seccion.catalogo);
 
 class MyApp extends StatelessWidget {
   /// [authRepository], [posApi] y [pantallaPrincipal] son inyectables para

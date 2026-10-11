@@ -395,8 +395,6 @@ class _PedidosScreenState extends State<PedidosScreen> {
     return BlocProvider.value(
       value: _bloc,
       child: AppScaffold(
-        title: 'Pedidos con Seña',
-        rutaActual: '/pedidos',
         body: BlocConsumer<PedidosBloc, PedidosState>(
           bloc: _bloc,
           listener: (context, state) {

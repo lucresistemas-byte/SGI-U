@@ -82,8 +82,6 @@ class _RecetasScreenState extends State<RecetasScreen> {
     return BlocProvider.value(
       value: _bloc,
       child: AppScaffold(
-        title: 'Recetas de Producción',
-        rutaActual: '/recetas',
         body: BlocConsumer<RecetasBloc, RecetasState>(
           bloc: _bloc,
           listener: (context, state) {

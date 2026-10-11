@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
-import '../screens/catalogo_screen.dart';
-import '../screens/pos_screen.dart';
-import '../screens/movimientos_screen.dart';
-import '../screens/balance_screen.dart';
-import '../screens/dashboard_screen.dart';
-import '../screens/settings_screen.dart';
-import '../screens/insumos_screen.dart';
-import '../screens/recetas_screen.dart';
-import '../screens/pedidos_screen.dart';
+import '../navigation/seccion.dart';
 import '../services/api_service.dart';
 
+/// Menú lateral. No navega: avisa la sección elegida a AppShell, que cambia
+/// el contenido.
 class SideMenu extends StatefulWidget {
-  final String rutaActual;
-  const SideMenu({super.key, required this.rutaActual});
+  final Seccion seccionActual;
+  final ValueChanged<Seccion> onSeleccionar;
+
+  const SideMenu({
+    super.key,
+    required this.seccionActual,
+    required this.onSeleccionar,
+  });
 
   @override
   State<SideMenu> createState() => _SideMenuState();
@@ -69,97 +69,12 @@ class _SideMenuState extends State<SideMenu> {
           ),
           const SizedBox(height: 10),
           
-          // 1. Punto de Venta
-          _buildMenuItem(Icons.storefront_outlined, 'Punto de Venta',
-              widget.rutaActual == '/pos', () {
-                if (widget.rutaActual != '/pos') {
-                  Navigator.pushReplacement(
-                      context, MaterialPageRoute(builder: (_) => const PosScreen()));
-                }
-              }),
-
-          // 2. Movimientos
-          _buildMenuItem(
-            Icons.receipt_long,
-            'Movimientos',
-            widget.rutaActual == '/movimientos',
-                () {
-              if (widget.rutaActual != '/movimientos') {
-                Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (_) => const MovimientosScreen()));
-              }
-            },
-          ),
-
-          // 3. Productos (renombrado de "Catálogo")
-          _buildMenuItem(Icons.inventory_2, 'Productos',
-              widget.rutaActual == '/catalogo', () {
-                if (widget.rutaActual != '/catalogo') {
-                  Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (_) => const CatalogoScreen()));
-                }
-              }),
-
-          // 4. Insumos / Materia Prima
-          _buildMenuItem(Icons.egg_outlined, 'Materia Prima',
-              widget.rutaActual == '/insumos', () {
-                if (widget.rutaActual != '/insumos') {
-                  Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (_) => const InsumosScreen()));
-                }
-              }),
-
-          // 5. Recetas de Producción
-          _buildMenuItem(Icons.menu_book, 'Recetas',
-              widget.rutaActual == '/recetas', () {
-                if (widget.rutaActual != '/recetas') {
-                  Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (_) => const RecetasScreen()));
-                }
-              }),
-
-          // 6. Pedidos con Seña
-          _buildMenuItem(Icons.assignment_outlined, 'Pedidos',
-              widget.rutaActual == '/pedidos', () {
-                if (widget.rutaActual != '/pedidos') {
-                  Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (_) => const PedidosScreen()));
-                }
-              }),
-            
-          // 4. Balance
-          _buildMenuItem(
-            Icons.balance,
-            'Balance',
-            widget.rutaActual == '/balance',
-                () {
-              if (widget.rutaActual != '/balance') {
-                Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (_) => const BalanceScreen()));
-              }
-            },
-          ),
-
-          // 5. Dashboard (¡AHORA SÍ VIAJA A LA PANTALLA!)
-          _buildMenuItem(Icons.dashboard_outlined, 'Dashboard', 
-              widget.rutaActual == '/dashboard', () {
-                if (widget.rutaActual != '/dashboard') {
-                  Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (_) => const DashboardScreen()));
-                }
-          }),
+          for (final seccion in Seccion.values)
+            if (seccion != Seccion.settings) _buildSeccionItem(seccion),
 
           const Spacer(),
 
-          // 6. Configuración
-          _buildMenuItem(Icons.settings_outlined, 'Configuración',
-              widget.rutaActual == '/settings', () {
-            if (widget.rutaActual != '/settings') {
-              Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()));
-            }
-          }),
+          _buildSeccionItem(Seccion.settings),
 
           // 7. Cerrar Sesión
           _buildMenuItem(Icons.logout, 'Cerrar Sesión', false, () {
@@ -171,6 +86,13 @@ class _SideMenuState extends State<SideMenu> {
       ),
     );
   }
+
+  Widget _buildSeccionItem(Seccion seccion) => _buildMenuItem(
+        seccion.icono,
+        seccion.etiqueta,
+        seccion == widget.seccionActual,
+        () => widget.onSeleccionar(seccion),
+      );
 
   Widget _buildMenuItem(IconData icon, String title, bool isSelected, VoidCallback onTap) {
     return Padding(

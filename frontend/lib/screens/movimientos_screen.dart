@@ -18,8 +18,6 @@ class MovimientosScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // La carga inicial la hace MovimientosContent en initState
     return const AppScaffold(
-      title: 'Movimientos',
-      rutaActual: '/movimientos',
       body: MovimientosContent(),
     );
   }

@@ -325,8 +325,6 @@ class _InsumosScreenState extends State<InsumosScreen> {
     return BlocProvider.value(
       value: _bloc,
       child: AppScaffold(
-        title: 'Materia Prima / Insumos',
-        rutaActual: '/insumos',
         body: BlocConsumer<InsumosBloc, InsumosState>(
           listener: (context, state) {
             if (state is InsumoOperacionExitosa) {

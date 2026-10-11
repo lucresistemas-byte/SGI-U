@@ -142,8 +142,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Configuración',
-      rutaActual: '/settings',
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null

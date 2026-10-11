@@ -109,8 +109,6 @@ class PosView extends StatelessWidget {
         }
       },
       child: const AppScaffold(
-        title: 'Punto de Venta',
-        rutaActual: '/pos',
         body: FractionallySizedBox(
           widthFactor: 1.0,
           heightFactor: 1.0,
