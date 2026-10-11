@@ -137,6 +137,26 @@ void main() {
   });
 
   testWidgets(
+      'cerrar sesión desde cada sección vuelve al login y reingresar funciona',
+      (tester) async {
+    await arrancar(tester);
+    await ingresar(tester);
+
+    for (final seccion in Seccion.values) {
+      await tester.tap(find.text(seccion.etiqueta));
+      await tester.pumpAndSettle();
+      expect(find.text('SECCION ${seccion.name}'), findsOneWidget);
+
+      await cerrarSesion(tester);
+      expect(find.byType(LoginScreen), findsOneWidget, reason: seccion.name);
+      expect(_principal, findsNothing, reason: seccion.name);
+
+      await ingresar(tester);
+      expect(_principal, findsOneWidget, reason: seccion.name);
+    }
+  });
+
+  testWidgets(
       'sesión vencida (401) -> login con aviso una sola vez -> reingreso OK',
       (tester) async {
     await arrancar(tester);

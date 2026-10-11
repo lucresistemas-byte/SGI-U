@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sgi_u_frontend/widgets/cargando_diferido.dart';
 
 void main() {
-  Future<void> montar(WidgetTester tester) => tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: CargandoDiferido())));
+  Future<void> montar(WidgetTester tester) => tester
+      .pumpWidget(const MaterialApp(home: Scaffold(body: CargandoDiferido())));
 
   testWidgets('no muestra el spinner antes de 300 ms', (tester) async {
     await montar(tester);
@@ -29,8 +29,8 @@ void main() {
       (tester) async {
     await montar(tester);
     await tester.pump(const Duration(milliseconds: 100));
-    await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: Text('datos'))));
+    await tester
+        .pumpWidget(const MaterialApp(home: Scaffold(body: Text('datos'))));
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
