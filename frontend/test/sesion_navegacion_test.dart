@@ -13,6 +13,7 @@ import 'package:sgi_u_frontend/screens/login_screen.dart';
 import 'package:sgi_u_frontend/services/api_service.dart';
 import 'package:sgi_u_frontend/navigation/app_shell.dart';
 import 'package:sgi_u_frontend/navigation/seccion.dart';
+import 'package:sgi_u_frontend/navigation/transiciones.dart';
 
 /// Flujo de navegación de sesión (login, logout, sesión vencida) sobre la app
 /// real (MyApp + AuthBloc + StartupDecider + AppShell + SideMenu). Solo se
@@ -264,6 +265,79 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(_principal, findsOneWidget);
+    });
+  });
+
+  group('cambios de pantalla sin animación', () {
+    /// Avanza frames sin tiempo hasta que [destino] está en la ruta actual y
+    /// verifica que ningún frame muestre a la vez [origen] y [destino], y que
+    /// la ruta actual ya haya terminado de entrar (sin transición en curso).
+    /// No mira otras animaciones: el SnackBar de sesión vencida sí se anima.
+    Future<void> esperarSinTransicion(
+        WidgetTester tester, Finder origen, Finder destino) async {
+      for (var frame = 0; frame < 10; frame++) {
+        await tester.pump(Duration.zero);
+        expect(
+            destino.evaluate().isNotEmpty && origen.evaluate().isNotEmpty,
+            isFalse,
+            reason: 'frame $frame: origen y destino a la vez');
+        for (final elemento in destino.evaluate()) {
+          final ruta = ModalRoute.of(elemento)!;
+          if (!ruta.isCurrent) continue;
+          expect(ruta.animation!.status, AnimationStatus.completed,
+              reason: 'frame $frame: transición de ruta en curso');
+          expect(navigatorKey.currentState!.canPop(), isFalse);
+          return;
+        }
+      }
+      fail('$destino no apareció en la ruta actual');
+    }
+
+    final login = find.byType(LoginScreen);
+
+    testWidgets('cerrar sesión muestra el login en el primer frame',
+        (tester) async {
+      await arrancar(tester);
+      await ingresar(tester);
+
+      await tester.tap(find.text('Cerrar Sesión'));
+      await esperarSinTransicion(tester, _principal, login);
+    });
+
+    testWidgets('sesión vencida muestra el login en el primer frame',
+        (tester) async {
+      await arrancar(tester);
+      await ingresar(tester);
+
+      ApiService().onSessionExpired!.call();
+      await esperarSinTransicion(tester, _principal, login);
+    });
+
+    testWidgets('el paso de login a la app es instantáneo', (tester) async {
+      await arrancar(tester);
+      await tester.enterText(find.byType(TextFormField).at(0), 'admin');
+      await tester.enterText(find.byType(TextFormField).at(1), 'admin123');
+
+      await tester.tap(_botonLogin);
+      await esperarSinTransicion(tester, login, _principal);
+    });
+
+    testWidgets('el tema no anima transiciones de página en ninguna plataforma',
+        (tester) async {
+      await arrancar(tester);
+      final tema =
+          Theme.of(tester.element(find.byType(LoginScreen))).pageTransitionsTheme;
+
+      for (final plataforma in [
+        TargetPlatform.windows,
+        TargetPlatform.linux,
+        TargetPlatform.macOS,
+        TargetPlatform.android,
+        TargetPlatform.iOS,
+      ]) {
+        expect(tema.builders[plataforma], isA<TransicionInstantanea>(),
+            reason: plataforma.name);
+      }
     });
   });
 }
