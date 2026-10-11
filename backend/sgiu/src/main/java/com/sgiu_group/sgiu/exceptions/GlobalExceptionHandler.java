@@ -14,6 +14,10 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 
 import java.util.Map;
 
+/**
+ * Formato único de error (E-9): {"error": "<mensaje para el usuario>"} y,
+ * cuando sirve para distinguir el caso, "codigo".
+ */
 @Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -70,36 +74,32 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(FechasInvalidasException.class)
     public ResponseEntity<?> handleFechasInvalidas(FechasInvalidasException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
-                "error", true,
-                "codigo", "FECHAS_INVALIDAS",
-                "mensaje", e.getMessage()
+                "error", e.getMessage(),
+                "codigo", "FECHAS_INVALIDAS"
         ));
     }
 
     @ExceptionHandler(FiltroInvalidoException.class)
     public ResponseEntity<?> handleFiltroInvalido(FiltroInvalidoException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
-                "error", true,
-                "codigo", "FILTRO_INVALIDO",
-                "mensaje", e.getMessage()
+                "error", e.getMessage(),
+                "codigo", "FILTRO_INVALIDO"
         ));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<?> handleAccessDenied(AccessDeniedException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                "error", true,
-                "codigo", "TOKEN_INVALIDO",
-                "mensaje", "Token inválido o expirado"
+                "error", "Token inválido o expirado",
+                "codigo", "TOKEN_INVALIDO"
         ));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<?> handleMissingParam(MissingServletRequestParameterException e) {
         return ResponseEntity.badRequest().body(Map.of(
-                "error", true,
-                "codigo", "PARAMETRO_REQUERIDO",
-                "mensaje", "Parámetro requerido no provisto: " + e.getParameterName()
+                "error", "Parámetro requerido no provisto: " + e.getParameterName(),
+                "codigo", "PARAMETRO_REQUERIDO"
         ));
     }
 
@@ -113,9 +113,8 @@ public class GlobalExceptionHandler {
         // Sin esto el error inesperado se pierde: la respuesta es genérica.
         log.error("Error no controlado", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "error", true,
-                "codigo", "ERROR_DASHBOARD",
-                "mensaje", "No se pudo generar el Dashboard"
+                "error", "Ocurrió un error inesperado en el servidor. Intente nuevamente.",
+                "codigo", "ERROR_INTERNO"
         ));
     }
 }

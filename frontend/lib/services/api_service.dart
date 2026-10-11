@@ -190,15 +190,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 200) {
         return response.data;
       } else {
-        throw Exception('Error al cargar productos');
+        throw const ApiException('No se pudieron cargar los productos. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        throw Exception('Error de conexión. Verifique su red.');
-      }
-      throw Exception('Error al cargar productos: ${e.message}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudieron cargar los productos. Intente nuevamente.'));
     }
   }
 
@@ -209,18 +205,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 201) {
         return;
       } else {
-        throw Exception('Error al procesar la venta');
+        throw const ApiException('No se pudo registrar la venta. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        throw Exception('Error de conexión. Verifique su red.');
-      }
-      if (e.response?.statusCode == 400) {
-        throw Exception('Error al procesar la venta');
-      }
-      throw Exception('Error al procesar la venta: ${e.message}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo registrar la venta. Intente nuevamente.'));
     }
   }
 
@@ -231,13 +220,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 201) {
         return Product.fromJson(response.data);
       } else {
-        throw Exception('Error al crear el producto');
+        throw const ApiException('No se pudo crear el producto. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      if (e.response?.statusCode == 409) {
-        throw Exception('El código de producto ya existe.');
-      }
-      throw Exception('Error de red al crear el producto: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo crear el producto. Intente nuevamente.'));
     }
   }
   static const _errorMovimientos =
@@ -302,13 +289,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 200) {
         return Product.fromJson(response.data);
       } else {
-        throw Exception('Error al actualizar el producto');
+        throw const ApiException('No se pudo actualizar el producto. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      if (e.response?.statusCode == 422 || e.response?.statusCode == 400) {
-        throw Exception('Datos inválidos: verifique el precio o el stock.');
-      }
-      throw Exception('Error de red al actualizar: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo actualizar el producto. Intente nuevamente.'));
     }
   }
 
@@ -326,17 +311,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 200) {
         return Product.fromJson(response.data);
       } else {
-        throw Exception('Error al ajustar el stock');
+        throw const ApiException('No se pudo ajustar el stock. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      if (e.response?.statusCode == 422 || e.response?.statusCode == 400) {
-        final data = e.response?.data;
-        if (data is Map && data['error'] is String) {
-          throw Exception(data['error']);
-        }
-        throw Exception('Datos inválidos al ajustar el stock.');
-      }
-      throw Exception('Error de red al ajustar el stock: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo ajustar el stock. Intente nuevamente.'));
     }
   }
 
@@ -415,10 +394,11 @@ class ApiService implements PosApi {
         final List list = response.data as List;
         return list.map((item) => Insumo.fromJson(item as Map<String, dynamic>)).toList();
       } else {
-        throw Exception('Error al obtener insumos');
+        throw const ApiException('No se pudieron cargar los insumos. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudieron cargar los insumos. Intente nuevamente.'));
     }
   }
 
@@ -428,16 +408,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 201) {
         return Insumo.fromJson(response.data as Map<String, dynamic>);
       } else {
-        throw Exception('Error al crear insumo');
+        throw const ApiException('No se pudo crear el insumo. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      if (e.response?.statusCode == 400 || e.response?.statusCode == 422) {
-        final body = e.response?.data;
-        if (body is Map && body['message'] != null) {
-          throw Exception(body['message']);
-        }
-      }
-      throw Exception('Error al crear insumo: ${e.message}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo crear el insumo. Intente nuevamente.'));
     }
   }
 
@@ -447,10 +422,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 200) {
         return Insumo.fromJson(response.data as Map<String, dynamic>);
       } else {
-        throw Exception('Error al actualizar insumo');
+        throw const ApiException('No se pudo actualizar el insumo. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo actualizar el insumo. Intente nuevamente.'));
     }
   }
 
@@ -463,10 +439,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 200) {
         return Insumo.fromJson(response.data as Map<String, dynamic>);
       } else {
-        throw Exception('Error al ajustar stock de insumo');
+        throw const ApiException('No se pudo ajustar el stock del insumo. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo ajustar el stock del insumo. Intente nuevamente.'));
     }
   }
 
@@ -478,10 +455,11 @@ class ApiService implements PosApi {
         final List list = response.data as List;
         return list.map((item) => Receta.fromJson(item as Map<String, dynamic>)).toList();
       } else {
-        throw Exception('Error al obtener recetas');
+        throw const ApiException('No se pudieron cargar las recetas. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudieron cargar las recetas. Intente nuevamente.'));
     }
   }
 
@@ -494,7 +472,8 @@ class ApiService implements PosApi {
       return null;
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) return null;
-      throw Exception('Error de red: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo cargar la receta. Intente nuevamente.'));
     }
   }
 
@@ -504,16 +483,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 201) {
         return Receta.fromJson(response.data as Map<String, dynamic>);
       } else {
-        throw Exception('Error al crear receta');
+        throw const ApiException('No se pudo crear la receta. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      if (e.response?.statusCode == 400 || e.response?.statusCode == 422) {
-        final body = e.response?.data;
-        if (body is Map && body['message'] != null) {
-          throw Exception(body['message']);
-        }
-      }
-      throw Exception('Error al crear receta: ${e.message}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo crear la receta. Intente nuevamente.'));
     }
   }
 
@@ -523,10 +497,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 200) {
         return Receta.fromJson(response.data as Map<String, dynamic>);
       } else {
-        throw Exception('Error al actualizar receta');
+        throw const ApiException('No se pudo actualizar la receta. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo actualizar la receta. Intente nuevamente.'));
     }
   }
 
@@ -534,10 +509,11 @@ class ApiService implements PosApi {
     try {
       final response = await dio.delete('/api/recetas/$id');
       if (response.statusCode != 200 && response.statusCode != 204) {
-        throw Exception('Error al eliminar receta');
+        throw const ApiException('No se pudo eliminar la receta. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo eliminar la receta. Intente nuevamente.'));
     }
   }
 
@@ -553,10 +529,11 @@ class ApiService implements PosApi {
         final List list = response.data as List;
         return list.map((item) => Pedido.fromJson(item as Map<String, dynamic>)).toList();
       } else {
-        throw Exception('Error al obtener pedidos');
+        throw const ApiException('No se pudieron cargar los pedidos. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudieron cargar los pedidos. Intente nuevamente.'));
     }
   }
 
@@ -566,10 +543,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 200) {
         return Pedido.fromJson(response.data as Map<String, dynamic>);
       } else {
-        throw Exception('Error al obtener pedido');
+        throw const ApiException('No se pudo cargar el pedido. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo cargar el pedido. Intente nuevamente.'));
     }
   }
 
@@ -579,16 +557,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 201) {
         return Pedido.fromJson(response.data as Map<String, dynamic>);
       } else {
-        throw Exception('Error al crear pedido');
+        throw const ApiException('No se pudo crear el pedido. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      if (e.response?.statusCode == 400 || e.response?.statusCode == 422) {
-        final body = e.response?.data;
-        if (body is Map && body['message'] != null) {
-          throw Exception(body['message']);
-        }
-      }
-      throw Exception('Error al crear pedido: ${e.message}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo crear el pedido. Intente nuevamente.'));
     }
   }
 
@@ -608,16 +581,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 200) {
         return Pedido.fromJson(response.data as Map<String, dynamic>);
       } else {
-        throw Exception('Error al abonar pedido');
+        throw const ApiException('No se pudo registrar el abono. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      if (e.response?.statusCode == 400 || e.response?.statusCode == 422) {
-        final body = e.response?.data;
-        if (body is Map && body['message'] != null) {
-          throw Exception(body['message']);
-        }
-      }
-      throw Exception('Error al abonar pedido: ${e.message}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo registrar el abono. Intente nuevamente.'));
     }
   }
 
@@ -627,10 +595,11 @@ class ApiService implements PosApi {
       if (response.statusCode == 200) {
         return Pedido.fromJson(response.data as Map<String, dynamic>);
       } else {
-        throw Exception('Error al cancelar pedido');
+        throw const ApiException('No se pudo cancelar el pedido. Intente nuevamente.');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red: ${_formatDioError(e)}');
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo cancelar el pedido. Intente nuevamente.'));
     }
   }
 }

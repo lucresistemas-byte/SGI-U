@@ -80,7 +80,7 @@ class GlobalExceptionHandlerTest {
 
         assertThat(respuesta.getStatusCode().value()).isEqualTo(400);
         assertThat(cuerpo(respuesta)).containsEntry("codigo", "FECHAS_INVALIDAS");
-        assertThat(cuerpo(respuesta)).containsEntry("mensaje", "mal");
+        assertThat(cuerpo(respuesta)).containsEntry("error", "mal");
     }
 
     @Test
@@ -89,6 +89,7 @@ class GlobalExceptionHandlerTest {
 
         assertThat(respuesta.getStatusCode().value()).isEqualTo(400);
         assertThat(cuerpo(respuesta)).containsEntry("codigo", "FILTRO_INVALIDO");
+        assertThat(cuerpo(respuesta)).containsEntry("error", "mal");
     }
 
     @Test
@@ -98,16 +99,19 @@ class GlobalExceptionHandlerTest {
 
         assertThat(respuesta.getStatusCode().value()).isEqualTo(401);
         assertThat(cuerpo(respuesta)).containsEntry("codigo", "TOKEN_INVALIDO");
-        assertThat(cuerpo(respuesta)).containsEntry("mensaje", "Token inválido o expirado");
+        assertThat(cuerpo(respuesta)).containsEntry("error", "Token inválido o expirado");
     }
 
     @Test
-    void handleGeneral_devuelve500ConCodigoERROR_DASHBOARD () {
+    void handleGeneral_devuelve500ConMensajeGenericoYNoElDelDashboard() {
+        // E-9 / R-6: antes respondía "No se pudo generar el Dashboard" para
+        // cualquier error, y con "error": true en vez de un mensaje.
         ResponseEntity<?> respuesta = handler.handleGeneral(new RuntimeException("boom"));
 
         assertThat(respuesta.getStatusCode().value()).isEqualTo(500);
-        assertThat(cuerpo(respuesta)).containsEntry("codigo", "ERROR_DASHBOARD");
-        assertThat(cuerpo(respuesta)).containsEntry("mensaje", "No se pudo generar el Dashboard");
+        assertThat(cuerpo(respuesta)).containsEntry("codigo", "ERROR_INTERNO");
+        assertThat(cuerpo(respuesta)).containsEntry(
+                "error", "Ocurrió un error inesperado en el servidor. Intente nuevamente.");
     }
 
     @Test
@@ -119,5 +123,21 @@ class GlobalExceptionHandlerTest {
 
         assertThat(respuesta.getStatusCode().value()).isEqualTo(400);
         assertThat(cuerpo(respuesta)).containsEntry("error", "Error en el formato de los datos o valor inválido.");
+    }
+
+    /** E-9: todas las respuestas de error llevan el mensaje como texto en "error". */
+    @Test
+    void todosLosHandlers_devuelvenElMensajeComoTextoEnError() {
+        java.util.List<ResponseEntity<?>> respuestas = java.util.List.of(
+                handler.handleFechasInvalidas(new FechasInvalidasException("a")),
+                handler.handleFiltroInvalido(new FiltroInvalidoException("b")),
+                handler.handleAccessDenied(new org.springframework.security.access.AccessDeniedException("c")),
+                handler.handleMissingParam(new org.springframework.web.bind.MissingServletRequestParameterException("fechaDesde", "LocalDate")),
+                handler.handleGeneral(new RuntimeException("d")));
+
+        for (ResponseEntity<?> r : respuestas) {
+            assertThat(cuerpo(r).get("error")).isInstanceOf(String.class);
+            assertThat(cuerpo(r)).doesNotContainKey("mensaje");
+        }
     }
 }

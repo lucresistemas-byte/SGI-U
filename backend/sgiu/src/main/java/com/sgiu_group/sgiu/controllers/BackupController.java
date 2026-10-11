@@ -37,8 +37,7 @@ public class BackupController {
         } catch (Exception e) {
             log.error("Error al ejecutar backup manual: {}", e.getMessage(), e);
             Map<String, Object> error = new HashMap<>();
-            error.put("status", "error");
-            error.put("mensaje", "Error al ejecutar backup: " + e.getMessage());
+            error.put("error", "No se pudo ejecutar el backup: " + e.getMessage());
             return ResponseEntity.internalServerError().body(error);
         }
     }
