@@ -405,9 +405,12 @@ class ApiService implements PosApi {
   }
 
   // --- INSUMOS (MATERIA PRIMA) ---
-  Future<List<Insumo>> getInsumos() async {
+  /// Con [incluirInactivos] trae también los insumos desactivados.
+  Future<List<Insumo>> getInsumos({bool incluirInactivos = false}) async {
     try {
-      final response = await dio.get('/api/insumos');
+      final response = await dio.get('/api/insumos',
+          queryParameters:
+              incluirInactivos ? {'incluirInactivos': true} : null);
       if (response.statusCode == 200) {
         final List list = response.data as List;
         return list.map((item) => Insumo.fromJson(item as Map<String, dynamic>)).toList();
@@ -445,6 +448,23 @@ class ApiService implements PosApi {
     } on DioException catch (e) {
       throw ApiException(mensajeDeError(
           e, 'No se pudo actualizar el insumo. Intente nuevamente.'));
+    }
+  }
+
+  /// Activa o desactiva un insumo (los insumos no se eliminan).
+  Future<Insumo> cambiarEstadoInsumo(int id, {required bool activo}) async {
+    try {
+      final response =
+          await dio.patch('/api/insumos/$id/estado', data: {'activo': activo});
+      if (response.statusCode == 200) {
+        return Insumo.fromJson(response.data as Map<String, dynamic>);
+      } else {
+        throw const ApiException(
+            'No se pudo cambiar el estado del insumo. Intente nuevamente.');
+      }
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo cambiar el estado del insumo. Intente nuevamente.'));
     }
   }
 

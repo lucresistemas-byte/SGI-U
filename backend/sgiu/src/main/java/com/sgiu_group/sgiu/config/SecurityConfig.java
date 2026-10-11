@@ -35,7 +35,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(request -> {
                 var config = new org.springframework.web.cors.CorsConfiguration();
                 config.setAllowedOriginPatterns(java.util.List.of("*")); // Permite cualquier puerto de Flutter
-                config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
                 config.setAllowedHeaders(java.util.List.of("*"));
                 return config;
             }))

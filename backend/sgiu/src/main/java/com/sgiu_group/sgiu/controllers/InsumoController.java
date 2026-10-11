@@ -1,6 +1,7 @@
 package com.sgiu_group.sgiu.controllers;
 
 import com.sgiu_group.sgiu.models.dtos.AjusteStockInsumoDTO;
+import com.sgiu_group.sgiu.models.dtos.EstadoRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.InsumoRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.InsumoResponseDTO;
 import com.sgiu_group.sgiu.services.MateriaPrimaService;
@@ -20,8 +21,9 @@ public class InsumoController {
     private final MateriaPrimaService materiaPrimaService;
 
     @GetMapping
-    public ResponseEntity<List<InsumoResponseDTO>> listarTodos() {
-        return ResponseEntity.ok(materiaPrimaService.listarTodos());
+    public ResponseEntity<List<InsumoResponseDTO>> listarTodos(
+            @RequestParam(defaultValue = "false") boolean incluirInactivos) {
+        return ResponseEntity.ok(materiaPrimaService.listarTodos(incluirInactivos));
     }
 
     @GetMapping("/{id}")
@@ -37,6 +39,13 @@ public class InsumoController {
     @PutMapping("/{id}")
     public ResponseEntity<InsumoResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody InsumoRequestDTO dto) {
         return ResponseEntity.ok(materiaPrimaService.actualizar(id, dto));
+    }
+
+    /** Los insumos no se eliminan: se activan o desactivan. */
+    @PatchMapping("/{id}/estado")
+    public ResponseEntity<InsumoResponseDTO> cambiarEstado(@PathVariable Long id,
+                                                           @Valid @RequestBody EstadoRequestDTO dto) {
+        return ResponseEntity.ok(materiaPrimaService.cambiarEstado(id, dto.activo()));
     }
 
     @PostMapping("/{id}/ajuste-stock")

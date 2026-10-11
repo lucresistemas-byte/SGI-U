@@ -71,7 +71,7 @@ public class RecetaService {
                     existente.get().getId());
         }
 
-        validarDuplicadosYExistencia(dto.detalles());
+        validarDuplicadosYExistencia(dto.detalles(), Set.of());
         validarCiclos(producto.getId(), dto.detalles(), new HashSet<>());
 
         Receta receta = new Receta(
@@ -98,7 +98,11 @@ public class RecetaService {
         Receta receta = recetaRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Receta no encontrada con ID: " + id));
 
-        validarDuplicadosYExistencia(dto.detalles());
+        // Un insumo que ya estaba en la receta puede quedar aunque se haya
+        // desactivado; uno nuevo tiene que estar activo.
+        Set<Long> yaEnLaReceta = new HashSet<>();
+        receta.getDetalles().forEach(d -> yaEnLaReceta.add(d.getMateriaPrima().getId()));
+        validarDuplicadosYExistencia(dto.detalles(), yaEnLaReceta);
         validarCiclos(receta.getProducto().getId(), dto.detalles(), new HashSet<>());
 
         receta.setNombre(dto.nombre().trim());
@@ -134,14 +138,18 @@ public class RecetaService {
         return toResponseDTO(guardada);
     }
 
-    private void validarDuplicadosYExistencia(List<RecetaDetalleRequestDTO> detalles) {
+    private void validarDuplicadosYExistencia(List<RecetaDetalleRequestDTO> detalles,
+                                              Set<Long> insumosPermitidosInactivos) {
         Set<Long> insumosVistos = new HashSet<>();
         for (RecetaDetalleRequestDTO d : detalles) {
             if (!insumosVistos.add(d.materiaPrimaId())) {
                 throw new RecetaInvalidaException("Insumo duplicado en la receta. ID de insumo: " + d.materiaPrimaId());
             }
-            if (!materiaPrimaRepository.existsById(d.materiaPrimaId())) {
-                throw new RecursoNoEncontradoException("Materia prima no encontrada con ID: " + d.materiaPrimaId());
+            MateriaPrima mp = materiaPrimaRepository.findById(d.materiaPrimaId())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Materia prima no encontrada con ID: " + d.materiaPrimaId()));
+            if (!mp.isActivo() && !insumosPermitidosInactivos.contains(mp.getId())) {
+                throw new RecetaInvalidaException("El insumo " + mp.getNombre()
+                        + " está desactivado. Reactívelo para usarlo en una receta.");
             }
         }
     }

@@ -321,6 +321,42 @@ class _InsumosScreenState extends State<InsumosScreen> {
     );
   }
 
+  /// Pide confirmación para desactivar y avisa en qué recetas activas se usa.
+  Future<void> _confirmarDesactivar(Insumo insumo) async {
+    List<String> recetas = const [];
+    try {
+      recetas = await _bloc.recetasActivasQueUsan(insumo.id!);
+    } catch (_) {
+      // Si no se pudieron consultar, se confirma igual sin la lista.
+    }
+    if (!mounted) return;
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Desactivar insumo'),
+        content: Text(recetas.isEmpty
+            ? '¿Desactivar "${insumo.nombre}"? Podrá reactivarlo cuando quiera.'
+            : '"${insumo.nombre}" se usa en estas recetas activas: '
+                '${recetas.join(', ')}.\n\nEsas recetas lo siguen teniendo para '
+                'calcular el costo, pero no podrá agregarlo a recetas nuevas. '
+                '¿Desactivarlo igual?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Desactivar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado == true && mounted) {
+      _bloc.add(CambiarEstadoInsumoEvent(insumo.id!, activo: false));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
@@ -502,11 +538,29 @@ class _InsumosScreenState extends State<InsumosScreen> {
             rows: items.map((insumo) {
               final esBajoStock =
                   insumo.stockMinimo != null && insumo.stockActual <= insumo.stockMinimo!;
+              // Los desactivados se ven atenuados y se pueden reactivar.
+              final atenuado = insumo.activo
+                  ? null
+                  : const TextStyle(color: Color(0xFF94A3B8));
               return DataRow(
+                key: ValueKey('fila_insumo_${insumo.codigo}'),
                 cells: [
-                  DataCell(Text(insumo.codigo, style: const TextStyle(fontWeight: FontWeight.w600))),
-                  DataCell(Text(insumo.nombre)),
-                  DataCell(Text(_currencyFormat.format(insumo.costoUnitario))),
+                  DataCell(Text(insumo.codigo,
+                      style: (atenuado ?? const TextStyle()).copyWith(fontWeight: FontWeight.w600))),
+                  DataCell(Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(insumo.nombre, style: atenuado),
+                      if (!insumo.activo) ...[
+                        const SizedBox(width: 8),
+                        const Chip(
+                          label: Text('Inactivo'),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ],
+                  )),
+                  DataCell(Text(_currencyFormat.format(insumo.costoUnitario), style: atenuado)),
                   DataCell(
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -562,6 +616,22 @@ class _InsumosScreenState extends State<InsumosScreen> {
                             onPressed: () => _mostrarDialogoInsumo(insumoExistente: insumo),
                           ),
                         ),
+                        if (insumo.activo)
+                          IconButton(
+                            key: Key('desactivar_insumo_${insumo.codigo}'),
+                            tooltip: 'Desactivar',
+                            icon: const Icon(Icons.toggle_on, color: Color(0xFF13894E)),
+                            onPressed: insumo.id == null ? null : () => _confirmarDesactivar(insumo),
+                          )
+                        else
+                          IconButton(
+                            key: Key('activar_insumo_${insumo.codigo}'),
+                            tooltip: 'Reactivar',
+                            icon: const Icon(Icons.toggle_off, color: Color(0xFF94A3B8)),
+                            onPressed: insumo.id == null
+                                ? null
+                                : () => _bloc.add(CambiarEstadoInsumoEvent(insumo.id!, activo: true)),
+                          ),
                       ],
                     ),
                   ),

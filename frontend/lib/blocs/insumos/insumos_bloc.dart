@@ -14,13 +14,25 @@ class InsumosBloc extends Bloc<InsumosEvent, InsumosState> {
     on<CrearInsumoEvent>(_onCrearInsumo);
     on<ActualizarInsumoEvent>(_onActualizarInsumo);
     on<AjustarStockInsumoEvent>(_onAjustarStockInsumo);
+    on<CambiarEstadoInsumoEvent>(_onCambiarEstadoInsumo);
+  }
+
+  /// Nombres de las recetas activas que usan el insumo, para avisar antes de
+  /// desactivarlo.
+  Future<List<String>> recetasActivasQueUsan(int insumoId) async {
+    final recetas = await _apiService.getRecetas();
+    return recetas
+        .where((r) => r.detalles.any((d) => d.materiaPrimaId == insumoId))
+        .map((r) => r.nombre)
+        .toList();
   }
 
   Future<void> _onCargarInsumos(
       CargarInsumos event, Emitter<InsumosState> emit) async {
     emit(InsumosLoading());
     try {
-      final insumos = await _apiService.getInsumos();
+      // Se listan también los desactivados, para poder reactivarlos.
+      final insumos = await _apiService.getInsumos(incluirInactivos: true);
       emit(InsumosLoaded(insumos: insumos));
     } catch (e) {
       emit(InsumosError(e.toString()));
@@ -83,6 +95,19 @@ class InsumosBloc extends Bloc<InsumosEvent, InsumosState> {
         motivo: event.motivo,
       );
       emit(const InsumoOperacionExitosa('Stock ajustado correctamente'));
+      add(const CargarInsumos());
+    } catch (e) {
+      emit(InsumosError(e.toString()));
+    }
+  }
+
+  Future<void> _onCambiarEstadoInsumo(
+      CambiarEstadoInsumoEvent event, Emitter<InsumosState> emit) async {
+    emit(InsumosLoading());
+    try {
+      await _apiService.cambiarEstadoInsumo(event.id, activo: event.activo);
+      emit(InsumoOperacionExitosa(
+          event.activo ? 'Insumo reactivado' : 'Insumo desactivado'));
       add(const CargarInsumos());
     } catch (e) {
       emit(InsumosError(e.toString()));

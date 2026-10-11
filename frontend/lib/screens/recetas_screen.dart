@@ -598,7 +598,12 @@ class _RecetasScreenState extends State<RecetasScreen> {
                         // Insumo Dropdown / Name
                         Expanded(
                           flex: 3,
-                          child: state.availableInsumos.isNotEmpty
+                          // Un insumo desactivado ya no está entre los
+                          // disponibles: se muestra fijo, sin dropdown.
+                          child: state.availableInsumos.isNotEmpty &&
+                                  (detalle.materiaPrimaId <= 0 ||
+                                      state.availableInsumos.any(
+                                          (i) => i.id == detalle.materiaPrimaId))
                               ? DropdownButtonFormField<int>(
                                   key: Key('selector_insumo_fila_$index'),
                                   isExpanded: true,
@@ -629,7 +634,9 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                   },
                                 )
                               : Text(
-                                  detalle.materiaPrimaNombre ?? 'Insumo #${detalle.materiaPrimaId}',
+                                  '${detalle.materiaPrimaNombre ?? 'Insumo #${detalle.materiaPrimaId}'}'
+                                  '${state.availableInsumos.isNotEmpty ? ' (desactivado)' : ''}',
+                                  key: Key('insumo_fijo_fila_$index'),
                                   style: const TextStyle(fontWeight: FontWeight.w600),
                                 ),
                         ),

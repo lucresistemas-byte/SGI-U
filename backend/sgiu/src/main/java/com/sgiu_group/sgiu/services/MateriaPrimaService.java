@@ -30,8 +30,11 @@ public class MateriaPrimaService {
     private final EspProductoRepository espProductoRepository;
 
     @Transactional(readOnly = true)
-    public List<InsumoResponseDTO> listarTodos() {
-        return materiaPrimaRepository.findByActivoTrue().stream()
+    public List<InsumoResponseDTO> listarTodos(boolean incluirInactivos) {
+        List<MateriaPrima> insumos = incluirInactivos
+                ? materiaPrimaRepository.findAll()
+                : materiaPrimaRepository.findByActivoTrue();
+        return insumos.stream()
                 .map(this::toResponseDTO)
                 .toList();
     }
@@ -39,7 +42,6 @@ public class MateriaPrimaService {
     @Transactional(readOnly = true)
     public InsumoResponseDTO obtenerPorId(Long id) {
         MateriaPrima mp = materiaPrimaRepository.findById(id)
-                .filter(MateriaPrima::isActivo)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Insumo no encontrado con ID: " + id));
         return toResponseDTO(mp);
     }
@@ -68,7 +70,6 @@ public class MateriaPrimaService {
     @Transactional
     public InsumoResponseDTO actualizar(Long id, InsumoRequestDTO dto) {
         MateriaPrima mp = materiaPrimaRepository.findById(id)
-                .filter(MateriaPrima::isActivo)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Insumo no encontrado con ID: " + id));
 
         BigDecimal costoAnterior = mp.getCostoUnitario();
@@ -94,7 +95,6 @@ public class MateriaPrimaService {
     @Transactional
     public InsumoResponseDTO ajustarStock(Long id, AjusteStockInsumoDTO dto) {
         MateriaPrima mp = materiaPrimaRepository.findById(id)
-                .filter(MateriaPrima::isActivo)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Insumo no encontrado con ID: " + id));
 
         int nuevoStock = mp.getStockActual() + dto.cantidad();
@@ -108,6 +108,16 @@ public class MateriaPrimaService {
                 guardada.getNombre(), dto.cantidad(), dto.motivo(), guardada.getStockActual());
 
         return toResponseDTO(guardada);
+    }
+
+    /** Activa o desactiva el insumo (los insumos no se eliminan). */
+    @Transactional
+    public InsumoResponseDTO cambiarEstado(Long id, boolean activo) {
+        MateriaPrima mp = materiaPrimaRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Insumo no encontrado con ID: " + id));
+        mp.setActivo(activo);
+        log.info("[INSUMO] '{}' {}", mp.getNombre(), activo ? "activado" : "desactivado");
+        return toResponseDTO(materiaPrimaRepository.save(mp));
     }
 
     @Transactional
