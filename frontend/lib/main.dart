@@ -12,6 +12,7 @@ import 'blocs/recetas/recetas_bloc.dart';
 import 'blocs/pedidos/pedidos_bloc.dart';
 import 'navigation/app_shell.dart';
 import 'navigation/seccion.dart';
+import 'navigation/transiciones.dart';
 import 'screens/login_screen.dart';
 import 'repositories/auth_repository.dart';
 import 'services/api_service.dart';
@@ -110,6 +111,9 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF13894E)),
+          // Ninguna navegación de pantalla completa se anima, en ninguna
+          // plataforma (los diálogos tienen su propia animación).
+          pageTransitionsTheme: transicionesInstantaneas,
         ),
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
@@ -134,10 +138,10 @@ class MyApp extends StatelessWidget {
             if (state is Unauthenticated && !state.sesionVencida) {
               context.read<PosBloc>().add(const ClearSelection());
             }
+            // Sin animación: el login aparece en el mismo frame.
             navigatorKey.currentState?.pushAndRemoveUntil(
-              MaterialPageRoute(
-                builder: (_) =>
-                    StartupDecider(pantallaPrincipal: pantallaPrincipal),
+              rutaInstantanea(
+                (_) => StartupDecider(pantallaPrincipal: pantallaPrincipal),
               ),
               (route) => false,
             );
