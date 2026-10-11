@@ -68,15 +68,28 @@ Future<void> initializeBackendUrl({
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+/// Pantalla que se muestra al iniciar sesión. Para cambiar la pantalla de
+/// inicio de la app alcanza con modificar esta línea.
+const Widget pantallaPrincipalPorDefecto = CatalogoScreen();
+
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  /// [authRepository] y [pantallaPrincipal] son inyectables para los tests.
+  const MyApp({
+    super.key,
+    this.authRepository,
+    this.pantallaPrincipal = pantallaPrincipalPorDefecto,
+  });
+
+  final AuthRepository? authRepository;
+  final Widget pantallaPrincipal;
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => AuthBloc(authRepository: AuthRepository())
+          create: (context) =>
+              AuthBloc(authRepository: authRepository ?? AuthRepository())
             ..add(CheckAuthStatus()),
         ),
         BlocProvider(create: (context) => PosBloc()),
@@ -113,7 +126,7 @@ class MyApp extends StatelessWidget {
               );
             }
           },
-          child: const StartupDecider(),
+          child: StartupDecider(pantallaPrincipal: pantallaPrincipal),
         ),
       ),
     );
@@ -121,14 +134,19 @@ class MyApp extends StatelessWidget {
 }
 
 class StartupDecider extends StatelessWidget {
-  const StartupDecider({super.key});
+  const StartupDecider({
+    super.key,
+    this.pantallaPrincipal = pantallaPrincipalPorDefecto,
+  });
+
+  final Widget pantallaPrincipal;
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, authState) {
         if (authState is Authenticated) {
-          return const CatalogoScreen();
+          return pantallaPrincipal;
         }
         if (authState is AuthInitial) {
           // Spinner solo durante el chequeo inicial del token guardado
