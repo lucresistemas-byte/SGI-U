@@ -64,8 +64,6 @@ Future<void> initializeBackendUrl({
     await store.save(urlToUse);
   }
   // If no URL is available, ApiService will use its default (localhost:3000)
-  // ignore: avoid_print
-  print('>>> [main.dart] Backend URL initialized: savedUrl=$savedUrl, urlToUse=$urlToUse, effectiveBaseUrl=${api.effectiveBaseUrl}');
 }
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -106,12 +104,7 @@ class MyApp extends StatelessWidget {
         ],
         home: BlocListener<AuthBloc, AuthState>(
           listener: (context, state) {
-            if (state is Authenticated) {
-              navigatorKey.currentState?.pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const CatalogoScreen()),
-                (route) => false,
-              );
-            } else if (state is Unauthenticated ||
+            if (state is Unauthenticated ||
                 (state is AuthError &&
                     state.message.toLowerCase().contains('expirad'))) {
               navigatorKey.currentState?.pushAndRemoveUntil(

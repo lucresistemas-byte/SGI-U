@@ -111,14 +111,10 @@ class ApiService implements PosApi {
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
-      // ignore: avoid_print
-      print('>>> [ApiService.login] Calling ${dio.options.baseUrl}/api/auth/login with username: $username');
       final response = await dio.post('/api/auth/login', data: {
         'username': username,
         'password': password,
       }).timeout(const Duration(seconds: 10));
-      // ignore: avoid_print
-      print('>>> [ApiService.login] Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         return response.data;

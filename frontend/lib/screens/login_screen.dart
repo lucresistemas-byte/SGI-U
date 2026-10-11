@@ -45,8 +45,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _login() {
-    // ignore: avoid_print
-    print('>>> [LoginScreen._login] Iniciar sesión clicked! username="${_usernameController.text}", passwordLength=${_passwordController.text.length}');
     if (_formKey.currentState!.validate()) {
       context.read<AuthBloc>().add(LoginRequested(
         _usernameController.text.trim(),
