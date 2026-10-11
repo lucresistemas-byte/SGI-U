@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/finanzas/finanzas_bloc.dart';
 import '../blocs/finanzas/finanzas_event.dart';
 import '../blocs/finanzas/finanzas_state.dart';
+import '../models/categoria_movimiento.dart';
 
 class MovimientoFormDialog extends StatefulWidget {
   const MovimientoFormDialog({super.key});
@@ -16,7 +17,7 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
 
   // Valores por defecto
   String _tipo = 'Ingreso';
-  String _categoria = 'Venta';
+  String _categoria = CategoriaMovimiento.ingreso.first.codigo;
   String _metodoPago = 'Efectivo';
 
   final TextEditingController _montoController = TextEditingController();
@@ -26,13 +27,6 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
   String? _error;
 
   final List<String> _tipos = ['Ingreso', 'Egreso'];
-  final List<String> _categorias = [
-    'Venta',
-    'Compra',
-    'Gasto',
-    'Retiro',
-    'Otro'
-  ];
   final List<String> _metodosPago = [
     'Efectivo',
     'Transferencia',
@@ -128,19 +122,28 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
                             .map((tipo) => DropdownMenuItem(
                                 value: tipo, child: Text(tipo)))
                             .toList(),
-                        onChanged: (value) => setState(() => _tipo = value!),
+                        // Cada tipo tiene sus categorías: al cambiarlo se
+                        // reinicia la categoría a la primera del nuevo tipo.
+                        onChanged: (value) => setState(() {
+                          _tipo = value!;
+                          _categoria =
+                              CategoriaMovimiento.paraTipo(_tipo).first.codigo;
+                        }),
                       ),
                       const SizedBox(height: 16),
 
                       // Categoría
                       DropdownButtonFormField<String>(
+                        // La key recrea el campo al cambiar el tipo, para que
+                        // tome la categoría reiniciada.
+                        key: ValueKey(_tipo),
                         initialValue: _categoria,
                         decoration: const InputDecoration(
                             labelText: 'Categoría',
                             border: OutlineInputBorder()),
-                        items: _categorias
-                            .map((cat) =>
-                                DropdownMenuItem(value: cat, child: Text(cat)))
+                        items: CategoriaMovimiento.paraTipo(_tipo)
+                            .map((cat) => DropdownMenuItem(
+                                value: cat.codigo, child: Text(cat.etiqueta)))
                             .toList(),
                         onChanged: (value) =>
                             setState(() => _categoria = value!),

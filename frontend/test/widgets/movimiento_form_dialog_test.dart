@@ -162,4 +162,102 @@ void main() {
       expect(find.text('Agregar Nuevo Movimiento'), findsOneWidget);
     });
   });
+
+  group('MovimientoFormDialog - categorías según el tipo', () {
+    const ingreso = ['Venta', 'Otro ingreso'];
+    const egreso = ['Compra', 'Servicios', 'Alquiler', 'Sueldos', 'Otro'];
+
+    /// Abre el dropdown de Categoría (por su valor actual) y devuelve las
+    /// opciones visibles en el menú.
+    Future<List<String>> opcionesDeCategoria(
+        WidgetTester tester, String valorActual) async {
+      await tester.tap(find.text(valorActual).last);
+      await tester.pumpAndSettle();
+      final opciones = [...ingreso, ...egreso]
+          .where((o) => find.text(o).evaluate().isNotEmpty)
+          .toList();
+      // Cierra el menú eligiendo el valor actual.
+      await tester.tap(find.text(valorActual).last);
+      await tester.pumpAndSettle();
+      return opciones;
+    }
+
+    Future<void> elegirTipo(WidgetTester tester, String actual, String nuevo) async {
+      await tester.tap(find.text(actual));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(nuevo).last);
+      await tester.pumpAndSettle();
+    }
+
+    Future<List<Map<String, dynamic>>> guardar(
+        WidgetTester tester, List<Map<String, dynamic>> capturados) async {
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Monto (\$)'), '100');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Descripción'), 'Prueba');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+      await tester.pumpAndSettle();
+      return capturados;
+    }
+
+    testWidgets('Ingreso ofrece solo Venta y Otro ingreso', (tester) async {
+      await _pumpDialog(tester);
+
+      expect(await opcionesDeCategoria(tester, 'Venta'), ingreso);
+    });
+
+    testWidgets('al pasar a Egreso la categoría se reinicia a Compra y '
+        'ofrece solo las de egreso', (tester) async {
+      await _pumpDialog(tester);
+
+      await elegirTipo(tester, 'Ingreso', 'Egreso');
+
+      expect(find.text('Compra'), findsOneWidget);
+      expect(await opcionesDeCategoria(tester, 'Compra'), egreso);
+    });
+
+    testWidgets('volver a Ingreso reinicia la categoría y envía el código',
+        (tester) async {
+      final capturados = <Map<String, dynamic>>[];
+      await _pumpDialog(tester, stub: (api) {
+        when(() => api.createMovimiento(any())).thenAnswer((inv) async {
+          capturados.add(inv.positionalArguments.first as Map<String, dynamic>);
+        });
+      });
+
+      await elegirTipo(tester, 'Ingreso', 'Egreso');
+      await tester.tap(find.text('Compra'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sueldos').last);
+      await tester.pumpAndSettle();
+      await elegirTipo(tester, 'Egreso', 'Ingreso');
+
+      expect(find.text('Sueldos'), findsNothing);
+      await guardar(tester, capturados);
+
+      expect(capturados.single['tipo'], 'INGRESO');
+      expect(capturados.single['categoria'], 'VENTA');
+    });
+
+    testWidgets('Egreso con Sueldos envía tipo EGRESO y categoría SUELDOS',
+        (tester) async {
+      final capturados = <Map<String, dynamic>>[];
+      await _pumpDialog(tester, stub: (api) {
+        when(() => api.createMovimiento(any())).thenAnswer((inv) async {
+          capturados.add(inv.positionalArguments.first as Map<String, dynamic>);
+        });
+      });
+
+      await elegirTipo(tester, 'Ingreso', 'Egreso');
+      await tester.tap(find.text('Compra'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sueldos').last);
+      await tester.pumpAndSettle();
+      await guardar(tester, capturados);
+
+      expect(capturados.single['tipo'], 'EGRESO');
+      expect(capturados.single['categoria'], 'SUELDOS');
+    });
+  });
 }

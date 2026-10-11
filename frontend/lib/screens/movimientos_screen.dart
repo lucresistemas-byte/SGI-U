@@ -11,6 +11,7 @@ import '../theme/app_colors.dart';
 import '../utils/parsers.dart';
 import '../utils/finanzas_calculator.dart';
 import '../widgets/cargando_diferido.dart';
+import '../models/categoria_movimiento.dart';
 
 class MovimientosScreen extends StatelessWidget {
   const MovimientosScreen({super.key});
@@ -281,8 +282,9 @@ class _MovimientosContentState extends State<MovimientosContent> {
                                               mov['fechaHora']?.toString() ??
                                                   '');
                                           String categoria =
-                                              mov['categoria']?.toString() ??
-                                                  'Sin categoría';
+                                              CategoriaMovimiento.etiquetaDe(
+                                                  mov['categoria']
+                                                      ?.toString());
                                           String descripcion =
                                               mov['descripcion']?.toString() ??
                                                   '-';
