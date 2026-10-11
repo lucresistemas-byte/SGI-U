@@ -5,6 +5,7 @@ import '../widgets/app_scaffold.dart';
 import '../services/api_service.dart';
 import '../models/dashboard_models.dart';
 import '../theme/app_colors.dart';
+import '../widgets/cargando_diferido.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -98,11 +99,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.verdeClaro),
-              ),
-            )
+          ? const CargandoDiferido(color: AppColors.verdeClaro)
           : _errorMessage != null
               ? _buildErrorWidget()
               : SingleChildScrollView(

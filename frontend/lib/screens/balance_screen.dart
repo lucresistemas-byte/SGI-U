@@ -8,6 +8,7 @@ import '../widgets/app_scaffold.dart';
 import '../services/pdf_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/parsers.dart';
+import '../widgets/cargando_diferido.dart';
 
 class BalanceScreen extends StatefulWidget {
   const BalanceScreen({super.key});
@@ -169,7 +170,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
               child: BlocBuilder<FinanzasBloc, FinanzasState>(
                 builder: (context, state) {
                   if (state is BalanceLoading) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const CargandoDiferido();
                   }
                   if (state is BalanceLoaded) {
                     return _buildMetricasYTabla(state.balance);

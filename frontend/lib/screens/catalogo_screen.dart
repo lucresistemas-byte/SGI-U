@@ -7,6 +7,7 @@ import '../blocs/pos_state.dart';
 import '../widgets/producto_form_dialog.dart';
 import '../widgets/app_scaffold.dart';
 import '../theme/app_colors.dart';
+import '../widgets/cargando_diferido.dart';
 
 class CatalogoScreen extends StatefulWidget {
   const CatalogoScreen({super.key});
@@ -207,9 +208,8 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                   child: BlocBuilder<PosBloc, PosState>(
                     builder: (context, state) {
                       if (state.isLoading) {
-                        return const Center(
-                            child: CircularProgressIndicator(
-                                color: Color(0xFF004D40)));
+                        return const CargandoDiferido(
+                            color: Color(0xFF004D40));
                       }
 
                       // 1. Filtrar los productos por categoría activa y búsqueda
