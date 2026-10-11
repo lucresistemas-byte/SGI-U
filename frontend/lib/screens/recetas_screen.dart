@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../blocs/recetas/recetas_bloc.dart';
 import '../blocs/recetas/recetas_event.dart';
 import '../blocs/recetas/recetas_state.dart';
-import '../models/insumo.dart';
 import '../models/receta.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
@@ -545,16 +544,14 @@ class _RecetasScreenState extends State<RecetasScreen> {
                       cantidad: 1.0,
                     ));
                   } else {
-                    _bloc.add(const AgregarFilaInsumo(
-                      insumo: Insumo(
-                        id: 1,
-                        codigo: 'INS-001',
-                        nombre: 'Insumo Base',
-                        costoUnitario: 100.0,
-                        unidadMedida: 'UNIDAD',
+                    // Sin insumos no hay qué agregar: antes se agregaba uno
+                    // ficticio (id 1) que se guardaba contra otro insumo real.
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No hay insumos activos. Cárguelos en '
+                            'Materia Prima antes de armar la receta.'),
                       ),
-                      cantidad: 1.0,
-                    ));
+                    );
                   }
                 },
               ),
