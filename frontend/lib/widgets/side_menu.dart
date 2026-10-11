@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
-import '../screens/login_screen.dart';
 import '../screens/catalogo_screen.dart';
 import '../screens/pos_screen.dart';
 import '../screens/movimientos_screen.dart';
@@ -164,11 +163,8 @@ class _SideMenuState extends State<SideMenu> {
 
           // 7. Cerrar Sesión
           _buildMenuItem(Icons.logout, 'Cerrar Sesión', false, () {
+            // La navegación al login la hace el listener global de main.dart.
             context.read<AuthBloc>().add(LogoutRequested());
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const LoginScreen()),
-              (route) => false,
-            );
           }),
           const SizedBox(height: 20),
         ],

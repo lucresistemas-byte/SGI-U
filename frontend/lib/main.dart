@@ -115,19 +115,25 @@ class MyApp extends StatelessWidget {
           Locale('es'),
           Locale('en'),
         ],
-        home: BlocListener<AuthBloc, AuthState>(
+        // Fin de sesión (logout o sesión vencida): StartupDecider vuelve a ser
+        // la única ruta y muestra el login. El listener vive por encima del
+        // Navigator, así que ninguna navegación lo elimina. Al autenticarse no
+        // se navega: StartupDecider cambia solo según AuthState.
+        builder: (context, child) => BlocListener<AuthBloc, AuthState>(
+          listenWhen: (previous, current) =>
+              previous is Authenticated && current is! Authenticated,
           listener: (context, state) {
-            if (state is Unauthenticated ||
-                (state is AuthError &&
-                    state.message.toLowerCase().contains('expirad'))) {
-              navigatorKey.currentState?.pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
-              );
-            }
+            navigatorKey.currentState?.pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) =>
+                    StartupDecider(pantallaPrincipal: pantallaPrincipal),
+              ),
+              (route) => false,
+            );
           },
-          child: StartupDecider(pantallaPrincipal: pantallaPrincipal),
+          child: child!,
         ),
+        home: StartupDecider(pantallaPrincipal: pantallaPrincipal),
       ),
     );
   }
