@@ -17,7 +17,14 @@ class Authenticated extends AuthState {
   List<Object?> get props => [token];
 }
 
-class Unauthenticated extends AuthState {}
+/// Sin sesión. [sesionVencida] es true cuando se llegó acá porque el backend
+/// rechazó el token (401), para que LoginScreen avise al usuario.
+class Unauthenticated extends AuthState {
+  final bool sesionVencida;
+  const Unauthenticated({this.sesionVencida = false});
+  @override
+  List<Object?> get props => [sesionVencida];
+}
 
 class AuthError extends AuthState {
   final String message;

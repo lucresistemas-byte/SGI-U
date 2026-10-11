@@ -121,7 +121,7 @@ class MyApp extends StatelessWidget {
         // se navega: StartupDecider cambia solo según AuthState.
         builder: (context, child) => BlocListener<AuthBloc, AuthState>(
           listenWhen: (previous, current) =>
-              previous is Authenticated && current is! Authenticated,
+              previous is Authenticated && current is Unauthenticated,
           listener: (context, state) {
             navigatorKey.currentState?.pushAndRemoveUntil(
               MaterialPageRoute(

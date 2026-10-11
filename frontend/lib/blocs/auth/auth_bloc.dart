@@ -33,13 +33,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (_isTokenExpired(token)) {
         await _storageService.deleteToken();
         _authRepository.clearAuthToken();
-        emit(Unauthenticated());
+        emit(const Unauthenticated());
         return;
       }
       emit(Authenticated(token));
       _authRepository.setAuthToken(token);
     } else {
-      emit(Unauthenticated());
+      emit(const Unauthenticated());
     }
   }
 
@@ -106,15 +106,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       LogoutRequested event, Emitter<AuthState> emit) async {
     await _storageService.deleteToken();
     _authRepository.clearAuthToken();
-    emit(Unauthenticated());
+    emit(const Unauthenticated());
   }
 
-  /// Sesión expirada (401 en endpoints): limpia credenciales y muestra el
-  /// login con el aviso. AuthError redirige a LoginScreen (ver StartupDecider).
+  /// Sesión expirada (401 en endpoints): limpia credenciales y emite
+  /// Unauthenticated con sesionVencida para que LoginScreen muestre el aviso.
   Future<void> _onSessionExpired(
       SessionExpired event, Emitter<AuthState> emit) async {
     await _storageService.deleteToken();
     _authRepository.clearAuthToken();
-    emit(const AuthError('Su sesión ha expirado. Vuelva a iniciar sesión.'));
+    emit(const Unauthenticated(sesionVencida: true));
   }
 }

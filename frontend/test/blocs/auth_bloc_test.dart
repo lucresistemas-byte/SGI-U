@@ -25,7 +25,7 @@ void main() {
       'CheckAuthStatus sin token guardado emite Unauthenticated',
       build: () => AuthBloc(authRepository: repo),
       act: (bloc) => bloc.add(CheckAuthStatus()),
-      expect: () => [Unauthenticated()],
+      expect: () => [const Unauthenticated()],
     );
 
     blocTest<AuthBloc, AuthState>(
@@ -76,18 +76,16 @@ void main() {
     );
   });
 
-  test('SessionExpired borra el token y emite AuthError de expiración',
+  test('SessionExpired borra el token y emite Unauthenticated con sesión vencida',
       () async {
     FlutterSecureStorage.setMockInitialValues({'jwt_token': 'abc123'});
     final bloc = AuthBloc(authRepository: AuthRepository());
 
-    final futureState = bloc.stream.firstWhere((s) => s is AuthError);
+    final futureState = bloc.stream.firstWhere((s) => s is Unauthenticated);
     bloc.add(SessionExpired());
     final state = await futureState;
 
-    expect(state, isA<AuthError>());
-    expect((state as AuthError).message,
-        'Su sesión ha expirado. Vuelva a iniciar sesión.');
+    expect(state, const Unauthenticated(sesionVencida: true));
     expect(await StorageService().getToken(), isNull);
 
     await bloc.close();
@@ -101,7 +99,7 @@ void main() {
     bloc.add(LogoutRequested());
     final state = await futureState;
 
-    expect(state, isA<Unauthenticated>());
+    expect(state, const Unauthenticated());
     expect(await StorageService().getToken(), isNull);
 
     await bloc.close();

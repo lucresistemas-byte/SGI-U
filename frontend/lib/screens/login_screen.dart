@@ -5,6 +5,8 @@ import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
 import 'dart:ui' as ui;
 
+const String mensajeSesionVencida = 'Tu sesión venció, vuelve a ingresar';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -21,15 +23,19 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Muestra el aviso cuando se llega al login con la sesión ya expirada
-    // (el AuthError se emite antes de montar esta pantalla, por lo que el
-    // listener de BlocConsumer no llega a dispararse).
+    // Muestra el aviso cuando se llega al login con la sesión vencida (el
+    // estado se emite antes de montar esta pantalla, por lo que el listener
+    // de BlocConsumer no llega a dispararse). Solo la ruta visible lo muestra:
+    // al volver a montar StartupDecider, la instancia de la ruta descartada
+    // no debe repetir el aviso.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final state = context.read<AuthBloc>().state;
-      if (state is AuthError) {
+      final esRutaVisible = ModalRoute.of(context)?.isCurrent ?? true;
+      if (state is Unauthenticated && state.sesionVencida && esRutaVisible) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(state.message),
+            content: const Text(mensajeSesionVencida),
             backgroundColor: Colors.red.shade800,
           ),
         );
