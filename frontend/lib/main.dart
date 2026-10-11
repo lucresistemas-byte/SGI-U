@@ -5,6 +5,7 @@ import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
 import 'blocs/pos_bloc.dart';
+import 'blocs/pos_event.dart';
 import 'blocs/finanzas/finanzas_bloc.dart';
 import 'blocs/insumos/insumos_bloc.dart';
 import 'blocs/recetas/recetas_bloc.dart';
@@ -73,14 +74,17 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 const Widget pantallaPrincipalPorDefecto = CatalogoScreen();
 
 class MyApp extends StatelessWidget {
-  /// [authRepository] y [pantallaPrincipal] son inyectables para los tests.
+  /// [authRepository], [posApi] y [pantallaPrincipal] son inyectables para
+  /// los tests.
   const MyApp({
     super.key,
     this.authRepository,
+    this.posApi,
     this.pantallaPrincipal = pantallaPrincipalPorDefecto,
   });
 
   final AuthRepository? authRepository;
+  final PosApi? posApi;
   final Widget pantallaPrincipal;
 
   @override
@@ -92,7 +96,7 @@ class MyApp extends StatelessWidget {
               AuthBloc(authRepository: authRepository ?? AuthRepository())
             ..add(CheckAuthStatus()),
         ),
-        BlocProvider(create: (context) => PosBloc()),
+        BlocProvider(create: (context) => PosBloc(apiService: posApi)),
         BlocProvider(create: (context) => FinanzasBloc()),
         BlocProvider(create: (context) => InsumosBloc()),
         BlocProvider(create: (context) => RecetasBloc()),
@@ -123,6 +127,11 @@ class MyApp extends StatelessWidget {
           listenWhen: (previous, current) =>
               previous is Authenticated && current is Unauthenticated,
           listener: (context, state) {
+            // Logout explícito: el próximo usuario no hereda el carrito. Si la
+            // sesión venció se conserva, para que quien reingrese retome la venta.
+            if (state is Unauthenticated && !state.sesionVencida) {
+              context.read<PosBloc>().add(const ClearSelection());
+            }
             navigatorKey.currentState?.pushAndRemoveUntil(
               MaterialPageRoute(
                 builder: (_) =>

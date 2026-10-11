@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:sgi_u_frontend/blocs/pos_bloc.dart';
+import 'package:sgi_u_frontend/blocs/pos_event.dart';
 import 'package:sgi_u_frontend/main.dart';
 import 'package:sgi_u_frontend/repositories/auth_repository.dart';
 import 'package:sgi_u_frontend/screens/login_screen.dart';
@@ -12,9 +15,11 @@ import 'package:sgi_u_frontend/widgets/app_scaffold.dart';
 
 /// Flujo de navegación de sesión (login, logout, sesión vencida) sobre la app
 /// real (MyApp + AuthBloc + StartupDecider + SideMenu). Solo se simulan el
-/// repositorio de auth (sin red) y la pantalla principal.
+/// repositorio de auth y la API del POS (sin red) y la pantalla principal.
 
 class _MockAuthRepository extends Mock implements AuthRepository {}
+
+class _MockPosApi extends Mock implements PosApi {}
 
 class _PantallaPrincipalFalsa extends StatelessWidget {
   const _PantallaPrincipalFalsa();
@@ -67,8 +72,19 @@ final _botonLogin = find.widgetWithText(ElevatedButton, 'Iniciar sesión');
 
 void main() {
   late _MockAuthRepository repo;
+  late _MockPosApi posApi;
 
   setUp(() {
+    posApi = _MockPosApi();
+    when(() => posApi.getProducts()).thenAnswer((_) async => [
+          {
+            'codigo': 'P1',
+            'nombre': 'Café',
+            'precioUnitario': 150.0,
+            'stockActual': 10,
+            'activo': true,
+          }
+        ]);
     repo = _MockAuthRepository();
     when(() => repo.login(any(), any()))
         .thenAnswer((_) async => {'token': _jwt(expiraEn: const Duration(hours: 1))});
@@ -84,6 +100,7 @@ void main() {
 
     await tester.pumpWidget(MyApp(
       authRepository: repo,
+      posApi: posApi,
       pantallaPrincipal: const _PantallaPrincipalFalsa(),
     ));
     await tester.pumpAndSettle();
@@ -94,6 +111,17 @@ void main() {
     await tester.enterText(find.byType(TextFormField).at(1), 'admin123');
     await tester.tap(_botonLogin);
     await tester.pumpAndSettle();
+  }
+
+  PosBloc posBloc(WidgetTester tester) =>
+      BlocProvider.of<PosBloc>(tester.element(find.byType(Navigator)));
+
+  Future<void> agregarAlCarrito(WidgetTester tester) async {
+    posBloc(tester).add(const LoadProducts());
+    await tester.pumpAndSettle();
+    posBloc(tester).add(const AddToCart('P1', 2));
+    await tester.pumpAndSettle();
+    expect(posBloc(tester).state.cart['P1']?.cantidad, 2);
   }
 
   Future<void> cerrarSesion(WidgetTester tester) async {
@@ -182,5 +210,30 @@ void main() {
     expect(_principal, findsOneWidget);
     expect(find.byType(LoginScreen), findsNothing);
     verifyNever(() => repo.login(any(), any()));
+  });
+
+  testWidgets('cerrar sesión vacía el carrito del POS', (tester) async {
+    await arrancar(tester);
+    await ingresar(tester);
+    await agregarAlCarrito(tester);
+
+    await cerrarSesion(tester);
+
+    expect(posBloc(tester).state.cart, isEmpty);
+  });
+
+  testWidgets('sesión vencida -> reingreso conserva el carrito del POS',
+      (tester) async {
+    await arrancar(tester);
+    await ingresar(tester);
+    await agregarAlCarrito(tester);
+
+    ApiService().onSessionExpired!.call();
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginScreen), findsOneWidget);
+
+    await ingresar(tester);
+    expect(_principal, findsOneWidget);
+    expect(posBloc(tester).state.cart['P1']?.cantidad, 2);
   });
 }
