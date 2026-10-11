@@ -5,6 +5,7 @@ import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
 import 'blocs/pos_bloc.dart';
+import 'blocs/pos_event.dart';
 import 'blocs/finanzas/finanzas_bloc.dart';
 import 'blocs/insumos/insumos_bloc.dart';
 import 'blocs/recetas/recetas_bloc.dart';
@@ -64,24 +65,38 @@ Future<void> initializeBackendUrl({
     await store.save(urlToUse);
   }
   // If no URL is available, ApiService will use its default (localhost:3000)
-  // ignore: avoid_print
-  print('>>> [main.dart] Backend URL initialized: savedUrl=$savedUrl, urlToUse=$urlToUse, effectiveBaseUrl=${api.effectiveBaseUrl}');
 }
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+/// Pantalla que se muestra al iniciar sesión. Para cambiar la pantalla de
+/// inicio de la app alcanza con modificar esta línea.
+const Widget pantallaPrincipalPorDefecto = CatalogoScreen();
+
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  /// [authRepository], [posApi] y [pantallaPrincipal] son inyectables para
+  /// los tests.
+  const MyApp({
+    super.key,
+    this.authRepository,
+    this.posApi,
+    this.pantallaPrincipal = pantallaPrincipalPorDefecto,
+  });
+
+  final AuthRepository? authRepository;
+  final PosApi? posApi;
+  final Widget pantallaPrincipal;
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => AuthBloc(authRepository: AuthRepository())
+          create: (context) =>
+              AuthBloc(authRepository: authRepository ?? AuthRepository())
             ..add(CheckAuthStatus()),
         ),
-        BlocProvider(create: (context) => PosBloc()),
+        BlocProvider(create: (context) => PosBloc(apiService: posApi)),
         BlocProvider(create: (context) => FinanzasBloc()),
         BlocProvider(create: (context) => InsumosBloc()),
         BlocProvider(create: (context) => RecetasBloc()),
@@ -104,38 +119,49 @@ class MyApp extends StatelessWidget {
           Locale('es'),
           Locale('en'),
         ],
-        home: BlocListener<AuthBloc, AuthState>(
+        // Fin de sesión (logout o sesión vencida): StartupDecider vuelve a ser
+        // la única ruta y muestra el login. El listener vive por encima del
+        // Navigator, así que ninguna navegación lo elimina. Al autenticarse no
+        // se navega: StartupDecider cambia solo según AuthState.
+        builder: (context, child) => BlocListener<AuthBloc, AuthState>(
+          listenWhen: (previous, current) =>
+              previous is Authenticated && current is Unauthenticated,
           listener: (context, state) {
-            if (state is Authenticated) {
-              navigatorKey.currentState?.pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const CatalogoScreen()),
-                (route) => false,
-              );
-            } else if (state is Unauthenticated ||
-                (state is AuthError &&
-                    state.message.toLowerCase().contains('expirad'))) {
-              navigatorKey.currentState?.pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
-              );
+            // Logout explícito: el próximo usuario no hereda el carrito. Si la
+            // sesión venció se conserva, para que quien reingrese retome la venta.
+            if (state is Unauthenticated && !state.sesionVencida) {
+              context.read<PosBloc>().add(const ClearSelection());
             }
+            navigatorKey.currentState?.pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) =>
+                    StartupDecider(pantallaPrincipal: pantallaPrincipal),
+              ),
+              (route) => false,
+            );
           },
-          child: const StartupDecider(),
+          child: child!,
         ),
+        home: StartupDecider(pantallaPrincipal: pantallaPrincipal),
       ),
     );
   }
 }
 
 class StartupDecider extends StatelessWidget {
-  const StartupDecider({super.key});
+  const StartupDecider({
+    super.key,
+    this.pantallaPrincipal = pantallaPrincipalPorDefecto,
+  });
+
+  final Widget pantallaPrincipal;
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, authState) {
         if (authState is Authenticated) {
-          return const CatalogoScreen();
+          return pantallaPrincipal;
         }
         if (authState is AuthInitial) {
           // Spinner solo durante el chequeo inicial del token guardado

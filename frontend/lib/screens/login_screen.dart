@@ -5,6 +5,8 @@ import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
 import 'dart:ui' as ui;
 
+const String mensajeSesionVencida = 'Tu sesión venció, vuelve a ingresar';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -16,20 +18,25 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _passwordFocus = FocusNode();
   bool _obscurePassword = true;
 
   @override
   void initState() {
     super.initState();
-    // Muestra el aviso cuando se llega al login con la sesión ya expirada
-    // (el AuthError se emite antes de montar esta pantalla, por lo que el
-    // listener de BlocConsumer no llega a dispararse).
+    // Muestra el aviso cuando se llega al login con la sesión vencida (el
+    // estado se emite antes de montar esta pantalla, por lo que el listener
+    // de BlocConsumer no llega a dispararse). Solo la ruta visible lo muestra:
+    // al volver a montar StartupDecider, la instancia de la ruta descartada
+    // no debe repetir el aviso.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final state = context.read<AuthBloc>().state;
-      if (state is AuthError) {
+      final esRutaVisible = ModalRoute.of(context)?.isCurrent ?? true;
+      if (state is Unauthenticated && state.sesionVencida && esRutaVisible) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(state.message),
+            content: const Text(mensajeSesionVencida),
             backgroundColor: Colors.red.shade800,
           ),
         );
@@ -41,12 +48,14 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
   void _login() {
-    // ignore: avoid_print
-    print('>>> [LoginScreen._login] Iniciar sesión clicked! username="${_usernameController.text}", passwordLength=${_passwordController.text.length}');
+    // Enter puede llegar mientras el login anterior sigue en curso (el botón
+    // ya está deshabilitado en ese caso, el teclado no).
+    if (context.read<AuthBloc>().state is AuthLoading) return;
     if (_formKey.currentState!.validate()) {
       context.read<AuthBloc>().add(LoginRequested(
         _usernameController.text.trim(),
@@ -182,6 +191,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _usernameController,
                   hintText: 'Usuario',
                   prefixIcon: Icons.person_outline,
+                  textInputAction: TextInputAction.next,
+                  // Enter en Usuario: pasa a Contraseña si está vacía; si no,
+                  // inicia sesión.
+                  onFieldSubmitted: (_) => _passwordController.text.isEmpty
+                      ? _passwordFocus.requestFocus()
+                      : _login(),
                 ),
                 const SizedBox(height: 20),
                 _buildPasswordField(),
@@ -201,6 +216,8 @@ class _LoginScreenState extends State<LoginScreen> {
     required IconData prefixIcon,
     bool obscureText = false,
     Widget? suffixIcon,
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onFieldSubmitted,
   }) {
     return Container(
       height: 60,
@@ -211,6 +228,8 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextFormField(
         controller: controller,
         obscureText: obscureText,
+        textInputAction: textInputAction,
+        onFieldSubmitted: onFieldSubmitted,
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: const TextStyle(fontSize: 16, color: Color(0xFF8C8C8C)),
@@ -234,7 +253,10 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       child: TextFormField(
         controller: _passwordController,
+        focusNode: _passwordFocus,
         obscureText: _obscurePassword,
+        textInputAction: TextInputAction.done,
+        onFieldSubmitted: (_) => _login(),
         decoration: InputDecoration(
           hintText: 'Contraseña',
           hintStyle: const TextStyle(fontSize: 16, color: Color(0xFF8C8C8C)),
