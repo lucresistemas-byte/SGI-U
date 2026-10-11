@@ -37,7 +37,7 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void crear_valido_devuelve201ConDatosPersistidos() throws Exception {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "INGRESO", new BigDecimal("150.00"), "TRANSFERENCIA", "Ventas", "Pago cliente", null);
+                "INGRESO", new BigDecimal("150.00"), "TRANSFERENCIA", "VENTA", "Pago cliente", null);
 
         mockMvc.perform(post("/api/movimientos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -47,7 +47,7 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.tipo").value("INGRESO"))
                 .andExpect(jsonPath("$.monto").isNumber())
                 .andExpect(jsonPath("$.metodoPago").value("TRANSFERENCIA"))
-                .andExpect(jsonPath("$.categoria").value("Ventas"))
+                .andExpect(jsonPath("$.categoria").value("VENTA"))
                 .andExpect(jsonPath("$.descripcion").value("Pago cliente"));
 
         assertThat(repository.count()).isEqualTo(1);
@@ -119,5 +119,65 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$[0].monto").value(200.00))
                 .andExpect(jsonPath("$[0].costo").value(80.00))
                 .andExpect(jsonPath("$[0].ganancia").value(120.00));
+    }
+
+    // --- Categoría según el tipo ---
+    // INGRESO: VENTA, OTRO_INGRESO. EGRESO: COMPRA, SERVICIOS, ALQUILER, SUELDOS, OTRO.
+
+    @Test
+    void crear_egresoConCategoriaDeIngreso_devuelve400ConMensajeClaro() throws Exception {
+        MovimientoRequestDTO dto = new MovimientoRequestDTO(
+                "EGRESO", new BigDecimal("10.00"), "EFECTIVO", "VENTA", null, null);
+
+        mockMvc.perform(post("/api/movimientos").contentType(MediaType.APPLICATION_JSON).content(body(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(
+                        "La categoría VENTA no corresponde a un EGRESO. Categorías válidas: "
+                                + "COMPRA, SERVICIOS, ALQUILER, SUELDOS, OTRO."));
+        assertThat(repository.count()).isZero();
+    }
+
+    @Test
+    void crear_ingresoConCategoriaDeEgreso_devuelve400() throws Exception {
+        MovimientoRequestDTO dto = new MovimientoRequestDTO(
+                "INGRESO", new BigDecimal("10.00"), "EFECTIVO", "COMPRA", null, null);
+
+        mockMvc.perform(post("/api/movimientos").contentType(MediaType.APPLICATION_JSON).content(body(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(
+                        "La categoría COMPRA no corresponde a un INGRESO. Categorías válidas: "
+                                + "VENTA, OTRO_INGRESO."));
+    }
+
+    @Test
+    void crear_categoriaInexistente_devuelve400() throws Exception {
+        MovimientoRequestDTO dto = new MovimientoRequestDTO(
+                "EGRESO", new BigDecimal("10.00"), "EFECTIVO", "Retiro", null, null);
+
+        mockMvc.perform(post("/api/movimientos").contentType(MediaType.APPLICATION_JSON).content(body(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(
+                        "La categoría RETIRO no corresponde a un EGRESO. Categorías válidas: "
+                                + "COMPRA, SERVICIOS, ALQUILER, SUELDOS, OTRO."));
+    }
+
+    @Test
+    void crear_sinCategoria_devuelve400() throws Exception {
+        MovimientoRequestDTO dto = new MovimientoRequestDTO(
+                "EGRESO", new BigDecimal("10.00"), "EFECTIVO", "  ", null, null);
+
+        mockMvc.perform(post("/api/movimientos").contentType(MediaType.APPLICATION_JSON).content(body(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("La categoría es obligatoria."));
+    }
+
+    @Test
+    void crear_categoriaEnMinusculas_seGuardaComoCodigo() throws Exception {
+        MovimientoRequestDTO dto = new MovimientoRequestDTO(
+                "EGRESO", new BigDecimal("10.00"), "EFECTIVO", " sueldos ", null, null);
+
+        mockMvc.perform(post("/api/movimientos").contentType(MediaType.APPLICATION_JSON).content(body(dto)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.categoria").value("SUELDOS"));
     }
 }

@@ -58,7 +58,7 @@ class MovimientoServiceTest {
     @Test
     void crearMovimiento_sinFechaHora_usaFechaActual() {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "INGRESO", new BigDecimal("150.00"), "TRANSFERENCIA", "Ventas", "Nota", null);
+                "INGRESO", new BigDecimal("150.00"), "TRANSFERENCIA", "VENTA", "Nota", null);
         when(repository.save(any(MovFinanciero.class))).thenAnswer(inv -> inv.getArgument(0));
 
         MovimientoResponseDTO response = movimientoService.crearMovimiento(dto);
@@ -71,7 +71,7 @@ class MovimientoServiceTest {
         assertThat(response.tipo()).isEqualTo("INGRESO");
         assertThat(response.monto()).isEqualByComparingTo("150.00");
         assertThat(response.metodoPago()).isEqualTo("TRANSFERENCIA");
-        assertThat(response.categoria()).isEqualTo("Ventas");
+        assertThat(response.categoria()).isEqualTo("VENTA");
         assertThat(response.descripcion()).isEqualTo("Nota");
     }
 
@@ -79,7 +79,7 @@ class MovimientoServiceTest {
     void crearMovimiento_conFechaHora_preservaLaFecha() {
         LocalDateTime fija = LocalDateTime.of(2026, 9, 20, 15, 30);
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "EGRESO", new BigDecimal("50.00"), "TARJETA", "Compras", null, fija);
+                "EGRESO", new BigDecimal("50.00"), "TARJETA", "COMPRA", null, fija);
         when(repository.save(any(MovFinanciero.class))).thenAnswer(inv -> inv.getArgument(0));
 
         MovimientoResponseDTO response = movimientoService.crearMovimiento(dto);
