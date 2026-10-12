@@ -2,6 +2,9 @@ package com.sgiu_group.sgiu.services;
 
 import com.sgiu_group.sgiu.models.dtos.VentaRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.LineaVentaDTO;
+import com.sgiu_group.sgiu.models.dtos.PagoVentaRequestDTO;
+import com.sgiu_group.sgiu.models.dtos.VentaResponseDTO;
+import com.sgiu_group.sgiu.exceptions.PagoInvalidoException;
 import com.sgiu_group.sgiu.models.entities.*;
 import com.sgiu_group.sgiu.exceptions.ProductoInvalidoException;
 import com.sgiu_group.sgiu.exceptions.ProductoNoEncontradoException;
@@ -11,8 +14,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class VentaService {
@@ -43,14 +52,14 @@ public class VentaService {
      * así que la receta no interviene acá.
      */
     @Transactional
-    public void procesarVenta(VentaRequestDTO request) {
+    public VentaResponseDTO procesarVenta(VentaRequestDTO request) {
         Venta venta = new Venta();
         // Setear valores requeridos por PR #13 para evitar errores de nulidad
         venta.setIdSesionCaja(0); // Valor por defecto temporal
         venta.setCreadoPorUsuario(0); // Valor por defecto temporal
         BigDecimal totalAcumulado = BigDecimal.ZERO;
 
-        // Fase 1: validación de stock de todas las líneas antes de tocar nada
+        // Fase 1: validación de stock y total de todas las líneas antes de tocar nada
         Map<String, ArticuloStock> stockPorCodigo = new HashMap<>();
         for (LineaVentaDTO dto : request.lineas()) {
             ArticuloStock stock = stockRepository.findByEspProducto_Codigo(dto.codigoProducto())
@@ -64,7 +73,14 @@ public class VentaService {
                         + stock.getEspProducto().getNombre() + " (código " + dto.codigoProducto()
                         + "): disponible " + stock.getCantidad() + ", solicitado " + dto.cantidad() + ".");
             }
+            // Precio unitario real de la BD (RN05)
+            totalAcumulado = totalAcumulado.add(
+                    stock.getEspProducto().getPrecioUnitario().multiply(new BigDecimal(dto.cantidad())));
         }
+
+        // Los pagos se validan antes de tocar el stock: si no cubren el
+        // total, no se modifica nada.
+        Cobro cobro = armarCobro(request, totalAcumulado);
 
         // Fase 2: descuento de stock de productos y armado de líneas de venta
         for (LineaVentaDTO dto : request.lineas()) {
@@ -74,39 +90,89 @@ public class VentaService {
             stock.setCantidad(stock.getCantidad() - dto.cantidad());
             stockRepository.save(stock);
 
-            // Obtenemos precio unitario real de la BD (RN05)
-            BigDecimal precioUnitario = stock.getEspProducto().getPrecioUnitario();
-
             // Creamos la línea de venta
             LineaVenta linea = new LineaVenta(venta, stock.getEspProducto(), dto.cantidad());
             venta.addLinea(linea);
-
-            // Calculamos subtotal
-            totalAcumulado = totalAcumulado.add(precioUnitario.multiply(new BigDecimal(dto.cantidad())));
         }
 
         venta.setTotal(totalAcumulado);
         Venta ventaGuardada = ventaRepository.save(venta);
 
-        // Registro de Pago: el método por clave foránea (antes se guardaba el
-        // número "1"/"2" como texto). Sin indicar, Efectivo.
-        MetodoPago metodo = request.metodoPago() != null
-                ? metodoPagoService.paraCobrar(request.metodoPago())
-                : metodoPagoService.efectivo();
-        PagoVenta pago = new PagoVenta(ventaGuardada, totalAcumulado, metodo);
-        pagoRepository.save(pago);
+        // Una fila de pago y un movimiento por línea, así el balance y el
+        // dashboard se pueden desglosar por método.
+        List<VentaResponseDTO.PagoRegistradoDTO> registrados = new ArrayList<>();
+        for (Map.Entry<MetodoPago, BigDecimal> linea : cobro.montos().entrySet()) {
+            PagoVenta pago = pagoRepository.save(new PagoVenta(ventaGuardada, linea.getValue(), linea.getKey()));
+            movFinancieroRepository.save(new MovFinanciero(
+                    TipoMovimiento.INGRESO,
+                    linea.getValue(),
+                    linea.getKey(),
+                    "VENTA",
+                    "Venta de productos - ID: " + ventaGuardada.getId(),
+                    ventaGuardada.getFechaHora(),
+                    pago));
+            registrados.add(new VentaResponseDTO.PagoRegistradoDTO(
+                    linea.getKey().getId(), linea.getKey().getNombre(), linea.getValue()));
+        }
+        return new VentaResponseDTO(ventaGuardada.getId(), totalAcumulado, cobro.vuelto(), registrados);
+    }
 
-        // Registro Financiero (Ingreso)
-        MovFinanciero movimiento = new MovFinanciero(
-            TipoMovimiento.INGRESO,
-            totalAcumulado,
-            metodo,
-            "VENTA",
-            "Venta de productos - ID: " + ventaGuardada.getId(),
-            ventaGuardada.getFechaHora(),
-            pago
-        );
-        movFinancieroRepository.save(movimiento);
+    /** Lo que se registra por método (en orden) y el vuelto en efectivo. */
+    private record Cobro(Map<MetodoPago, BigDecimal> montos, BigDecimal vuelto) {}
+
+    /**
+     * Pago mixto (D.4.1/D.4.2): las líneas tienen que cubrir el total; solo
+     * el efectivo puede pasarse (la diferencia es el vuelto y se registra lo
+     * que corresponde a la venta). Sin líneas, se cobra todo con un método.
+     */
+    private Cobro armarCobro(VentaRequestDTO request, BigDecimal total) {
+        Map<MetodoPago, BigDecimal> montos = new LinkedHashMap<>();
+        if (request.pagos() == null || request.pagos().isEmpty()) {
+            MetodoPago metodo = request.metodoPago() != null
+                    ? metodoPagoService.paraCobrar(request.metodoPago())
+                    : metodoPagoService.efectivo();
+            montos.put(metodo, total);
+            return new Cobro(montos, BigDecimal.ZERO);
+        }
+
+        BigDecimal pagado = BigDecimal.ZERO;
+        BigDecimal noEfectivo = BigDecimal.ZERO;
+        Set<Long> vistos = new HashSet<>();
+        for (PagoVentaRequestDTO linea : request.pagos()) {
+            MetodoPago metodo = metodoPagoService.paraCobrar(linea.metodoPagoId());
+            if (!vistos.add(metodo.getId())) {
+                throw new PagoInvalidoException("El método " + metodo.getNombre()
+                        + " está dos veces; sume los montos en una sola línea.");
+            }
+            BigDecimal monto = linea.monto().setScale(2, RoundingMode.HALF_UP);
+            montos.put(metodo, monto);
+            pagado = pagado.add(monto);
+            if (!metodo.esEfectivo()) {
+                noEfectivo = noEfectivo.add(monto);
+            }
+        }
+        if (noEfectivo.compareTo(total) > 0) {
+            throw new PagoInvalidoException("Los pagos que no son en efectivo ($" + noEfectivo
+                    + ") superan el total de la venta ($" + total + "). Solo el efectivo puede tener vuelto.");
+        }
+        if (pagado.compareTo(total) < 0) {
+            throw new PagoInvalidoException("Los pagos ($" + pagado + ") no cubren el total de la venta ($"
+                    + total + "). Falta $" + total.subtract(pagado) + ".");
+        }
+
+        // El vuelto sale del efectivo: se registra solo lo que corresponde a
+        // la venta (y si el efectivo era todo vuelto, no se registra).
+        BigDecimal vuelto = pagado.subtract(total);
+        if (vuelto.signum() > 0) {
+            MetodoPago efectivo = montos.keySet().stream().filter(MetodoPago::esEfectivo).findFirst().orElseThrow();
+            BigDecimal registrado = montos.get(efectivo).subtract(vuelto);
+            if (registrado.signum() > 0) {
+                montos.put(efectivo, registrado);
+            } else {
+                montos.remove(efectivo);
+            }
+        }
+        return new Cobro(montos, vuelto);
     }
 
     /** Solo se vende lo que el POS muestra (ver EspProducto.esVendibleEnPos). */

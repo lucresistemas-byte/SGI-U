@@ -133,9 +133,41 @@ public class MovimientoService {
             }
         }
 
+        Map<MovFinanciero, BigDecimal> costoPorMovimiento = repartirCosto(movimientos, costoPorVenta);
         return movimientos.stream()
-                .map(m -> MovimientoResponseDTO.fromEntity(m, costoPorVenta.get(ventaId(m))))
+                .map(m -> MovimientoResponseDTO.fromEntity(m, costoPorMovimiento.get(m)))
                 .toList();
+    }
+
+    /**
+     * Una venta con pago mixto tiene un movimiento por método: su costo se
+     * reparte en proporción a lo cobrado con cada uno (el último se lleva el
+     * resto del redondeo), para no contarlo dos veces en el balance.
+     */
+    private static Map<MovFinanciero, BigDecimal> repartirCosto(List<MovFinanciero> movimientos,
+                                                                Map<Long, BigDecimal> costoPorVenta) {
+        Map<Long, List<MovFinanciero>> porVenta = new java.util.LinkedHashMap<>();
+        for (MovFinanciero m : movimientos) {
+            Long venta = ventaId(m);
+            if (venta != null && costoPorVenta.containsKey(venta)) {
+                porVenta.computeIfAbsent(venta, k -> new java.util.ArrayList<>()).add(m);
+            }
+        }
+        Map<MovFinanciero, BigDecimal> resultado = new java.util.IdentityHashMap<>();
+        porVenta.forEach((venta, movs) -> {
+            BigDecimal costo = costoPorVenta.get(venta);
+            BigDecimal cobrado = movs.stream().map(MovFinanciero::getMonto).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal asignado = BigDecimal.ZERO;
+            for (int i = 0; i < movs.size(); i++) {
+                MovFinanciero m = movs.get(i);
+                BigDecimal parte = i == movs.size() - 1 || cobrado.signum() == 0
+                        ? costo.subtract(asignado)
+                        : costo.multiply(m.getMonto()).divide(cobrado, 2, java.math.RoundingMode.HALF_UP);
+                asignado = asignado.add(parte);
+                resultado.put(m, parte);
+            }
+        });
+        return resultado;
     }
 
     private static Long ventaId(MovFinanciero mov) {

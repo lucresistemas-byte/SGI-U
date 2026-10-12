@@ -105,6 +105,7 @@ class VentaServiceTest {
             return venta;
         });
 
+        when(pagoRepository.save(any(PagoVenta.class))).thenAnswer(inv -> inv.getArgument(0));
         VentaRequestDTO request = new VentaRequestDTO(null, List.of(new LineaVentaDTO("P1", 2)));
         ventaService.procesarVenta(request);
 

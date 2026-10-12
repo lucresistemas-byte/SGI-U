@@ -166,10 +166,17 @@ class TicketService {
                 fontSize: 10, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 2),
-          pw.Text(
-            _formatMetodoPago(sale.paymentMethod),
-            style: const pw.TextStyle(fontSize: 9),
-          ),
+          // Pago mixto: una línea por método; en efectivo, lo entregado.
+          if (sale.pagos.isEmpty)
+            pw.Text(
+              _formatMetodoPago(sale.paymentMethod),
+              style: const pw.TextStyle(fontSize: 9),
+            )
+          else ...[
+            for (final pago in sale.pagos)
+              _filaMonto(pago.metodo.nombre, pago.monto),
+            if (sale.vuelto > 0) _filaMonto('Vuelto', sale.vuelto),
+          ],
           pw.SizedBox(height: 8),
           pw.Divider(thickness: 1),
           pw.Center(
@@ -184,6 +191,14 @@ class TicketService {
 
     return pdf.save();
   }
+
+  static pw.Widget _filaMonto(String texto, double monto) => pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(texto, style: const pw.TextStyle(fontSize: 9)),
+          pw.Text(_formatterCurrency.format(monto), style: const pw.TextStyle(fontSize: 9)),
+        ],
+      );
 
   static String _formatMetodoPago(String raw) {
     switch (raw) {

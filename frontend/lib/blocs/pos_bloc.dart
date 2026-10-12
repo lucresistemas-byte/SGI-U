@@ -3,26 +3,44 @@ import 'pos_event.dart';
 import 'pos_state.dart';
 import '../models/cart_item.dart';
 import '../models/completed_sale.dart';
+import '../models/linea_pago.dart';
+import '../models/metodo_pago.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
 
 class PosBloc extends Bloc<PosEvent, PosState> {
   final PosApi _apiService;
 
-  PosBloc({PosApi? apiService})
+  /// Métodos de pago activos. Por defecto los de la API real; con otra
+  /// PosApi (tests) no hay métodos salvo que se indique un cargador.
+  final Future<List<MetodoPago>> Function() _cargarMetodosPago;
+
+  PosBloc({PosApi? apiService, Future<List<MetodoPago>> Function()? cargarMetodosPago})
       : _apiService = apiService ?? ApiService(),
+        _cargarMetodosPago = cargarMetodosPago ??
+            ((apiService ?? ApiService()) is ApiService
+                ? () => ((apiService ?? ApiService()) as ApiService).getMetodosPago()
+                : () async => const <MetodoPago>[]),
         super(PosState.initial()) {
     on<LoadProducts>(_onLoadProducts);
     on<AddToCart>(_onAddToCart);
     on<UpdateCartItemQuantity>(_onUpdateCartItemQuantity);
     on<RemoveFromCart>(_onRemoveFromCart);
-    on<SelectPaymentMethod>(_onSelectPaymentMethod);
+    on<AgregarPago>(_onAgregarPago);
+    on<PagarRestante>((event, emit) {
+      if (state.restante <= 0) return;
+      _onAgregarPago(AgregarPago(event.metodoPagoId, state.restante), emit);
+    });
+    on<QuitarPago>((event, emit) {
+      if (event.indice < 0 || event.indice >= state.pagos.length) return;
+      emit(state.copyWith(pagos: [...state.pagos]..removeAt(event.indice)));
+    });
     on<ConfirmSale>(_onConfirmSale);
     on<ClearError>((event, emit) => emit(state.copyWith(errorMessage: null)));
     on<ClearSuccess>((event, emit) =>
         emit(state.copyWith(successMessage: null, completedSale: null)));
-    on<ClearSelection>((event, emit) =>
-        emit(PosState.initial().copyWith(products: state.products)));
+    on<ClearSelection>((event, emit) => emit(PosState.initial()
+        .copyWith(products: state.products, metodosPago: state.metodosPago)));
 
     on<CreateProduct>((event, emit) async {
       emit(state.copyWith(
@@ -80,7 +98,9 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     try {
       final data = await _apiService.getProducts();
       final products = data.map((json) => Product.fromJson(json)).toList();
-      emit(state.copyWith(products: products, isLoading: false));
+      // Se espera antes de leer `state`: si no, se reemitiría un estado viejo.
+      final metodosPago = await _metodosActivos();
+      emit(state.copyWith(products: products, isLoading: false, metodosPago: metodosPago));
     } catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
     }
@@ -111,7 +131,8 @@ class PosBloc extends Bloc<PosEvent, PosState> {
       );
     }
 
-    emit(state.copyWith(cart: newCart));
+    // Si cambia el carrito, cambia el total: el cobro se arma de nuevo.
+    emit(state.copyWith(cart: newCart, pagos: const []));
   }
 
   /// D.12: actualiza cantidad preservando precio congelado.
@@ -126,50 +147,81 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     if (existing != null) {
       newCart[event.productCode] = existing.copyWith(cantidad: event.newQuantity);
     }
-    emit(state.copyWith(cart: newCart));
+    emit(state.copyWith(cart: newCart, pagos: const []));
   }
 
   void _onRemoveFromCart(RemoveFromCart event, Emitter<PosState> emit) {
     final newCart = Map<String, CartItem>.from(state.cart);
     newCart.remove(event.productCode);
-    emit(state.copyWith(cart: newCart));
+    emit(state.copyWith(cart: newCart, pagos: const []));
   }
 
-  void _onSelectPaymentMethod(
-      SelectPaymentMethod event, Emitter<PosState> emit) {
-    emit(state.copyWith(selectedPaymentMethod: event.method));
+  /// Activos, en el orden de Configuración; si fallan, el POS sigue
+  /// mostrando los productos (y avisa al intentar cobrar).
+  Future<List<MetodoPago>> _metodosActivos() async {
+    try {
+      return await _cargarMetodosPago();
+    } catch (_) {
+      return state.metodosPago;
+    }
+  }
+
+  static String _pesos(double v) => '\$${v.toStringAsFixed(2)}';
+
+  /// D.4.1/D.4.2: una línea más del cobro. Un método que no es efectivo no
+  /// puede pasarse de lo que falta; el efectivo sí (vuelto).
+  void _onAgregarPago(AgregarPago event, Emitter<PosState> emit) {
+    if (state.cart.isEmpty) return;
+    final metodo = state.metodosPago.where((m) => m.id == event.metodoPagoId).firstOrNull;
+    if (metodo == null) return;
+    final monto = (event.monto * 100).roundToDouble() / 100;
+    if (monto <= 0) {
+      emit(state.copyWith(errorMessage: 'Ingrese un monto mayor a cero.'));
+      return;
+    }
+    final indice = state.pagos.indexWhere((p) => p.metodo.id == metodo.id);
+    final anterior = indice >= 0 ? state.pagos[indice].monto : 0.0;
+    // Lo que falta sin contar lo que ya se cargó con este método.
+    final faltaParaEste = state.restante + anterior;
+    if (!metodo.esEfectivo && anterior + monto > faltaParaEste + 0.001) {
+      emit(state.copyWith(
+          errorMessage: 'Con ${metodo.nombre} no se puede pagar más de lo que falta '
+              '(${_pesos(faltaParaEste - anterior)}). Solo el efectivo tiene vuelto.'));
+      return;
+    }
+    final pagos = [...state.pagos];
+    if (indice >= 0) {
+      pagos[indice] = pagos[indice].conMonto(anterior + monto);
+    } else {
+      pagos.add(LineaPago(metodo: metodo, monto: monto));
+    }
+    emit(state.copyWith(pagos: pagos));
   }
 
   /// D.12/D.7.1: captura snapshot de la venta ANTES de limpiar el carrito.
   Future<void> _onConfirmSale(ConfirmSale event, Emitter<PosState> emit) async {
-    if (state.selectedPaymentMethod == null || state.cart.isEmpty) {
+    if (state.cart.isEmpty) {
+      emit(state.copyWith(errorMessage: 'Agregue productos antes de cobrar.'));
+      return;
+    }
+    if (!state.cobroCubierto) {
       emit(state.copyWith(
-          errorMessage: 'Seleccione un método de pago y agregue productos'));
+          errorMessage: 'Los pagos no cubren el total: faltan ${_pesos(state.restante)}.'));
       return;
     }
 
     // D.12: snapshot con precio congelado para el ticket (D.7.1/D.7.2)
     final saleSnapshot = CompletedSale(
       items: state.cart.values.toList(),
-      paymentMethod: state.selectedPaymentMethod!,
+      paymentMethod: state.pagos.map((p) => p.metodo.nombre).join(' + '),
       totalAmount: state.totalAmount,
       timestamp: DateTime.now(),
+      pagos: state.pagos,
+      vuelto: state.vuelto,
     );
 
     emit(state.copyWith(isProcessing: true));
     try {
-      int metodoPagoId;
-      switch (state.selectedPaymentMethod!) {
-        case 'EFECTIVO':
-          metodoPagoId = 1;
-          break;
-        case 'MERCADO_PAGO':
-          metodoPagoId = 2;
-          break;
-        default:
-          metodoPagoId = 1;
-      }
-
       final lineas = state.cart.entries.map((entry) {
         return {
           'codigoProducto': entry.key,
@@ -177,9 +229,13 @@ class PosBloc extends Bloc<PosEvent, PosState> {
         };
       }).toList();
 
+      // En efectivo va lo que entregó el cliente: el backend descuenta el
+      // vuelto y registra solo lo que corresponde a la venta.
       final saleData = {
-        'metodoPago': metodoPagoId,
         'lineas': lineas,
+        'pagos': [
+          for (final p in state.pagos) {'metodoPagoId': p.metodo.id, 'monto': p.monto},
+        ],
       };
 
       await _apiService.createSale(saleData);
@@ -188,12 +244,15 @@ class PosBloc extends Bloc<PosEvent, PosState> {
       // Un solo emit evita re-triggers del BlocListener.
       emit(PosState.initial().copyWith(
         products: state.products,
+        metodosPago: state.metodosPago,
         completedSale: saleSnapshot,
-        successMessage: 'Venta registrada correctamente',
+        successMessage: state.vuelto > 0
+            ? 'Venta registrada correctamente. Vuelto: ${_pesos(state.vuelto)}'
+            : 'Venta registrada correctamente',
       ));
       add(const LoadProducts());
     } catch (e) {
-      emit(state.copyWith(errorMessage: e.toString()));
+      emit(state.copyWith(isProcessing: false, errorMessage: e.toString()));
     }
   }
 }

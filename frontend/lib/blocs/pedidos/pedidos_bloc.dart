@@ -24,11 +24,12 @@ class PedidosBloc extends Bloc<PedidosEvent, PedidosState> {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
       final pedidos = await _apiService.getPedidos(query: event.query);
+      final metodosPago = await _metodosPago();
       emit(state.copyWith(
         isLoading: false,
         pedidos: pedidos,
         filteredPedidos: pedidos,
-        metodosPago: await _metodosPago(),
+        metodosPago: metodosPago,
       ));
     } catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: e.toString()));

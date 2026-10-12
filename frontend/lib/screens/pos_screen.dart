@@ -8,7 +8,7 @@ import '../blocs/pos_state.dart';
 import '../models/product.dart';
 import '../models/cart_item.dart';
 import '../widgets/product_card.dart';
-import '../widgets/payment_method_selector.dart';
+import '../widgets/cobro_panel.dart';
 import '../widgets/app_scaffold.dart';
 import '../theme/app_colors.dart';
 import '../services/ticket_service.dart';
@@ -640,8 +640,7 @@ class RightPanel extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const PaymentMethodSelector(),
-          const Spacer(),
+          const Expanded(child: SingleChildScrollView(child: CobroPanel())),
           BlocBuilder<PosBloc, PosState>(
             builder: (context, state) {
               return Card(
@@ -665,60 +664,26 @@ class RightPanel extends StatelessWidget {
             },
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 70,
-            child: ElevatedButton(
-              onPressed: () {
-                final state = context.read<PosBloc>().state;
-                // FIX: Validamos PRIMERO que el carrito no esté vacío
-                if (state.cart.isEmpty) {
-                  showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text('Carrito vacío'),
-                      content: const Text('Agregue productos antes de cobrar.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('OK'),
-                        ),
-                      ],
-                    ),
-                  );
-                  return;
-                }
-
-                // Si el carrito tiene cosas, verificamos el método de pago
-                if (state.selectedPaymentMethod == null) {
-                  showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text('Método de pago requerido'),
-                      content:
-                          const Text('Seleccione cómo va a abonar el cliente.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('OK'),
-                        ),
-                      ],
-                    ),
-                  );
-                  return;
-                }
-
-                // Si todo está bien, disparamos la venta al backend
-                context.read<PosBloc>().add(const ConfirmSale());
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.verdePrincipal,
-                foregroundColor: AppColors.blanco,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+          // Se habilita solo cuando los pagos cubren el total.
+          BlocBuilder<PosBloc, PosState>(
+            buildWhen: (a, b) => a.cobroCubierto != b.cobroCubierto || a.isProcessing != b.isProcessing,
+            builder: (context, state) => SizedBox(
+              width: double.infinity,
+              height: 70,
+              child: ElevatedButton(
+                key: const Key('confirmar_cobro_button'),
+                onPressed: state.cobroCubierto && !state.isProcessing
+                    ? () => context.read<PosBloc>().add(const ConfirmSale())
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.verdePrincipal,
+                  foregroundColor: AppColors.blanco,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('CONFIRMAR COBRO',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               ),
-              child: const Text('CONFIRMAR COBRO',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(height: 12),
@@ -729,7 +694,7 @@ class RightPanel extends StatelessWidget {
               onPressed: () {
                 final state = context.read<PosBloc>().state;
                 // Solo mostrar confirmación si hay algo que limpiar
-                if (state.cart.isEmpty && state.selectedPaymentMethod == null) {
+                if (state.cart.isEmpty && state.pagos.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                         content: Text('No hay selecciones para limpiar')),
@@ -742,7 +707,7 @@ class RightPanel extends StatelessWidget {
                   builder: (_) => AlertDialog(
                     title: const Text('Limpiar selección'),
                     content: const Text(
-                        '¿Está seguro de que desea descartar todos los productos y el método de pago seleccionado?'),
+                        '¿Está seguro de que desea descartar todos los productos y los pagos cargados?'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
