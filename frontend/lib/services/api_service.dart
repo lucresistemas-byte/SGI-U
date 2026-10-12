@@ -395,10 +395,28 @@ class ApiService implements PosApi {
     }
   }
 
+  /// Nombre y logo del negocio (público: también sirve en el login). No
+  /// pisa el resto de la configuración ya cargada.
+  Future<void> cargarMarca() async {
+    try {
+      final response = await dio.get('/api/configuracion/marca');
+      final marca = ConfiguracionNegocio.fromJson(Map<String, dynamic>.from(response.data as Map));
+      final actual = configuracionActual;
+      configuracionActual = actual == null
+          ? marca
+          : actual.copyWith(nombre: marca.nombre, logo: marca.logo, clearLogo: marca.logo == null);
+    } catch (_) {
+      // Sin backend se muestra el nombre por defecto.
+    }
+  }
+
   Future<ConfiguracionNegocio> saveConfiguracion(ConfiguracionNegocio config) async {
     try {
+      // La pantalla envía la configuración completa: sin logo = se quitó.
+      final datos = config.toJson();
+      if (config.logo == null) datos['quitarLogo'] = true;
       final response =
-          await dio.put('/api/configuracion', data: config.toJson());
+          await dio.put('/api/configuracion', data: datos);
       if (response.statusCode == 200) {
         final saved = ConfiguracionNegocio.fromJson(
             response.data as Map<String, dynamic>);

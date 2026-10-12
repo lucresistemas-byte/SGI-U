@@ -11,6 +11,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -68,5 +69,38 @@ public class ConfiguracionControllerTest extends AbstractIntegrationTest {
         ConfiguracionNegocio guardada = configuracionRepository.findFirstByOrderByIdAsc().orElse(null);
         assertNotNull(guardada);
         assertNotNull(guardada.getLogo()); // Conserva logo previo
+    }
+
+    @Test
+    @WithMockUser
+    void quitarLogo_borraElLogoGuardado() throws Exception {
+        ConfiguracionNegocio inicial = new ConfiguracionNegocio("Dulces", "SGIU-SANDRA-001");
+        inicial.setLogo(new byte[]{1, 2, 3});
+        configuracionRepository.save(inicial);
+
+        mockMvc.perform(put("/api/configuracion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\": \"Dulces\", \"quitarLogo\": true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.logo").doesNotExist());
+
+        assertNull(configuracionRepository.findFirstByOrderByIdAsc().orElseThrow().getLogo());
+    }
+
+    @Test
+    void marca_esPublicaYDevuelveNombreYLogo() throws Exception {
+        ConfiguracionNegocio inicial = new ConfiguracionNegocio("Dulces Sandra", "SGIU-SANDRA-001");
+        inicial.setLogo(new byte[]{1, 2, 3});
+        inicial.setTelefono("11-5555-0000");
+        configuracionRepository.save(inicial);
+
+        // Sin usuario: el login la necesita antes de tener token.
+        mockMvc.perform(get("/api/configuracion/marca"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombre").value("Dulces Sandra"))
+                .andExpect(jsonPath("$.logo").value("AQID"))
+                .andExpect(jsonPath("$.telefono").doesNotExist());
+        // El resto de la configuración sigue protegida.
+        mockMvc.perform(get("/api/configuracion")).andExpect(status().isUnauthorized());
     }
 }

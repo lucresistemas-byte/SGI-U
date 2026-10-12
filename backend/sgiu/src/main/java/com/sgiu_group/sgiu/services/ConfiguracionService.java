@@ -1,6 +1,7 @@
 package com.sgiu_group.sgiu.services;
 
 import com.sgiu_group.sgiu.models.dtos.ConfiguracionDTO;
+import com.sgiu_group.sgiu.models.dtos.MarcaNegocioDTO;
 import com.sgiu_group.sgiu.models.entities.ConfiguracionNegocio;
 import com.sgiu_group.sgiu.repositories.ConfiguracionNegocioRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,12 @@ public class ConfiguracionService {
     }
 
     @Transactional
+    public MarcaNegocioDTO obtenerMarca() {
+        ConfiguracionDTO config = obtenerConfiguracion();
+        return new MarcaNegocioDTO(config.nombre(), config.logo());
+    }
+
+    @Transactional
     public ConfiguracionDTO actualizarConfiguracion(ConfiguracionDTO dto) {
         ConfiguracionNegocio config = configuracionRepository.findFirstByOrderByIdAsc()
                 .orElseGet(() -> new ConfiguracionNegocio("SGI-U Comercio", "SGIU-SANDRA-001"));
@@ -51,8 +58,11 @@ public class ConfiguracionService {
         if (dto.descripcion() != null) {
             config.setDescripcion(dto.descripcion());
         }
-        // Preserva el logo anterior si no se envía uno nuevo según spec 6.2
-        if (dto.logo() != null && dto.logo().length > 0) {
+        // Preserva el logo anterior si no se envía uno nuevo según spec 6.2;
+        // quitarLogo lo borra (antes no había forma de quitarlo).
+        if (Boolean.TRUE.equals(dto.quitarLogo())) {
+            config.setLogo(null);
+        } else if (dto.logo() != null && dto.logo().length > 0) {
             config.setLogo(dto.logo());
         }
 

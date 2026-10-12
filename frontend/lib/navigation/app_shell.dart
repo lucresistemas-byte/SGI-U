@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../utils/es_mobile.dart';
+import '../widgets/marca_negocio.dart';
 import '../widgets/side_menu.dart';
 import 'seccion.dart';
 
@@ -34,6 +35,14 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   late Seccion _seccion = widget.seccionInicial;
+
+  @override
+  void initState() {
+    super.initState();
+    // Nombre y logo para el menú desde el arranque (antes el nombre recién
+    // aparecía después de entrar a Configuración).
+    MarcaNegocio.cargar();
+  }
 
   void _seleccionar(Seccion seccion) {
     _scaffoldKey.currentState?.closeDrawer();
