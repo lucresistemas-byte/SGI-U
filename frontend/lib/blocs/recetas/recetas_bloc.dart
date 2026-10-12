@@ -37,10 +37,26 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
           nuevoProductoPorcentaje: event.porcentajeGanancia,
           nuevoProductoPreparacionBase: event.preparacionBase,
         )));
+    on<CrearCategoriaReceta>(_onCrearCategoriaReceta);
     on<ActualizarCantidadFilaInsumo>(_onActualizarCantidadFilaInsumo);
     on<GuardarReceta>(_onGuardarReceta);
     on<LimpiarMensajesRecetas>((event, emit) =>
         emit(state.copyWith(clearError: true, clearSuccess: true)));
+  }
+
+  /// La categoría nueva se agrega a la lista y queda elegida; el resto de
+  /// los datos del armador no se toca.
+  Future<void> _onCrearCategoriaReceta(
+      CrearCategoriaReceta event, Emitter<RecetasState> emit) async {
+    try {
+      final categoria = await _apiService.crearCategoria(event.nombre.trim());
+      emit(state.copyWith(
+        availableCategorias: [...state.availableCategorias, categoria],
+        nuevoProductoCategoriaId: categoria.id,
+      ));
+    } catch (e) {
+      emit(state.copyWith(errorMessage: e.toString()));
+    }
   }
 
   /// Clave estable para cada fila del armador.

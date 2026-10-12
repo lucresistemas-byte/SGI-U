@@ -148,6 +148,15 @@ class CambiarModoProductoReceta extends RecetasEvent {
 
 /// Datos del producto elaborado que se crea junto con la receta. Los campos
 /// en null no cambian; [quitarCategoria] deja la categoría vacía.
+/// Crea una categoría desde el armador y la deja elegida para el producto nuevo.
+class CrearCategoriaReceta extends RecetasEvent {
+  final String nombre;
+  const CrearCategoriaReceta(this.nombre);
+
+  @override
+  List<Object?> get props => [nombre];
+}
+
 class ActualizarProductoNuevoReceta extends RecetasEvent {
   final String? nombre;
   final String? codigo;

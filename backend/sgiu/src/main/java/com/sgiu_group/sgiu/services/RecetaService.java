@@ -93,6 +93,15 @@ public class RecetaService {
     private RecetaResponseDTO crearConProductoNuevo(RecetaRequestDTO dto) {
         ProductoElaboradoNuevoDTO nuevo = dto.productoNuevo();
         validarDuplicadosYExistencia(dto.detalles(), Set.of());
+        // La categoría es obligatoria y debe estar activa (se crea desde el
+        // botón "+" del armador si todavía no existe).
+        if (nuevo.categoriaId() == null) {
+            throw new RecetaInvalidaException("Elija una categoría para el producto nuevo.");
+        }
+        Categoria categoria = categoriaRepository.findById(nuevo.categoriaId())
+                .filter(Categoria::isActivo)
+                .orElseThrow(() -> new RecetaInvalidaException(
+                        "La categoría elegida no existe o está desactivada."));
 
         String codigo = nuevo.codigo() != null && !nuevo.codigo().isBlank()
                 ? nuevo.codigo().trim()
@@ -106,9 +115,7 @@ public class RecetaService {
         producto.setVendible(nuevo.vendible() == null || nuevo.vendible());
         producto.setPorcentajeGanancia(nuevo.porcentajeGanancia() != null
                 ? nuevo.porcentajeGanancia() : BigDecimal.ZERO);
-        if (nuevo.categoriaId() != null) {
-            producto.setCategoria(categoriaRepository.findById(nuevo.categoriaId()).orElse(null));
-        }
+        producto.setCategoria(categoria);
         producto = espProductoRepository.save(producto);
 
         ArticuloStock stock = new ArticuloStock();

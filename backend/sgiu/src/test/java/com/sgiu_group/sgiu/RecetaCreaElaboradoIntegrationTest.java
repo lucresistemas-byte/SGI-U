@@ -1,10 +1,12 @@
 package com.sgiu_group.sgiu;
 
+import com.sgiu_group.sgiu.models.entities.Categoria;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.models.entities.MateriaPrima;
 import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.models.entities.UnidadMedida;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
+import com.sgiu_group.sgiu.repositories.CategoriaRepository;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
 import com.sgiu_group.sgiu.repositories.MateriaPrimaRepository;
 import com.sgiu_group.sgiu.support.TestDataFactory;
@@ -33,13 +35,22 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
     private EspProductoRepository productoRepository;
     @Autowired
     private ArticuloStockRepository stockRepository;
+    @Autowired
+    private CategoriaRepository categoriaRepository;
 
     private MateriaPrima harina;
+    private Categoria tortas;
 
     @BeforeEach
     void insumos() {
         harina = materiaPrimaRepository.save(new MateriaPrima(
                 "RCE-HAR", "Harina", new BigDecimal("1000.00"), UnidadMedida.KILO, 10, 0));
+        tortas = categoriaRepository.save(new Categoria("RCE Tortas"));
+    }
+
+    /** Producto nuevo con la categoría obligatoria. */
+    private String nuevo(String campos) {
+        return "{" + campos + ", \"categoriaId\": " + tortas.getId() + "}";
     }
 
     /** Receta de 0,2 kg de harina ($200) + $100 adicionales = costo $300. */
@@ -56,7 +67,7 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
     @Test
     void conProductoNuevo_creaElElaboradoConCodigoGeneradoStockCeroYPrecio() throws Exception {
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
-                        .content(conProductoNuevo("{\"nombre\": \"Tarta de coco\", \"porcentajeGanancia\": 100}", false)))
+                        .content(conProductoNuevo(nuevo("\"nombre\": \"Tarta de coco\", \"porcentajeGanancia\": 100"), false)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.espProductoCodigo").value("ELA-0001"))
                 .andExpect(jsonPath("$.espProductoNombre").value("Tarta de coco"))
@@ -68,6 +79,35 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
         assertThat(tarta.getPrecioCosto()).isEqualByComparingTo("300.00");
         assertThat(tarta.getPrecioUnitario()).isEqualByComparingTo("600.00");
         assertThat(stockRepository.findByEspProducto_Codigo("ELA-0001").orElseThrow().getCantidad()).isZero();
+        assertThat(tarta.getCategoria().getId()).isEqualTo(tortas.getId());
+    }
+
+    @Test
+    void conProductoNuevo_sinCategoria_devuelve400YNoCreaNada() throws Exception {
+        long antes = productoRepository.count();
+
+        mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
+                        .content(conProductoNuevo("{\"nombre\": \"Tarta de coco\"}", false)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Elija una categoría para el producto nuevo."));
+
+        assertThat(productoRepository.count()).isEqualTo(antes);
+    }
+
+    @Test
+    void conProductoNuevo_conCategoriaInactivaOInexistente_devuelve400() throws Exception {
+        tortas.setActivo(false);
+        categoriaRepository.save(tortas);
+        String mensaje = "La categoría elegida no existe o está desactivada.";
+
+        mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
+                        .content(conProductoNuevo(nuevo("\"nombre\": \"Tarta de coco\""), false)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(mensaje));
+        mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
+                        .content(conProductoNuevo("{\"nombre\": \"Tarta\", \"categoriaId\": 999999}", false)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(mensaje));
     }
 
     @Test
@@ -75,7 +115,7 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
         datos.crearElaborado("ELA-0001", "Otro", new BigDecimal("100"), 0, true);
 
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
-                        .content(conProductoNuevo("{\"nombre\": \"Tarta de coco\"}", false)))
+                        .content(conProductoNuevo(nuevo("\"nombre\": \"Tarta de coco\""), false)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.espProductoCodigo").value("ELA-0002"));
     }
@@ -83,7 +123,7 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
     @Test
     void conProductoNuevo_codigoPropioYPreparacionBase() throws Exception {
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
-                        .content(conProductoNuevo("{\"codigo\": \"GAN-1\", \"nombre\": \"Ganache\", \"vendible\": false}", false)))
+                        .content(conProductoNuevo(nuevo("\"codigo\": \"GAN-1\", \"nombre\": \"Ganache\", \"vendible\": false"), false)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.espProductoCodigo").value("GAN-1"));
 
@@ -95,7 +135,7 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
         datos.crearProducto("COCA", "Coca-Cola", new BigDecimal("1500"), 5, 0);
 
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
-                        .content(conProductoNuevo("{\"codigo\": \"COCA\", \"nombre\": \"Tarta\"}", false)))
+                        .content(conProductoNuevo(nuevo("\"codigo\": \"COCA\", \"nombre\": \"Tarta\""), false)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Ya existe un producto con el código COCA."));
     }
@@ -105,7 +145,7 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
         long antes = productoRepository.count();
 
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
-                        .content(conProductoNuevo("{\"nombre\": \"Tarta de coco\"}", true)))
+                        .content(conProductoNuevo(nuevo("\"nombre\": \"Tarta de coco\""), true)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("El insumo Harina está dos veces en la receta."));
 

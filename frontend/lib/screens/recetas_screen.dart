@@ -196,24 +196,43 @@ class _RecetasScreenState extends State<RecetasScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        if (state.availableCategorias.isNotEmpty)
-          DropdownButtonFormField<int?>(
-            key: const Key('nuevo_producto_categoria'),
-            isExpanded: true,
-            initialValue: state.nuevoProductoCategoriaId,
-            decoration: const InputDecoration(
-              labelText: 'Categoría (opcional)',
-              border: OutlineInputBorder(),
+        Row(
+          children: [
+            Expanded(
+              // La clave cambia con la categoría elegida para que el
+              // desplegable muestre la que se acaba de crear con "+".
+              child: KeyedSubtree(
+                key: ValueKey('categoria_elegida_${state.nuevoProductoCategoriaId}'),
+                child: DropdownButtonFormField<int>(
+                  key: const Key('nuevo_producto_categoria'),
+                  isExpanded: true,
+                  initialValue: state.availableCategorias
+                          .any((c) => c.id == state.nuevoProductoCategoriaId)
+                      ? state.nuevoProductoCategoriaId
+                      : null,
+                  hint: const Text('Elegir categoría'),
+                  decoration: const InputDecoration(
+                    labelText: 'Categoría *',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: state.availableCategorias
+                      .map((c) => DropdownMenuItem<int>(value: c.id, child: Text(c.nombre)))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) _bloc.add(ActualizarProductoNuevoReceta(categoriaId: v));
+                  },
+                ),
+              ),
             ),
-            items: [
-              const DropdownMenuItem<int?>(value: null, child: Text('Sin categoría')),
-              ...state.availableCategorias.map(
-                  (c) => DropdownMenuItem<int?>(value: c.id, child: Text(c.nombre))),
-            ],
-            onChanged: (v) => _bloc.add(v == null
-                ? const ActualizarProductoNuevoReceta(quitarCategoria: true)
-                : ActualizarProductoNuevoReceta(categoriaId: v)),
-          ),
+            const SizedBox(width: 8),
+            IconButton.filledTonal(
+              key: const Key('nueva_categoria_button'),
+              tooltip: 'Nueva categoría',
+              icon: const Icon(Icons.add),
+              onPressed: _crearCategoria,
+            ),
+          ],
+        ),
         CheckboxListTile(
           key: const Key('nuevo_producto_preparacion_base'),
           contentPadding: EdgeInsets.zero,
@@ -224,6 +243,17 @@ class _RecetasScreenState extends State<RecetasScreen> {
           subtitle: const Text('Ej.: ganache. No aparece en el punto de venta.'),
         ),
       ];
+
+  /// Pide el nombre de una categoría nueva; el bloc la crea y la elige.
+  Future<void> _crearCategoria() async {
+    final nombre = await showDialog<String>(
+      context: context,
+      builder: (_) => const _NuevaCategoriaDialog(),
+    );
+    if (nombre != null && nombre.trim().isNotEmpty) {
+      _bloc.add(CrearCategoriaReceta(nombre));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -846,6 +876,49 @@ class _RecetasScreenState extends State<RecetasScreen> {
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+}
+
+class _NuevaCategoriaDialog extends StatefulWidget {
+  const _NuevaCategoriaDialog();
+
+  @override
+  State<_NuevaCategoriaDialog> createState() => _NuevaCategoriaDialogState();
+}
+
+class _NuevaCategoriaDialogState extends State<_NuevaCategoriaDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Nueva categoría'),
+      content: TextField(
+        key: const Key('nueva_categoria_nombre'),
+        controller: _controller,
+        autofocus: true,
+        maxLength: 50,
+        decoration: const InputDecoration(labelText: 'Nombre'),
+        onSubmitted: (v) => Navigator.of(context).pop(v),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          key: const Key('crear_categoria_confirmar'),
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('Crear'),
+        ),
+      ],
     );
   }
 }

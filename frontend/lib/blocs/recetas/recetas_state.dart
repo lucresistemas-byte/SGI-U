@@ -84,6 +84,7 @@ class RecetasState extends Equatable {
   bool get isFormValid {
     if (creaProductoNuevo) {
       if (nuevoProductoNombre.trim().isEmpty) return false;
+      if (nuevoProductoCategoriaId == null) return false;
     } else if (selectedProductoCodigo.trim().isEmpty) {
       return false;
     }

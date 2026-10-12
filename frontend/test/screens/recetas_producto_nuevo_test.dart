@@ -61,6 +61,13 @@ void main() {
     await t.pumpAndSettle();
   }
 
+  Future<void> elegirCategoria(WidgetTester t, String nombre) async {
+    await t.tap(find.byKey(const Key('nuevo_producto_categoria')));
+    await t.pumpAndSettle();
+    await t.tap(find.text(nombre).last);
+    await t.pumpAndSettle();
+  }
+
   Map<String, dynamic> payload() =>
       verify(() => api.createReceta(captureAny())).captured.single as Map<String, dynamic>;
 
@@ -90,11 +97,13 @@ void main() {
 
     await t.enterText(find.byKey(const Key('nuevo_producto_nombre')), 'Ganache');
     await t.enterText(find.byKey(const Key('nuevo_producto_codigo')), 'GAN-1');
+    await elegirCategoria(t, 'Tortas');
     await t.tap(find.byKey(const Key('nuevo_producto_preparacion_base')));
     await t.pump();
     await completarRecetaYGuardar(t);
 
-    expect(payload()['productoNuevo'], {'nombre': 'Ganache', 'codigo': 'GAN-1', 'vendible': false});
+    expect(payload()['productoNuevo'],
+        {'nombre': 'Ganache', 'codigo': 'GAN-1', 'categoriaId': 7, 'vendible': false});
   });
 
   testWidgets('producto existente: solo elaborados activos sin receta', (t) async {
@@ -117,5 +126,50 @@ void main() {
     final p = payload();
     expect(p['espProductoCodigo'], 'ELA-2');
     expect(p.containsKey('productoNuevo'), isFalse);
+  });
+
+  testWidgets('sin categoría no se puede guardar el producto nuevo', (t) async {
+    await abrirArmador(t);
+
+    await t.enterText(find.byKey(const Key('nuevo_producto_nombre')), 'Torta de frutilla');
+    await completarRecetaYGuardar(t);
+
+    // Antes la categoría era opcional y se guardaba sin ella.
+    verifyNever(() => api.createReceta(any()));
+    expect(t.widget<ElevatedButton>(find.byKey(const Key('guardar_receta_button'))).onPressed,
+        isNull);
+
+    await elegirCategoria(t, 'Tortas');
+    expect(t.widget<ElevatedButton>(find.byKey(const Key('guardar_receta_button'))).onPressed,
+        isNotNull);
+  });
+
+  testWidgets('"+" crea una categoría, la elige y no pierde lo cargado', (t) async {
+    when(() => api.crearCategoria(any()))
+        .thenAnswer((_) async => const Categoria(id: 12, nombre: 'Budines'));
+    await abrirArmador(t);
+    await t.enterText(find.byKey(const Key('nuevo_producto_nombre')), 'Budín de limón');
+    await t.enterText(find.byKey(const Key('nuevo_producto_porcentaje')), '90');
+
+    await t.tap(find.byKey(const Key('nueva_categoria_button')));
+    await t.pumpAndSettle();
+    await t.enterText(find.byKey(const Key('nueva_categoria_nombre')), 'Budines');
+    await t.tap(find.byKey(const Key('crear_categoria_confirmar')));
+    await t.pumpAndSettle();
+
+    verify(() => api.crearCategoria('Budines')).called(1);
+    expect(find.descendant(
+            of: find.byKey(const Key('nuevo_producto_categoria')), matching: find.text('Budines')),
+        findsOneWidget);
+    expect(find.text('Budín de limón'), findsOneWidget);
+    expect(find.text('90'), findsOneWidget);
+
+    await completarRecetaYGuardar(t);
+    expect(payload()['productoNuevo'], {
+      'nombre': 'Budín de limón',
+      'categoriaId': 12,
+      'porcentajeGanancia': 90.0,
+      'vendible': true,
+    });
   });
 }
