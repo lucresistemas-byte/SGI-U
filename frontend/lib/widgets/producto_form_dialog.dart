@@ -30,6 +30,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   late TextEditingController _stockInicialController;
   // Controles de ajuste (solo edición)
   late TextEditingController _ajusteCantidadController;
+  late TextEditingController _stockMinimoController;
   String _ajusteTipo = 'sumar';
   int _stockActualMostrado = 0;
 
@@ -77,6 +78,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     _unidadMedida = prod?.unidadMedida ?? 'UNIDAD';
     _stockInicialController = TextEditingController(text: '0');
     _ajusteCantidadController = TextEditingController(text: '0');
+    _stockMinimoController =
+        TextEditingController(text: '${prod?.stockMinimo ?? 0}');
     if (_esEdicion) {
       _stockActualMostrado = prod!.stockActual;
     }
@@ -89,6 +92,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     _porcentajeController.addListener(() => setState(() {}));
     _stockInicialController.addListener(() => setState(() {}));
     _ajusteCantidadController.addListener(() => setState(() {}));
+    _stockMinimoController.addListener(() => setState(() {}));
   }
 
   @override
@@ -100,6 +104,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     _porcentajeController.dispose();
     _stockInicialController.dispose();
     _ajusteCantidadController.dispose();
+    _stockMinimoController.dispose();
     super.dispose();
   }
 
@@ -182,6 +187,11 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     return stock != null && stock >= 0;
   }
 
+  bool _isStockMinimoValido() {
+    final minimo = int.tryParse(_stockMinimoController.text.trim());
+    return minimo != null && minimo >= 0;
+  }
+
   bool _isAjusteValido() {
     if (!_esEdicion) return true;
     final cantidad = int.tryParse(_ajusteCantidadController.text.trim()) ?? 0;
@@ -203,6 +213,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
         codigoValido &&
         precioValido &&
         stockInicialValido &&
+        _isStockMinimoValido() &&
         ajusteValido;
   }
 
@@ -231,6 +242,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
       'precio_costo': costoVal,
       'porcentajeGanancia': porcentajeVal,
       'porcentaje_ganancia': porcentajeVal,
+      'stockMinimo': int.parse(_stockMinimoController.text.trim()),
     };
 
     if (widget.productoAEditar?.categoria != null) {
@@ -441,6 +453,22 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                         if (value != null) {
                           setStateDialog(() => _unidadMedida = value);
                         }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      key: const Key('producto_stock_minimo_input'),
+                      controller: _stockMinimoController,
+                      decoration: const InputDecoration(
+                        labelText: 'Stock mínimo: avisar cuando queden menos de',
+                        suffixText: 'unidades',
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        final minimo = int.tryParse(value?.trim() ?? '');
+                        if (minimo == null) return 'Debe ser un número entero';
+                        if (minimo < 0) return 'No puede ser negativo';
+                        return null;
                       },
                     ),
                     const SizedBox(height: 16),

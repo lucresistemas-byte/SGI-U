@@ -16,6 +16,7 @@ public record ProductoRequestDTO(
     Long categoriaId,
     @Min(value = 0, message = "El stock no puede ser negativo.")
     Long stockActual,
+    @Min(value = 0, message = "El stock mínimo no puede ser negativo.")
     Integer stockMinimo,
     Boolean activo,
     /** Obligatorio al crear (ver TipoArticulo); no se puede cambiar al editar. */

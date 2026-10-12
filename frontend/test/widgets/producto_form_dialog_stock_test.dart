@@ -146,4 +146,43 @@ void main() {
     expect(fake.stockCodigo, isNull);
     expect(fake.stockCantidad, isNull);
   });
+
+  testWidgets('editar muestra el stock mínimo actual y envía el nuevo',
+      (WidgetTester tester) async {
+    final fake = _FakePosApi();
+    final product = Product(
+        codigo: 'P1',
+        nombre: 'Producto 1',
+        precioUnitario: 100,
+        stockActual: 10,
+        stockMinimo: 3);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider(
+          create: (_) => PosBloc(apiService: fake),
+          child: Scaffold(
+            body: Center(
+              child: ProductoFormDialog(productoAEditar: product),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final minimo = find.byKey(const Key('producto_stock_minimo_input'));
+    expect(tester.widget<TextFormField>(minimo).controller!.text, '3');
+
+    await tester.enterText(minimo, '8');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar Producto'));
+    await tester.pumpAndSettle();
+
+    expect(fake.updateData!['stockMinimo'], 8);
+  });
+
+  test('Product lee stockMinimo del catálogo', () {
+    expect(Product.fromJson({'codigo': 'X', 'stockMinimo': 4}).stockMinimo, 4);
+    expect(Product.fromJson({'codigo': 'X'}).stockMinimo, 0);
+  });
 }

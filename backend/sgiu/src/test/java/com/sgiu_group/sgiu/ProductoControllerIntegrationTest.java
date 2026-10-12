@@ -112,6 +112,49 @@ class ProductoControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void crear_conStockMinimo_loGuardaEnArticulosStock() throws Exception {
+        ProductoRequestDTO dto = new ProductoRequestDTO(
+                "MIN-1", "Con mínimo", new BigDecimal("20.00"), 10L, 4, true);
+
+        mockMvc.perform(post("/api/productos/crear")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(dto)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.stockMinimo").value(4));
+
+        assertThat(stockRepository.findByEspProducto_Codigo("MIN-1").orElseThrow().getStockMinimo())
+                .isEqualTo(4);
+    }
+
+    @Test
+    void editar_cambiaElStockMinimo() throws Exception {
+        datos.crearProducto("MIN-2", "Con mínimo", new BigDecimal("10.00"), 5, 1);
+        ProductoRequestDTO dto = new ProductoRequestDTO(
+                "MIN-2", "Con mínimo", new BigDecimal("10.00"), null, 7, true);
+
+        mockMvc.perform(put("/api/productos/editar/MIN-2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(dto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stockMinimo").value(7));
+
+        assertThat(stockRepository.findByEspProducto_Codigo("MIN-2").orElseThrow().getStockMinimo())
+                .isEqualTo(7);
+    }
+
+    @Test
+    void crear_stockMinimoNegativo_devuelve400PorValidacion() throws Exception {
+        ProductoRequestDTO dto = new ProductoRequestDTO(
+                "MIN-N", "Mínimo negativo", new BigDecimal("10.00"), 1L, -2, true);
+
+        mockMvc.perform(post("/api/productos/crear")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("El stock mínimo no puede ser negativo."));
+    }
+
+    @Test
     void crear_precioCero_devuelve400PorValidacion() throws Exception {
         ProductoRequestDTO dto = new ProductoRequestDTO(
                 "PRC-0", "Precio Cero", new BigDecimal("0.00"), 1L, 0, true);

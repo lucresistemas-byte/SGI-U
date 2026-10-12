@@ -3,6 +3,9 @@ class Product {
   final String nombre;
   final double precioUnitario;
   final int stockActual;
+
+  /// Aviso de stock bajo (articulos_stock.stock_minimo).
+  final int stockMinimo;
   final bool activo;
   final String? categoria;
   final String? unidadMedida;
@@ -30,6 +33,7 @@ class Product {
     required this.nombre,
     required this.precioUnitario,
     required this.stockActual,
+    this.stockMinimo = 0,
     this.activo = true,
     this.categoria,
     this.unidadMedida = 'UNIDAD',
@@ -58,6 +62,7 @@ class Product {
       nombre: json['nombre'] ?? '',
       precioUnitario: (json['precioUnitario'] as num?)?.toDouble() ?? 0.0,
       stockActual: json['stockActual'] ?? 0,
+      stockMinimo: (json['stockMinimo'] as num?)?.toInt() ?? 0,
       activo: json['activo'] ?? true,
       categoria: cat,
       unidadMedida: unidad,
@@ -74,6 +79,7 @@ class Product {
       'nombre': nombre,
       'precioUnitario': precioUnitario,
       'stockActual': stockActual,
+      'stockMinimo': stockMinimo,
       'activo': activo,
       if (categoria != null) 'categoria': categoria,
       if (unidadMedida != null) 'unidadMedida': unidadMedida,
@@ -92,6 +98,7 @@ class Product {
     String? nombre,
     double? precioUnitario,
     int? stockActual,
+    int? stockMinimo,
     bool? activo,
     String? categoria,
     String? unidadMedida,
@@ -105,6 +112,7 @@ class Product {
       nombre: nombre ?? this.nombre,
       precioUnitario: precioUnitario ?? this.precioUnitario,
       stockActual: stockActual ?? this.stockActual,
+      stockMinimo: stockMinimo ?? this.stockMinimo,
       activo: activo ?? this.activo,
       categoria: categoria ?? this.categoria,
       unidadMedida: unidadMedida ?? this.unidadMedida,
@@ -124,6 +132,7 @@ class Product {
           nombre == other.nombre &&
           precioUnitario == other.precioUnitario &&
           stockActual == other.stockActual &&
+          stockMinimo == other.stockMinimo &&
           activo == other.activo &&
           categoria == other.categoria &&
           unidadMedida == other.unidadMedida &&

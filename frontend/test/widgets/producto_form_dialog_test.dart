@@ -127,6 +127,31 @@ void main() {
       expect(fake.getProductsCalled, isTrue);
     });
 
+    testWidgets('el stock mínimo se envía al crear y bloquea Guardar si es inválido',
+        (WidgetTester tester) async {
+      await _pumpDialog(tester, fake);
+
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Código (SKU)'), 'P9');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Nombre del Producto'), 'Agua');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Precio Unitario (\$)'), '50');
+      final minimo = find.byKey(const Key('producto_stock_minimo_input'));
+      expect(find.text('Stock mínimo: avisar cuando queden menos de'), findsOneWidget);
+
+      await tester.enterText(minimo, '-1');
+      await tester.pump();
+      expect(_btnGuardar(tester).onPressed, isNull);
+
+      await tester.enterText(minimo, '6');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar Producto'));
+      await tester.pumpAndSettle();
+
+      expect(fake.createData!['stockMinimo'], 6);
+    });
+
     testWidgets('el backend 409 muestra el mensaje de código duplicado',
         (WidgetTester tester) async {
       fake.createError = Exception('El código de producto ya existe');
