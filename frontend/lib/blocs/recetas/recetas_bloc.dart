@@ -21,6 +21,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
     on<CambiarCostosAdicionales>(_onCambiarCostosAdicionales);
     on<AgregarFilaInsumo>(_onAgregarFilaInsumo);
     on<RemoverFilaInsumo>(_onRemoverFilaInsumo);
+    on<CambiarInsumoFila>(_onCambiarInsumoFila);
     on<ActualizarCantidadFilaInsumo>(_onActualizarCantidadFilaInsumo);
     on<GuardarReceta>(_onGuardarReceta);
     on<CambiarEstadoReceta>(_onCambiarEstadoReceta);
@@ -144,6 +145,29 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
     ));
   }
 
+  void _onCambiarInsumoFila(
+      CambiarInsumoFila event, Emitter<RecetasState> emit) {
+    if (event.index < 0 || event.index >= state.detalles.length) return;
+    final actual = state.detalles[event.index];
+    final insumo = event.insumo;
+    // Antes se borraba la fila y se agregaba la nueva al final: las filas se
+    // reordenaban y lo que se veía dejaba de coincidir con lo que se enviaba.
+    final nuevosDetalles = List<RecetaDetalle>.from(state.detalles);
+    nuevosDetalles[event.index] = RecetaDetalle(
+      materiaPrimaId: insumo.id ?? 0,
+      materiaPrimaCodigo: insumo.codigo,
+      materiaPrimaNombre: insumo.nombre,
+      cantidad: actual.cantidad,
+      unidadMedida: insumo.unidadMedida,
+      costoUnitario: insumo.costoUnitario,
+      subtotal: actual.cantidad * insumo.costoUnitario,
+    );
+    emit(state.copyWith(
+      detalles: nuevosDetalles,
+      costoTotal: _calcularCostoTotal(nuevosDetalles, state.costosAdicionales),
+    ));
+  }
+
   void _onRemoverFilaInsumo(
       RemoverFilaInsumo event, Emitter<RecetasState> emit) {
     if (event.index >= 0 && event.index < state.detalles.length) {
@@ -185,6 +209,13 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       return;
     }
 
+    final repetido = _insumoRepetido();
+    if (repetido != null) {
+      emit(state.copyWith(
+          errorMessage: 'El insumo $repetido está dos veces en la receta.'));
+      return;
+    }
+
     emit(state.copyWith(isSaving: true, clearError: true));
     try {
       final payload = _payloadDelBorrador();
@@ -217,6 +248,17 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
     } catch (e) {
       emit(state.copyWith(isSaving: false, errorMessage: e.toString()));
     }
+  }
+
+  /// Nombre del primer insumo que aparece más de una vez, o null.
+  String? _insumoRepetido() {
+    final vistos = <int>{};
+    for (final d in state.detalles) {
+      if (!vistos.add(d.materiaPrimaId)) {
+        return d.materiaPrimaNombre ?? 'con ID ${d.materiaPrimaId}';
+      }
+    }
+    return null;
   }
 
   Map<String, dynamic> _payloadDelBorrador() => {

@@ -549,10 +549,21 @@ class _RecetasScreenState extends State<RecetasScreen> {
                 ),
                 onPressed: () {
                   if (state.availableInsumos.isNotEmpty) {
-                    _bloc.add(AgregarFilaInsumo(
-                      insumo: state.availableInsumos.first,
-                      cantidad: 1.0,
-                    ));
+                    // La fila nueva usa el primer insumo que todavía no está
+                    // en la receta (antes siempre el primero: quedaban repetidos).
+                    final usados = state.detalles.map((d) => d.materiaPrimaId).toSet();
+                    final libres = state.availableInsumos
+                        .where((i) => !usados.contains(i.id))
+                        .toList();
+                    if (libres.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Todos los insumos disponibles ya están en la receta.'),
+                        ),
+                      );
+                      return;
+                    }
+                    _bloc.add(AgregarFilaInsumo(insumo: libres.first, cantidad: 1.0));
                   } else {
                     // Sin insumos no hay qué agregar: antes se agregaba uno
                     // ficticio (id 1) que se guardaba contra otro insumo real.
@@ -591,14 +602,29 @@ class _RecetasScreenState extends State<RecetasScreen> {
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final detalle = state.detalles[index];
+                // Clave estable por insumo (no por posición): al quitar o
+                // cambiar una fila, cada widget conserva su propio insumo.
+                final repeticion = state.detalles
+                    .take(index)
+                    .where((d) => d.materiaPrimaId == detalle.materiaPrimaId)
+                    .length;
+                // Insumos ofrecidos: los que no están en otra fila.
+                final usadosEnOtras = {
+                  for (var i = 0; i < state.detalles.length; i++)
+                    if (i != index) state.detalles[i].materiaPrimaId,
+                };
+                final ofrecidos = state.availableInsumos
+                    .where((i) => !usadosEnOtras.contains(i.id))
+                    .toList();
                 return Card(
-                  key: Key('fila_insumo_$index'),
+                  key: ValueKey('fila_insumo_id_${detalle.materiaPrimaId}_$repeticion'),
                   margin: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                     side: const BorderSide(color: Color(0xFFE2E8F0)),
                   ),
                   child: Padding(
+                    key: Key('fila_insumo_$index'),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Row(
                       children: [
@@ -609,7 +635,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                           // disponibles: se muestra fijo, sin dropdown.
                           child: state.availableInsumos.isNotEmpty &&
                                   (detalle.materiaPrimaId <= 0 ||
-                                      state.availableInsumos.any(
+                                      ofrecidos.any(
                                           (i) => i.id == detalle.materiaPrimaId))
                               ? DropdownButtonFormField<int>(
                                   key: Key('selector_insumo_fila_$index'),
@@ -622,7 +648,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                     border: OutlineInputBorder(),
                                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                   ),
-                                  items: state.availableInsumos.map((i) {
+                                  items: ofrecidos.map((i) {
                                     return DropdownMenuItem<int>(
                                       value: i.id,
                                       child: Text('${i.nombre} (${i.codigo})'),
@@ -632,17 +658,13 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                     if (selectedId != null) {
                                       final found = state.availableInsumos
                                           .firstWhere((i) => i.id == selectedId);
-                                      _bloc.add(RemoverFilaInsumo(index));
-                                      _bloc.add(AgregarFilaInsumo(
-                                        insumo: found,
-                                        cantidad: detalle.cantidad,
-                                      ));
+                                      _bloc.add(CambiarInsumoFila(index: index, insumo: found));
                                     }
                                   },
                                 )
                               : Text(
                                   '${detalle.materiaPrimaNombre ?? 'Insumo #${detalle.materiaPrimaId}'}'
-                                  '${state.availableInsumos.isNotEmpty ? ' (desactivado)' : ''}',
+                                  '${state.availableInsumos.isEmpty ? '' : state.availableInsumos.any((i) => i.id == detalle.materiaPrimaId) ? ' (repetido)' : ' (desactivado)'}',
                                   key: Key('insumo_fijo_fila_$index'),
                                   style: const TextStyle(fontWeight: FontWeight.w600),
                                 ),

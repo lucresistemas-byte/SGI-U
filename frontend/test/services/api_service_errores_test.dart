@@ -65,11 +65,11 @@ void main() {
 
   test('Recetas: alta con 400 muestra el mensaje del backend', () async {
     adapter.onPost('/api/recetas',
-        (s) => s.reply(400, {'error': 'Insumo duplicado en la receta. ID de insumo: 4'}),
+        (s) => s.reply(400, {'error': 'El insumo Harina está dos veces en la receta.'}),
         data: Matchers.any);
 
     expect(await mensajeDe(() => api.createReceta({})),
-        'Insumo duplicado en la receta. ID de insumo: 4');
+        'El insumo Harina está dos veces en la receta.');
   });
 
   test('Pedidos: abono con 400 muestra el mensaje del backend', () async {

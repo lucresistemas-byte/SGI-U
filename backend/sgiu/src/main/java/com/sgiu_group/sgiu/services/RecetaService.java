@@ -142,11 +142,11 @@ public class RecetaService {
                                               Set<Long> insumosPermitidosInactivos) {
         Set<Long> insumosVistos = new HashSet<>();
         for (RecetaDetalleRequestDTO d : detalles) {
-            if (!insumosVistos.add(d.materiaPrimaId())) {
-                throw new RecetaInvalidaException("Insumo duplicado en la receta. ID de insumo: " + d.materiaPrimaId());
-            }
             MateriaPrima mp = materiaPrimaRepository.findById(d.materiaPrimaId())
                     .orElseThrow(() -> new RecursoNoEncontradoException("Materia prima no encontrada con ID: " + d.materiaPrimaId()));
+            if (!insumosVistos.add(d.materiaPrimaId())) {
+                throw new RecetaInvalidaException("El insumo " + mp.getNombre() + " está dos veces en la receta.");
+            }
             if (!mp.isActivo() && !insumosPermitidosInactivos.contains(mp.getId())) {
                 throw new RecetaInvalidaException("El insumo " + mp.getNombre()
                         + " está desactivado. Reactívelo para usarlo en una receta.");

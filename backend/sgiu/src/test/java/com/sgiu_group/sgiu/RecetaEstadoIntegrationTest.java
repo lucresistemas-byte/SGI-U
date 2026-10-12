@@ -154,4 +154,18 @@ class RecetaEstadoIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(costoTorta()).isEqualByComparingTo("300.00");
     }
+
+    /** Problema 2: el error nombraba el ID del insumo ("ID de insumo: 4"). */
+    @Test
+    void crearConUnInsumoRepetido_devuelve400ConElNombreDelInsumo() throws Exception {
+        tortaConReceta();
+        EspProducto budin = datos.crearProducto("REC-BUDIN", "Budín", new BigDecimal("900.00"), 0, 0);
+
+        mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"espProductoCodigo\": \"" + budin.getCodigo() + "\", \"nombre\": \"Budín\", "
+                                + "\"detalles\": [{\"materiaPrimaId\": " + harina.getId() + ", \"cantidad\": 0.2}, "
+                                + "{\"materiaPrimaId\": " + harina.getId() + ", \"cantidad\": 0.1}]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("El insumo Harina está dos veces en la receta."));
+    }
 }

@@ -89,6 +89,17 @@ class AgregarFilaInsumo extends RecetasEvent {
   List<Object?> get props => [insumo, cantidad];
 }
 
+/// Cambia el insumo de una fila en su lugar, conservando la cantidad.
+class CambiarInsumoFila extends RecetasEvent {
+  final int index;
+  final Insumo insumo;
+
+  const CambiarInsumoFila({required this.index, required this.insumo});
+
+  @override
+  List<Object?> get props => [index, insumo];
+}
+
 class RemoverFilaInsumo extends RecetasEvent {
   final int index;
 
