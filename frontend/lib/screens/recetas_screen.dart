@@ -466,416 +466,425 @@ class _RecetasScreenState extends State<RecetasScreen> {
 
   // --- BUILDER VIEW ---
   Widget _buildRecipeBuilder(BuildContext context, RecetasState state) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    key: const Key('volver_lista_button'),
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () {
-                      setState(() {
-                        _isBuilding = false;
-                      });
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    state.editingRecetaId == null
-                        ? 'Armador de Receta'
-                        : 'Editar Receta',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E293B),
-                    ),
-                  ),
-                ],
-              ),
-              ElevatedButton.icon(
-                key: const Key('guardar_receta_button'),
-                icon: const Icon(Icons.save),
-                label: Text(state.isSaving ? 'Guardando...' : 'Guardar Receta'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.verdePrincipal,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    // El encabezado (título y "Guardar receta") queda fijo; solo se
+    // desplaza el contenido del armador.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  key: const Key('volver_lista_button'),
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    setState(() {
+                      _isBuilding = false;
+                    });
+                  },
                 ),
-                onPressed: (state.isFormValid && !state.isSaving)
-                    ? () {
-                        // El armador se cierra recién cuando el guardado sale
-                        // bien (ver listener); si falla, queda abierto.
-                        _bloc.add(const GuardarReceta());
-                      }
-                    : null,
-              ),
-            ],
-          ),
-          if (state.hayFilasIncompletas)
-            const Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text(
-                  RecetasState.mensajeFilasIncompletas,
-                  key: Key('aviso_filas_incompletas'),
-                  style: TextStyle(color: Color(0xFFB45309), fontSize: 13),
+                const SizedBox(width: 8),
+                Text(
+                  state.editingRecetaId == null
+                      ? 'Armado de receta'
+                      : 'Editar receta',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
+                  ),
                 ),
-              ),
+              ],
             ),
-          const SizedBox(height: 20),
-
-          // Card Datos Básicos
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Color(0xFFE2E8F0)),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Información General',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Producto elaborado: existente o nuevo (la receta lo crea)
-                      Expanded(child: _buildSelectorProducto(state)),
-                      const SizedBox(width: 16),
-                      // Nombre de la receta
-                      Expanded(
-                        child: TextFormField(
-                          key: const Key('input_nombre_receta'),
-                          controller: _nombreCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Nombre de la Receta *',
-                            hintText: 'Ej: Fórmula Base Chocolate',
-                            border: OutlineInputBorder(),
-                          ),
-                          onChanged: (val) => _bloc.add(CambiarNombreReceta(val)),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: TextFormField(
-                          key: const Key('input_descripcion_receta'),
-                          controller: _descripcionCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Descripción / Instrucciones (Opcional)',
-                            border: OutlineInputBorder(),
-                          ),
-                          onChanged: (val) => _bloc.add(CambiarDescripcionReceta(val)),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        flex: 1,
-                        child: TextFormField(
-                          key: const Key('input_costos_adicionales'),
-                          controller: _costosAdicCtrl,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: const InputDecoration(
-                            labelText: 'Costos Adicionales (Packaging, etc.)',
-                            prefixText: r'$ ',
-                            border: OutlineInputBorder(),
-                          ),
-                          onChanged: (val) {
-                            final adic = double.tryParse(val.replaceAll(',', '.')) ?? 0.0;
-                            _bloc.add(CambiarCostosAdicionales(adic));
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+            ElevatedButton.icon(
+              key: const Key('guardar_receta_button'),
+              icon: const Icon(Icons.save),
+              label: Text(state.isSaving ? 'Guardando...' : 'Guardar receta'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.verdePrincipal,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Sección de Insumos
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Ingredientes / Insumos',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E293B),
-                ),
-              ),
-              ElevatedButton.icon(
-                key: const Key('agregar_insumo_fila_button'),
-                icon: const Icon(Icons.add),
-                label: const Text('Agregar Insumo'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0284C7),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                onPressed: () {
-                  if (state.availableInsumos.isNotEmpty) {
-                    // La fila nueva llega vacía: el usuario elige el insumo
-                    // (solo entre los que no están en la receta) y la cantidad.
-                    final usados = state.detalles.map((d) => d.materiaPrimaId).toSet();
-                    final libres = state.availableInsumos
-                        .where((i) => !usados.contains(i.id))
-                        .toList();
-                    if (libres.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Todos los insumos disponibles ya están en la receta.'),
-                        ),
-                      );
-                      return;
+              onPressed: (state.isFormValid && !state.isSaving)
+                  ? () {
+                      // El armador se cierra recién cuando el guardado sale
+                      // bien (ver listener); si falla, queda abierto.
+                      _bloc.add(const GuardarReceta());
                     }
-                    _bloc.add(const AgregarFilaVacia());
-                  } else {
-                    // Sin insumos no hay qué agregar: antes se agregaba uno
-                    // ficticio (id 1) que se guardaba contra otro insumo real.
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('No hay insumos activos. Cárguelos en '
-                            'Materia Prima antes de armar la receta.'),
-                      ),
-                    );
-                  }
-                },
+                  : null,
+            ),
+          ],
+        ),
+        if (state.hayFilasIncompletas)
+          const Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                RecetasState.mensajeFilasIncompletas,
+                key: Key('aviso_filas_incompletas'),
+                style: TextStyle(color: Color(0xFFB45309), fontSize: 13),
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 12),
-
-          if (state.detalles.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(32),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Text(
-                'No hay insumos agregados en la receta. Haga clic en "Agregar Insumo".',
-                style: TextStyle(color: Color(0xFF64748B), fontStyle: FontStyle.italic),
-              ),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: state.detalles.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final detalle = state.detalles[index];
-                // Insumos ofrecidos: los que no están en otra fila.
-                final usadosEnOtras = {
-                  for (var i = 0; i < state.detalles.length; i++)
-                    if (i != index) state.detalles[i].materiaPrimaId,
-                };
-                final ofrecidos = state.availableInsumos
-                    .where((i) => !usadosEnOtras.contains(i.id))
-                    .toList();
-                return Card(
-                  // Clave estable por fila (no por posición ni por insumo): al
-                  // quitar o cambiar una fila, cada widget conserva sus datos.
-                  key: ValueKey('fila_insumo_${detalle.claveUi}'),
-                  margin: EdgeInsets.zero,
+        const SizedBox(height: 20),
+        Expanded(
+          child: SingleChildScrollView(
+            key: const Key('armador_scroll'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Card Datos Básicos
+                Card(
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     side: const BorderSide(color: Color(0xFFE2E8F0)),
                   ),
                   child: Padding(
-                    key: Key('fila_insumo_$index'),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Insumo Dropdown / Name
-                        Expanded(
-                          flex: 3,
-                          // Un insumo desactivado ya no está entre los
-                          // disponibles: se muestra fijo, sin dropdown.
-                          child: state.availableInsumos.isNotEmpty &&
-                                  (detalle.materiaPrimaId <= 0 ||
-                                      ofrecidos.any(
-                                          (i) => i.id == detalle.materiaPrimaId))
-                              ? DropdownButtonFormField<int>(
-                                  key: Key('selector_insumo_fila_$index'),
-                                  isExpanded: true,
-                                  initialValue: detalle.sinInsumo
-                                      ? null
-                                      : detalle.materiaPrimaId,
-                                  hint: const Text('Elegir insumo'),
-                                  decoration: const InputDecoration(
-                                    labelText: 'Insumo',
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                  ),
-                                  items: ofrecidos.map((i) {
-                                    return DropdownMenuItem<int>(
-                                      value: i.id,
-                                      child: Text('${i.nombre} (${i.codigo})'),
-                                    );
-                                  }).toList(),
-                                  onChanged: (selectedId) {
-                                    if (selectedId != null) {
-                                      final found = state.availableInsumos
-                                          .firstWhere((i) => i.id == selectedId);
-                                      _bloc.add(CambiarInsumoFila(index: index, insumo: found));
-                                    }
-                                  },
-                                )
-                              : Text(
-                                  '${detalle.materiaPrimaNombre ?? 'Insumo #${detalle.materiaPrimaId}'}'
-                                  '${state.availableInsumos.isEmpty ? '' : state.availableInsumos.any((i) => i.id == detalle.materiaPrimaId) ? ' (repetido)' : ' (desactivado)'}',
-                                  key: Key('insumo_fijo_fila_$index'),
-                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                        const Text(
+                          'Información General',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Producto elaborado: existente o nuevo (la receta lo crea)
+                            Expanded(child: _buildSelectorProducto(state)),
+                            const SizedBox(width: 16),
+                            // Nombre de la receta
+                            Expanded(
+                              child: TextFormField(
+                                key: const Key('input_nombre_receta'),
+                                controller: _nombreCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'Nombre de la Receta *',
+                                  hintText: 'Ej: Fórmula Base Chocolate',
+                                  border: OutlineInputBorder(),
                                 ),
-                        ),
-                        const SizedBox(width: 12),
-
-                        // Cantidad
-                        SizedBox(
-                          width: 120,
-                          child: TextFormField(
-                            key: Key('cantidad_insumo_fila_$index'),
-                            initialValue: detalle.cantidad > 0
-                                ? detalle.cantidad.toString()
-                                : '',
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(
-                              labelText: 'Cantidad',
-                              border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            ),
-                            onChanged: (val) {
-                              final cant = double.tryParse(val.replaceAll(',', '.')) ?? 0.0;
-                              _bloc.add(ActualizarCantidadFilaInsumo(
-                                index: index,
-                                cantidad: cant,
-                              ));
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-
-                        // Unidad
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            detalle.unidadMedida.isEmpty ? '—' : detalle.unidadMedida,
-                            key: Key('unidad_insumo_fila_$index'),
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-
-                        // Costo Unitario
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Text('Costo Unit.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                            Text(
-                              _currencyFormat.format(detalle.costoUnitario),
-                              key: Key('costo_unitario_insumo_fila_$index'),
-                              style: const TextStyle(fontWeight: FontWeight.w500),
+                                onChanged: (val) => _bloc.add(CambiarNombreReceta(val)),
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(width: 16),
-
-                        // Subtotal
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                        const SizedBox(height: 16),
+                        Row(
                           children: [
-                            const Text('Subtotal', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                            Text(
-                              _currencyFormat.format(detalle.subtotal),
-                              key: Key('subtotal_insumo_fila_$index'),
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF13894E)),
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
+                                key: const Key('input_descripcion_receta'),
+                                controller: _descripcionCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'Descripción / Instrucciones (Opcional)',
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (val) => _bloc.add(CambiarDescripcionReceta(val)),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 1,
+                              child: TextFormField(
+                                key: const Key('input_costos_adicionales'),
+                                controller: _costosAdicCtrl,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                decoration: const InputDecoration(
+                                  labelText: 'Costos Adicionales (Packaging, etc.)',
+                                  prefixText: r'$ ',
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (val) {
+                                  final adic = double.tryParse(val.replaceAll(',', '.')) ?? 0.0;
+                                  _bloc.add(CambiarCostosAdicionales(adic));
+                                },
+                              ),
                             ),
                           ],
-                        ),
-                        const SizedBox(width: 12),
-
-                        // Eliminar fila
-                        IconButton(
-                          key: Key('eliminar_insumo_fila_$index'),
-                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                          onPressed: () => _bloc.add(RemoverFilaInsumo(index)),
                         ),
                       ],
                     ),
                   ),
-                );
-              },
-            ),
-          const SizedBox(height: 24),
+                ),
+                const SizedBox(height: 24),
 
-          // Total Cost Card
-          Card(
-            color: const Color(0xFFF0FDF4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Color(0xFFBBF7D0)),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Costo de Producción por Receta',
-                        style: TextStyle(fontSize: 14, color: Color(0xFF166534), fontWeight: FontWeight.w500),
+                // Sección de Insumos
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Ingredientes / Insumos',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E293B),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Incluye ${state.detalles.length} insumos + ${_currencyFormat.format(state.costosAdicionales)} de adicionales',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF15803D)),
+                    ),
+                    ElevatedButton.icon(
+                      key: const Key('agregar_insumo_fila_button'),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Agregar Insumo'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0284C7),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                    ],
+                      onPressed: () {
+                        if (state.availableInsumos.isNotEmpty) {
+                          // La fila nueva llega vacía: el usuario elige el insumo
+                          // (solo entre los que no están en la receta) y la cantidad.
+                          final usados = state.detalles.map((d) => d.materiaPrimaId).toSet();
+                          final libres = state.availableInsumos
+                              .where((i) => !usados.contains(i.id))
+                              .toList();
+                          if (libres.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Todos los insumos disponibles ya están en la receta.'),
+                              ),
+                            );
+                            return;
+                          }
+                          _bloc.add(const AgregarFilaVacia());
+                        } else {
+                          // Sin insumos no hay qué agregar: antes se agregaba uno
+                          // ficticio (id 1) que se guardaba contra otro insumo real.
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('No hay insumos activos. Cárguelos en '
+                                  'Materia Prima antes de armar la receta.'),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                if (state.detalles.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(32),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Text(
+                      'No hay insumos agregados en la receta. Haga clic en "Agregar Insumo".',
+                      style: TextStyle(color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+                    ),
+                  )
+                else
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: state.detalles.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final detalle = state.detalles[index];
+                      // Insumos ofrecidos: los que no están en otra fila.
+                      final usadosEnOtras = {
+                        for (var i = 0; i < state.detalles.length; i++)
+                          if (i != index) state.detalles[i].materiaPrimaId,
+                      };
+                      final ofrecidos = state.availableInsumos
+                          .where((i) => !usadosEnOtras.contains(i.id))
+                          .toList();
+                      return Card(
+                        // Clave estable por fila (no por posición ni por insumo): al
+                        // quitar o cambiar una fila, cada widget conserva sus datos.
+                        key: ValueKey('fila_insumo_${detalle.claveUi}'),
+                        margin: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        child: Padding(
+                          key: Key('fila_insumo_$index'),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Row(
+                            children: [
+                              // Insumo Dropdown / Name
+                              Expanded(
+                                flex: 3,
+                                // Un insumo desactivado ya no está entre los
+                                // disponibles: se muestra fijo, sin dropdown.
+                                child: state.availableInsumos.isNotEmpty &&
+                                        (detalle.materiaPrimaId <= 0 ||
+                                            ofrecidos.any(
+                                                (i) => i.id == detalle.materiaPrimaId))
+                                    ? DropdownButtonFormField<int>(
+                                        key: Key('selector_insumo_fila_$index'),
+                                        isExpanded: true,
+                                        initialValue: detalle.sinInsumo
+                                            ? null
+                                            : detalle.materiaPrimaId,
+                                        hint: const Text('Elegir insumo'),
+                                        decoration: const InputDecoration(
+                                          labelText: 'Insumo',
+                                          border: OutlineInputBorder(),
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                        ),
+                                        items: ofrecidos.map((i) {
+                                          return DropdownMenuItem<int>(
+                                            value: i.id,
+                                            child: Text('${i.nombre} (${i.codigo})'),
+                                          );
+                                        }).toList(),
+                                        onChanged: (selectedId) {
+                                          if (selectedId != null) {
+                                            final found = state.availableInsumos
+                                                .firstWhere((i) => i.id == selectedId);
+                                            _bloc.add(CambiarInsumoFila(index: index, insumo: found));
+                                          }
+                                        },
+                                      )
+                                    : Text(
+                                        '${detalle.materiaPrimaNombre ?? 'Insumo #${detalle.materiaPrimaId}'}'
+                                        '${state.availableInsumos.isEmpty ? '' : state.availableInsumos.any((i) => i.id == detalle.materiaPrimaId) ? ' (repetido)' : ' (desactivado)'}',
+                                        key: Key('insumo_fijo_fila_$index'),
+                                        style: const TextStyle(fontWeight: FontWeight.w600),
+                                      ),
+                              ),
+                              const SizedBox(width: 12),
+
+                              // Cantidad
+                              SizedBox(
+                                width: 120,
+                                child: TextFormField(
+                                  key: Key('cantidad_insumo_fila_$index'),
+                                  initialValue: detalle.cantidad > 0
+                                      ? detalle.cantidad.toString()
+                                      : '',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Cantidad',
+                                    border: OutlineInputBorder(),
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  ),
+                                  onChanged: (val) {
+                                    final cant = double.tryParse(val.replaceAll(',', '.')) ?? 0.0;
+                                    _bloc.add(ActualizarCantidadFilaInsumo(
+                                      index: index,
+                                      cantidad: cant,
+                                    ));
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+
+                              // Unidad
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  detalle.unidadMedida.isEmpty ? '—' : detalle.unidadMedida,
+                                  key: Key('unidad_insumo_fila_$index'),
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+
+                              // Costo Unitario
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  const Text('Costo Unit.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                  Text(
+                                    _currencyFormat.format(detalle.costoUnitario),
+                                    key: Key('costo_unitario_insumo_fila_$index'),
+                                    style: const TextStyle(fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 16),
+
+                              // Subtotal
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  const Text('Subtotal', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                  Text(
+                                    _currencyFormat.format(detalle.subtotal),
+                                    key: Key('subtotal_insumo_fila_$index'),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF13894E)),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 12),
+
+                              // Eliminar fila
+                              IconButton(
+                                key: Key('eliminar_insumo_fila_$index'),
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                onPressed: () => _bloc.add(RemoverFilaInsumo(index)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  Text(
-                    _currencyFormat.format(state.costoTotal),
-                    key: const Key('costo_total_receta'),
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF15803D),
+                const SizedBox(height: 24),
+
+                // Total Cost Card
+                Card(
+                  color: const Color(0xFFF0FDF4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(color: Color(0xFFBBF7D0)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Costo de Producción por Receta',
+                              style: TextStyle(fontSize: 14, color: Color(0xFF166534), fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Incluye ${state.detalles.length} insumos + ${_currencyFormat.format(state.costosAdicionales)} de adicionales',
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF15803D)),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          _currencyFormat.format(state.costoTotal),
+                          key: const Key('costo_total_receta'),
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF15803D),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 24),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

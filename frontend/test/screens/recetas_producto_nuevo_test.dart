@@ -55,7 +55,7 @@ void main() {
     await t.pumpAndSettle();
     await t.enterText(find.byKey(const Key('cantidad_insumo_fila_0')), '1');
     await t.pumpAndSettle();
-    final guardar = find.text('Guardar Receta');
+    final guardar = find.text('Guardar receta');
     await t.ensureVisible(guardar);
     await t.tap(guardar);
     await t.pumpAndSettle();

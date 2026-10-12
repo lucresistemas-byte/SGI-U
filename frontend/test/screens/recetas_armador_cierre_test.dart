@@ -16,7 +16,7 @@ class _MockRecetasBloc extends MockBloc<RecetasEvent, RecetasState> implements R
 
 class _FakeEvent extends Fake implements RecetasEvent {}
 
-/// Problema E: "Guardar Receta" cerraba el armador antes de saber si se
+/// Problema E: "Guardar receta" cerraba el armador antes de saber si se
 /// guardó; si fallaba, el formulario desaparecía.
 void main() {
   setUpAll(() => registerFallbackValue(_FakeEvent()));
@@ -45,8 +45,8 @@ void main() {
   }
 
   Future<void> guardar(WidgetTester t) async {
-    await t.ensureVisible(find.text('Guardar Receta'));
-    await t.tap(find.text('Guardar Receta'));
+    await t.ensureVisible(find.text('Guardar receta'));
+    await t.tap(find.text('Guardar receta'));
     await t.pump();
   }
 
@@ -56,7 +56,7 @@ void main() {
     await guardar(t);
 
     verify(() => bloc.add(const GuardarReceta())).called(1);
-    expect(find.text('Guardar Receta'), findsOneWidget);
+    expect(find.text('Guardar receta'), findsOneWidget);
     expect(find.text('Nueva Receta'), findsNothing);
   });
 
@@ -67,7 +67,7 @@ void main() {
     estados.add(borrador.copyWith(errorMessage: 'El insumo Arroz está dos veces en la receta.'));
     await t.pumpAndSettle();
 
-    expect(find.text('Guardar Receta'), findsOneWidget);
+    expect(find.text('Guardar receta'), findsOneWidget);
     expect(find.text('Arroz (MP-001)'), findsOneWidget);
     expect(find.text('El insumo Arroz está dos veces en la receta.'), findsOneWidget);
   });
@@ -79,7 +79,7 @@ void main() {
     estados.add(borrador.copyWith(successMessage: 'Receta creada exitosamente'));
     await t.pumpAndSettle();
 
-    expect(find.text('Guardar Receta'), findsNothing);
+    expect(find.text('Guardar receta'), findsNothing);
     expect(find.text('Nueva Receta'), findsOneWidget);
   });
 }
