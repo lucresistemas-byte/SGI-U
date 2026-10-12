@@ -1,0 +1,5 @@
+# Perfil "demo": además del esquema, Flyway carga los datos de ejemplo de
+# db/demo (pastelería de demostración). No usar en una instalación real.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/demo

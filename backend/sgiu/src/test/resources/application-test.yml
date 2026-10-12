@@ -4,6 +4,10 @@ spring:
     username: sa
     password:
     driver-class-name: org.h2.Driver
+  # Tests rápidos en H2: el esquema lo genera Hibernate (H2 no acepta todo el
+  # DDL de MariaDB). Flyway se verifica contra MariaDB con Testcontainers.
+  flyway:
+    enabled: false
   jpa:
     hibernate:
       ddl-auto: update
