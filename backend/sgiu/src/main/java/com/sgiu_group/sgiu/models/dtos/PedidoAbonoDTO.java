@@ -8,5 +8,6 @@ public record PedidoAbonoDTO(
     BigDecimal monto,
     String metodoPago,
     String nota,
-    LocalDateTime fecha
+    LocalDateTime fecha,
+    Long metodoPagoId
 ) {}

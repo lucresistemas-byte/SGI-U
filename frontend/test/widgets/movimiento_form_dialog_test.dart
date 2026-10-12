@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:sgi_u_frontend/blocs/finanzas/finanzas_bloc.dart';
+import 'package:sgi_u_frontend/models/metodo_pago.dart';
 import 'package:sgi_u_frontend/services/api_service.dart';
 import 'package:sgi_u_frontend/widgets/movimiento_form_dialog.dart';
 
@@ -19,6 +20,11 @@ Future<MockFinanzasApi> _pumpDialog(WidgetTester tester,
       .thenAnswer((_) async => []);
   when(() => api.getBalance(any(), any()))
       .thenAnswer((_) async => {'totalIngresos': 0.0, 'totalEgresos': 0.0});
+  // Activos, en orden: el formulario ofrece solo estos (no "Cheque", inactivo).
+  when(() => api.getMetodosPago()).thenAnswer((_) async => const [
+        MetodoPago(id: 4, nombre: 'Transferencia', orden: 1),
+        MetodoPago(id: 1, nombre: 'Efectivo', fijo: true, orden: 2),
+      ]);
   if (stub != null) stub(api);
 
   await tester.pumpWidget(
@@ -89,6 +95,33 @@ void main() {
       expect(capturados.single['tipo'], 'INGRESO');
       expect(capturados.single['monto'], 100.0);
       expect(capturados.single['descripcion'], 'Venta diaria');
+      // Por defecto Efectivo (el fijo), aunque no sea el primero de la lista.
+      expect(capturados.single['metodoPagoId'], 1);
+    });
+
+    testWidgets('ofrece los métodos activos y envía el id del elegido', (tester) async {
+      final capturados = <Map<String, dynamic>>[];
+      await _pumpDialog(tester, stub: (api) {
+        when(() => api.createMovimiento(any())).thenAnswer((inv) async {
+          capturados.add(inv.positionalArguments.first as Map<String, dynamic>);
+        });
+      });
+
+      await tester.tap(find.byKey(const Key('movimiento_metodo_pago')));
+      await tester.pumpAndSettle();
+      expect(find.text('Transferencia'), findsWidgets);
+      expect(find.text('Tarjeta'), findsNothing);
+      await tester.tap(find.text('Transferencia').last);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.widgetWithText(TextFormField, 'Monto (\$)'), '80');
+      await tester.enterText(find.widgetWithText(TextFormField, 'Descripción'), 'Seña');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+      await tester.pumpAndSettle();
+
+      expect(capturados.single['metodoPagoId'], 4);
+      expect(capturados.single.containsKey('metodoPago'), isFalse);
     });
 
     testWidgets('cambiar el tipo a Egreso envía tipo EGRESO con monto '

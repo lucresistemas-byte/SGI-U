@@ -22,16 +22,19 @@ public class VentaService {
     private final ArticuloStockRepository stockRepository;
     private final PagoVentaRepository pagoRepository;
     private final MovFinancieroRepository movFinancieroRepository;
+    private final MetodoPagoService metodoPagoService;
 
     // Inyección por constructor: No requiere @Autowired manual
     public VentaService(VentaRepository ventaRepository,
                         ArticuloStockRepository stockRepository,
                         PagoVentaRepository pagoRepository,
-                        MovFinancieroRepository movFinancieroRepository) {
+                        MovFinancieroRepository movFinancieroRepository,
+                        MetodoPagoService metodoPagoService) {
         this.ventaRepository = ventaRepository;
         this.stockRepository = stockRepository;
         this.pagoRepository = pagoRepository;
         this.movFinancieroRepository = movFinancieroRepository;
+        this.metodoPagoService = metodoPagoService;
     }
 
     /**
@@ -85,16 +88,19 @@ public class VentaService {
         venta.setTotal(totalAcumulado);
         Venta ventaGuardada = ventaRepository.save(venta);
 
-        // Registro de Pago
-        String metodoPagoStr = request.metodoPago() != null ? request.metodoPago().toString() : "EFECTIVO";
-        PagoVenta pago = new PagoVenta(ventaGuardada, totalAcumulado, metodoPagoStr);
+        // Registro de Pago: el método por clave foránea (antes se guardaba el
+        // número "1"/"2" como texto). Sin indicar, Efectivo.
+        MetodoPago metodo = request.metodoPago() != null
+                ? metodoPagoService.paraCobrar(request.metodoPago())
+                : metodoPagoService.efectivo();
+        PagoVenta pago = new PagoVenta(ventaGuardada, totalAcumulado, metodo);
         pagoRepository.save(pago);
 
         // Registro Financiero (Ingreso)
         MovFinanciero movimiento = new MovFinanciero(
             TipoMovimiento.INGRESO,
             totalAcumulado,
-            metodoPagoStr,
+            metodo,
             "VENTA",
             "Venta de productos - ID: " + ventaGuardada.getId(),
             ventaGuardada.getFechaHora(),

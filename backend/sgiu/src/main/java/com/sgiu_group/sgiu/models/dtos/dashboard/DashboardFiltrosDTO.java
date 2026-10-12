@@ -7,23 +7,23 @@ import java.time.LocalDate;
 public class DashboardFiltrosDTO {
     private LocalDate fechaDesde;
     private LocalDate fechaHasta;
-    private String metodoPago;
+    private Long metodoPagoId;
     private Long productoId;
     private String tipoTransaccion;
 
     public DashboardFiltrosDTO(LocalDate fechaDesde, LocalDate fechaHasta,
-                                String metodoPago, Long productoId,
+                                Long metodoPagoId, Long productoId,
                                 String tipoTransaccion) {
         this.fechaDesde = fechaDesde;
         this.fechaHasta = fechaHasta;
-        this.metodoPago = metodoPago;
+        this.metodoPagoId = metodoPagoId;
         this.productoId = productoId;
         this.tipoTransaccion = tipoTransaccion;
     }
 
     public LocalDate getFechaDesde() { return fechaDesde; }
     public LocalDate getFechaHasta() { return fechaHasta; }
-    public String getMetodoPago() { return metodoPago; }
+    public Long getMetodoPagoId() { return metodoPagoId; }
     public Long getProductoId() { return productoId; }
     public String getTipoTransaccion() { return tipoTransaccion; }
 }

@@ -18,18 +18,18 @@ class CargarMovimientos extends FinanzasEvent {
 class CrearMovimiento extends FinanzasEvent {
   final String tipo;
   final double monto;
-  final String metodoPago;
+  final int metodoPagoId;
   final String categoria;
   final String descripcion;
   const CrearMovimiento({
     required this.tipo,
     required this.monto,
-    required this.metodoPago,
+    required this.metodoPagoId,
     required this.categoria,
     required this.descripcion,
   });
   @override
-  List<Object?> get props => [tipo, monto, metodoPago, categoria, descripcion];
+  List<Object?> get props => [tipo, monto, metodoPagoId, categoria, descripcion];
 }
 
 class CargarBalance extends FinanzasEvent {

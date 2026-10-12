@@ -1,5 +1,6 @@
 // lib/blocs/finanzas/finanzas_bloc.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../models/metodo_pago.dart';
 import 'finanzas_event.dart';
 import 'finanzas_state.dart';
 import '../../services/api_service.dart';
@@ -44,13 +45,16 @@ class FinanzasBloc extends Bloc<FinanzasEvent, FinanzasState> {
     }
   }
 
+  /// Métodos de pago activos para el alta de movimientos.
+  Future<List<MetodoPago>> metodosPagoActivos() => _apiService.getMetodosPago();
+
   Future<void> _onCrearMovimiento(
       CrearMovimiento event, Emitter<FinanzasState> emit) async {
     try {
       await _apiService.createMovimiento({
         'tipo': event.tipo,
         'monto': event.monto,
-        'metodoPago': event.metodoPago,
+        'metodoPagoId': event.metodoPagoId,
         'categoria': event.categoria,
         'descripcion': event.descripcion,
       });

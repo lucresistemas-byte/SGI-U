@@ -4,6 +4,7 @@ import com.sgiu_group.sgiu.models.entities.ArticuloStock;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.models.entities.EspUsuario;
 import com.sgiu_group.sgiu.models.entities.LineaVenta;
+import com.sgiu_group.sgiu.models.entities.MetodoPago;
 import com.sgiu_group.sgiu.models.entities.MovFinanciero;
 import com.sgiu_group.sgiu.models.entities.PagoVenta;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
@@ -11,6 +12,7 @@ import com.sgiu_group.sgiu.models.entities.Venta;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
 import com.sgiu_group.sgiu.repositories.EspUsuarioRepository;
+import com.sgiu_group.sgiu.repositories.MetodoPagoRepository;
 import com.sgiu_group.sgiu.repositories.MovFinancieroRepository;
 import com.sgiu_group.sgiu.repositories.PagoVentaRepository;
 import com.sgiu_group.sgiu.repositories.VentaRepository;
@@ -33,6 +35,7 @@ public class TestDataFactory {
     private final MovFinancieroRepository movFinancieroRepository;
     private final EspUsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final MetodoPagoRepository metodoPagoRepository;
 
     public TestDataFactory(EspProductoRepository productoRepository,
                            ArticuloStockRepository stockRepository,
@@ -40,7 +43,8 @@ public class TestDataFactory {
                            PagoVentaRepository pagoRepository,
                            MovFinancieroRepository movFinancieroRepository,
                            EspUsuarioRepository usuarioRepository,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           MetodoPagoRepository metodoPagoRepository) {
         this.productoRepository = productoRepository;
         this.stockRepository = stockRepository;
         this.ventaRepository = ventaRepository;
@@ -48,6 +52,13 @@ public class TestDataFactory {
         this.movFinancieroRepository = movFinancieroRepository;
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
+        this.metodoPagoRepository = metodoPagoRepository;
+    }
+
+    /** Método de pago por nombre ("EFECTIVO", "MERCADO_PAGO" o "Mercado Pago"). */
+    public MetodoPago metodo(String nombre) {
+        return metodoPagoRepository.findByNombreIgnoreCase(nombre.replace('_', ' '))
+                .orElseThrow(() -> new IllegalArgumentException("No existe el método de pago " + nombre));
     }
 
     public static String codigoUnico(String prefijo) {
@@ -79,7 +90,7 @@ public class TestDataFactory {
     public MovFinanciero crearMovimiento(TipoMovimiento tipo, BigDecimal monto, String metodoPago,
                                          String categoria, LocalDateTime fechaHora) {
         MovFinanciero mov = new MovFinanciero(
-                tipo, monto, metodoPago, categoria, "Movimiento de test", fechaHora, null);
+                tipo, monto, metodo(metodoPago), categoria, "Movimiento de test", fechaHora, null);
         return movFinancieroRepository.save(mov);
     }
 
@@ -95,13 +106,13 @@ public class TestDataFactory {
         venta.setTotal(linea.getSubtotal());
         ventaRepository.save(venta);
 
-        PagoVenta pago = new PagoVenta(venta, venta.getTotal(), metodoPago);
+        PagoVenta pago = new PagoVenta(venta, venta.getTotal(), metodo(metodoPago));
         pagoRepository.save(pago);
 
         movFinancieroRepository.save(new MovFinanciero(
                 TipoMovimiento.INGRESO,
                 venta.getTotal(),
-                metodoPago,
+                pago.getMetodoPago(),
                 "VENTA",
                 "Venta de test - " + producto.getCodigo(),
                 fechaHora,

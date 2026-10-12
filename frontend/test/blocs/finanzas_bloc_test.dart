@@ -94,7 +94,7 @@ void main() {
       act: (bloc) => bloc.add(const CrearMovimiento(
         tipo: 'Ingreso',
         monto: 1000,
-        metodoPago: 'Efectivo',
+        metodoPagoId: 1,
         categoria: 'Venta',
         descripcion: 'Venta diaria',
       )),
@@ -118,7 +118,7 @@ void main() {
       act: (bloc) => bloc.add(const CrearMovimiento(
         tipo: 'Egreso',
         monto: 500,
-        metodoPago: 'Efectivo',
+        metodoPagoId: 1,
         categoria: 'Gasto',
         descripcion: 'Compra de insumos',
       )),

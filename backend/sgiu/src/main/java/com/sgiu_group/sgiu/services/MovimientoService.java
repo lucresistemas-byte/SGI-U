@@ -25,11 +25,14 @@ public class MovimientoService {
 
     private final MovFinancieroRepository repository;
     private final LineaVentaRepository lineaVentaRepository;
+    private final MetodoPagoService metodoPagoService;
 
     public MovimientoService(MovFinancieroRepository repository,
-                             LineaVentaRepository lineaVentaRepository) {
+                             LineaVentaRepository lineaVentaRepository,
+                             MetodoPagoService metodoPagoService) {
         this.repository = repository;
         this.lineaVentaRepository = lineaVentaRepository;
+        this.metodoPagoService = metodoPagoService;
     }
 
     @Transactional
@@ -47,7 +50,7 @@ public class MovimientoService {
         MovFinanciero mov = new MovFinanciero(
                 tipo,
                 dto.monto(),
-                dto.metodoPago(),
+                metodoPagoService.paraCobrar(dto.metodoPagoId()),
                 categoria,
                 dto.descripcion(),
                 fechaHora,

@@ -20,8 +20,10 @@ public class MovFinanciero extends BaseEntity {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal monto;
 
-    @Column(nullable = false, length = 30)
-    private String metodoPago;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "metodo_pago_id", nullable = false,
+                foreignKey = @ForeignKey(name = "fk_mov_financiero_metodo"))
+    private MetodoPago metodoPago;
 
     @Column(length = 50)
     private String categoria;
@@ -39,7 +41,7 @@ public class MovFinanciero extends BaseEntity {
 
     public MovFinanciero() {}
 
-    public MovFinanciero(TipoMovimiento tipo, BigDecimal monto, String metodoPago,
+    public MovFinanciero(TipoMovimiento tipo, BigDecimal monto, MetodoPago metodoPago,
                          String categoria, String descripcion,
                          LocalDateTime fechaHora, PagoVenta pago) {
         this.tipo = tipo;
@@ -62,8 +64,8 @@ public class MovFinanciero extends BaseEntity {
         this.monto = monto;
     }
 
-    public String getMetodoPago() { return metodoPago; }
-    public void setMetodoPago(String metodoPago) { this.metodoPago = metodoPago; }
+    public MetodoPago getMetodoPago() { return metodoPago; }
+    public void setMetodoPago(MetodoPago metodoPago) { this.metodoPago = metodoPago; }
 
     public String getCategoria() { return categoria; }
     public void setCategoria(String categoria) { this.categoria = categoria; }

@@ -20,51 +20,58 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class DashboardService {
 
-    private static final List<String> METODOS_PAGO_VALIDOS = List.of(
-            "EFECTIVO", "TRANSFERENCIA", "MERCADO_PAGO", "TARJETA");
-
     private final VentaRepository ventaRepository;
     private final LineaVentaRepository lineaVentaRepository;
     private final MovFinancieroRepository movFinancieroRepository;
     private final ArticuloStockRepository articuloStockRepository;
     private final PagoVentaRepository pagoVentaRepository;
+    private final MetodoPagoRepository metodoPagoRepository;
 
     public DashboardService(VentaRepository ventaRepository,
                              LineaVentaRepository lineaVentaRepository,
                              MovFinancieroRepository movFinancieroRepository,
                              ArticuloStockRepository articuloStockRepository,
-                             PagoVentaRepository pagoVentaRepository) {
+                             PagoVentaRepository pagoVentaRepository,
+                             MetodoPagoRepository metodoPagoRepository) {
         this.ventaRepository = ventaRepository;
         this.lineaVentaRepository = lineaVentaRepository;
         this.movFinancieroRepository = movFinancieroRepository;
         this.articuloStockRepository = articuloStockRepository;
         this.pagoVentaRepository = pagoVentaRepository;
+        this.metodoPagoRepository = metodoPagoRepository;
     }
 
     public DashboardResponseDTO obtenerDashboard(LocalDate fechaDesde, LocalDate fechaHasta,
-                                                  String metodoPago, Long productoId,
+                                                  Long metodoPagoId, Long productoId,
                                                   String tipoTransaccion) {
         if (fechaDesde.isAfter(fechaHasta)) {
             throw new FechasInvalidasException("La fecha desde no puede ser mayor que la fecha hasta");
         }
 
-        if (metodoPago != null && !METODOS_PAGO_VALIDOS.contains(metodoPago)) {
-            throw new FiltroInvalidoException("El método de pago especificado no es válido. Valores permitidos: "
-                    + String.join(", ", METODOS_PAGO_VALIDOS));
+        // Cualquier método existente (también uno desactivado: sus cobros
+        // históricos siguen contando).
+        if (metodoPagoId != null && !metodoPagoRepository.existsById(metodoPagoId)) {
+            throw new FiltroInvalidoException("El método de pago especificado no existe.");
         }
 
         LocalDateTime desde = fechaDesde.atStartOfDay();
         LocalDateTime hasta = fechaHasta.plusDays(1).atStartOfDay();
 
         DashboardFiltrosDTO filtros = new DashboardFiltrosDTO(
-                fechaDesde, fechaHasta, metodoPago, productoId, tipoTransaccion);
+                fechaDesde, fechaHasta, metodoPagoId, productoId, tipoTransaccion);
 
-        BigDecimal ingresos = calcularIngresos(desde, hasta, metodoPago, tipoTransaccion);
-        BigDecimal egresos = calcularEgresos(desde, hasta, metodoPago, tipoTransaccion);
+        // Con método de pago, los montos son solo los cobrados/pagados con él
+        // (antes el filtro se validaba pero no se aplicaba).
+        BigDecimal ingresos = calcularIngresos(desde, hasta, metodoPagoId, tipoTransaccion);
+        BigDecimal egresos = calcularEgresos(desde, hasta, metodoPagoId, tipoTransaccion);
         BigDecimal saldoNeto = calcularSaldoNeto(ingresos, egresos);
         BigDecimal margenNetoPorcentaje = calcularMargenNeto(ingresos, saldoNeto);
-        Long cantidadVentas = calcularCantidadVentas(desde, hasta);
-        BigDecimal totalVentas = Optional.ofNullable(ventaRepository.sumTotalVentasEnRango(desde, hasta))
+        Long cantidadVentas = metodoPagoId == null
+                ? calcularCantidadVentas(desde, hasta)
+                : Optional.ofNullable(pagoVentaRepository.countVentasConMetodo(desde, hasta, metodoPagoId)).orElse(0L);
+        BigDecimal totalVentas = Optional.ofNullable(metodoPagoId == null
+                        ? ventaRepository.sumTotalVentasEnRango(desde, hasta)
+                        : pagoVentaRepository.sumMontoConMetodo(desde, hasta, metodoPagoId))
                 .orElse(BigDecimal.ZERO);
         BigDecimal ticketPromedio = calcularTicketPromedio(totalVentas, cantidadVentas);
         ProductoMasVendidoDTO productoMasVendido = obtenerProductoMasVendido(desde, hasta);
@@ -76,10 +83,10 @@ public class DashboardService {
                 cantidadProductosStockBajo);
 
         DashboardGraficosDTO graficos = new DashboardGraficosDTO();
-        graficos.setIngresosVsEgresosPorDia(generarIngresosVsEgresosPorDia(desde, hasta));
+        graficos.setIngresosVsEgresosPorDia(generarIngresosVsEgresosPorDia(desde, hasta, metodoPagoId));
         graficos.setVentasPorMetodoPago(generarVentasPorMetodoPago(desde, hasta));
         graficos.setTopProductosMasVendidos(generarTopProductos(desde, hasta));
-        graficos.setEvolucionSaldoNeto(generarEvolucionSaldo(desde, hasta));
+        graficos.setEvolucionSaldoNeto(generarEvolucionSaldo(desde, hasta, metodoPagoId));
         graficos.setProductosConMenorStock(generarProductosCriticos());
         graficos.setCategoriaMasVendida(obtenerCategoriaMasVendida(desde, hasta));
 
@@ -100,23 +107,23 @@ public class DashboardService {
     }
 
     private BigDecimal calcularIngresos(LocalDateTime desde, LocalDateTime hasta,
-                                         String metodoPago, String tipoTransaccion) {
+                                         Long metodoPagoId, String tipoTransaccion) {
         if ("EGRESO".equals(tipoTransaccion)) {
             return BigDecimal.ZERO;
         }
         BigDecimal ingresos = Optional.ofNullable(
-                movFinancieroRepository.sumByTipoEnRango(desde, hasta, TipoMovimiento.INGRESO))
+                movFinancieroRepository.sumByTipoYMetodoEnRango(desde, hasta, TipoMovimiento.INGRESO, metodoPagoId))
                 .orElse(BigDecimal.ZERO);
         return ingresos;
     }
 
     private BigDecimal calcularEgresos(LocalDateTime desde, LocalDateTime hasta,
-                                        String metodoPago, String tipoTransaccion) {
+                                        Long metodoPagoId, String tipoTransaccion) {
         if ("INGRESO".equals(tipoTransaccion)) {
             return BigDecimal.ZERO;
         }
         BigDecimal egresos = Optional.ofNullable(
-                movFinancieroRepository.sumByTipoEnRango(desde, hasta, TipoMovimiento.EGRESO))
+                movFinancieroRepository.sumByTipoYMetodoEnRango(desde, hasta, TipoMovimiento.EGRESO, metodoPagoId))
                 .orElse(BigDecimal.ZERO);
         return egresos;
     }
@@ -177,8 +184,8 @@ public class DashboardService {
     }
 
     private List<IngresosEgresosPorDiaDTO> generarIngresosVsEgresosPorDia(
-            LocalDateTime desde, LocalDateTime hasta) {
-        List<Object[]> resultados = movFinancieroRepository.findIngresosEgresosPorDia(desde, hasta);
+            LocalDateTime desde, LocalDateTime hasta, Long metodoPagoId) {
+        List<Object[]> resultados = movFinancieroRepository.findIngresosEgresosPorDia(desde, hasta, metodoPagoId);
         List<IngresosEgresosPorDiaDTO> lista = new ArrayList<>();
         for (Object[] row : resultados) {
             LocalDate fecha = ((java.sql.Date) row[0]).toLocalDate();
@@ -217,8 +224,8 @@ public class DashboardService {
     }
 
     private List<EvolucionSaldoDTO> generarEvolucionSaldo(
-            LocalDateTime desde, LocalDateTime hasta) {
-        List<Object[]> resultados = movFinancieroRepository.findSaldoNetoAcumuladoPorDia(desde, hasta);
+            LocalDateTime desde, LocalDateTime hasta, Long metodoPagoId) {
+        List<Object[]> resultados = movFinancieroRepository.findSaldoNetoAcumuladoPorDia(desde, hasta, metodoPagoId);
         List<EvolucionSaldoDTO> lista = new ArrayList<>();
         BigDecimal runningTotal = BigDecimal.ZERO;
         for (Object[] row : resultados) {

@@ -24,16 +24,18 @@ public class PedidoAbono extends BaseEntity {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal monto;
 
-    @Column(name = "metodo_pago", length = 50)
-    private String metodoPago = "EFECTIVO";
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "metodo_pago_id", nullable = false,
+                foreignKey = @ForeignKey(name = "fk_pedido_abono_metodo"))
+    private MetodoPago metodoPago;
 
     @Column(length = 255)
     private String nota;
 
-    public PedidoAbono(Pedido pedido, BigDecimal monto, String metodoPago, String nota) {
+    public PedidoAbono(Pedido pedido, BigDecimal monto, MetodoPago metodoPago, String nota) {
         this.pedido = pedido;
         this.monto = monto;
-        this.metodoPago = metodoPago != null ? metodoPago : "EFECTIVO";
+        this.metodoPago = metodoPago;
         this.nota = nota;
     }
 }

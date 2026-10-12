@@ -69,14 +69,14 @@ class VentaControllerIntegrationTest extends AbstractIntegrationTest {
 
         // Un pago por 300 con método por defecto EFECTIVO
         assertThat(pagoRepository.findAll()).hasSize(1);
-        assertThat(pagoRepository.findAll().get(0).getMetodo()).isEqualTo("EFECTIVO");
+        assertThat(pagoRepository.findAll().get(0).getMetodoPago().getNombre()).isEqualTo("Efectivo");
 
         // Un movimiento financiero de INGRESO
         assertThat(movFinancieroRepository.findAll()).hasSize(1);
         MovFinanciero mov = movFinancieroRepository.findAll().getFirst();
         assertThat(mov.getTipo()).isEqualTo(TipoMovimiento.INGRESO);
         assertThat(mov.getMonto()).isEqualByComparingTo("300.00");
-        assertThat(mov.getMetodoPago()).isEqualTo("EFECTIVO");
+        assertThat(mov.getMetodoPago().getNombre()).isEqualTo("Efectivo");
         assertThat(mov.getCategoria()).isEqualTo("VENTA");
     }
 

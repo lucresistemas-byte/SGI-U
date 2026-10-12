@@ -343,7 +343,7 @@ class ApiService implements PosApi {
   Future<Map<String, dynamic>> getDashboardData({
     required DateTime fechaDesde,
     required DateTime fechaHasta,
-    String? metodoPago,
+    int? metodoPagoId,
     int? productoId,
   }) async {
     // Formateamos las fechas a yyyy-MM-dd como exige el contrato
@@ -357,8 +357,7 @@ class ApiService implements PosApi {
         'fechaDesde': desdeStr,
         'fechaHasta': hastaStr,
         // Solo mandamos estos parámetros si el usuario eligió un filtro específico
-        if (metodoPago != null && metodoPago != 'Todos')
-          'metodoPago': metodoPago.toUpperCase(),
+        if (metodoPagoId != null) 'metodoPagoId': metodoPagoId,
         if (productoId != null) 'productoId': productoId,
       });
 
@@ -726,13 +725,13 @@ class ApiService implements PosApi {
   Future<Pedido> abonarPedido(
     int id, {
     required double monto,
-    String? metodoPago,
+    int? metodoPagoId,
     String? nota,
   }) async {
     try {
       final payload = {
         'monto': monto,
-        if (metodoPago != null) 'metodoPago': metodoPago,
+        if (metodoPagoId != null) 'metodoPagoId': metodoPagoId,
         if (nota != null) 'nota': nota,
       };
       final response = await dio.post('/api/pedidos/$id/abonar', data: payload);

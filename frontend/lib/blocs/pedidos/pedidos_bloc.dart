@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../models/metodo_pago.dart';
 import '../../services/api_service.dart';
 import 'pedidos_event.dart';
 import 'pedidos_state.dart';
@@ -27,9 +28,20 @@ class PedidosBloc extends Bloc<PedidosEvent, PedidosState> {
         isLoading: false,
         pedidos: pedidos,
         filteredPedidos: pedidos,
+        metodosPago: await _metodosPago(),
       ));
     } catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
+    }
+  }
+
+  /// Métodos activos (se cargan una vez); si fallan, los pedidos se muestran igual.
+  Future<List<MetodoPago>> _metodosPago() async {
+    if (state.metodosPago.isNotEmpty) return state.metodosPago;
+    try {
+      return await _apiService.getMetodosPago();
+    } catch (_) {
+      return const [];
     }
   }
 
@@ -82,7 +94,7 @@ class PedidosBloc extends Bloc<PedidosEvent, PedidosState> {
       final actualizado = await _apiService.abonarPedido(
         event.pedidoId,
         monto: event.monto,
-        metodoPago: event.metodoPago,
+        metodoPagoId: event.metodoPagoId,
         nota: event.nota,
       );
 

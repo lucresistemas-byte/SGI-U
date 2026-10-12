@@ -24,24 +24,38 @@ public interface MovFinancieroRepository extends JpaRepository<MovFinanciero, Lo
             @Param("fechaHasta") LocalDateTime fechaHasta,
             @Param("tipo") TipoMovimiento tipo);
 
+    /** Como sumByTipoEnRango, solo de un método de pago (null = todos). */
+    @Query("SELECT SUM(m.monto) FROM MovFinanciero m " +
+           "WHERE m.fechaHora BETWEEN :fechaDesde AND :fechaHasta AND m.tipo = :tipo " +
+           "AND (:metodoPagoId IS NULL OR m.metodoPago.id = :metodoPagoId)")
+    BigDecimal sumByTipoYMetodoEnRango(
+            @Param("fechaDesde") LocalDateTime fechaDesde,
+            @Param("fechaHasta") LocalDateTime fechaHasta,
+            @Param("tipo") TipoMovimiento tipo,
+            @Param("metodoPagoId") Long metodoPagoId);
+
     @Query("SELECT FUNCTION('DATE', m.fechaHora), " +
            "SUM(CASE WHEN m.tipo = 'INGRESO' THEN m.monto ELSE 0 END), " +
            "SUM(CASE WHEN m.tipo = 'EGRESO' THEN m.monto ELSE 0 END) " +
            "FROM MovFinanciero m " +
            "WHERE m.fechaHora BETWEEN :fechaDesde AND :fechaHasta " +
+           "AND (:metodoPagoId IS NULL OR m.metodoPago.id = :metodoPagoId) " +
            "GROUP BY FUNCTION('DATE', m.fechaHora) " +
            "ORDER BY FUNCTION('DATE', m.fechaHora)")
     List<Object[]> findIngresosEgresosPorDia(
             @Param("fechaDesde") LocalDateTime fechaDesde,
-            @Param("fechaHasta") LocalDateTime fechaHasta);
+            @Param("fechaHasta") LocalDateTime fechaHasta,
+            @Param("metodoPagoId") Long metodoPagoId);
 
     @Query("SELECT FUNCTION('DATE', m.fechaHora), " +
            "SUM(CASE WHEN m.tipo = 'INGRESO' THEN m.monto ELSE -m.monto END) " +
            "FROM MovFinanciero m " +
            "WHERE m.fechaHora BETWEEN :fechaDesde AND :fechaHasta " +
+           "AND (:metodoPagoId IS NULL OR m.metodoPago.id = :metodoPagoId) " +
            "GROUP BY FUNCTION('DATE', m.fechaHora) " +
            "ORDER BY FUNCTION('DATE', m.fechaHora)")
     List<Object[]> findSaldoNetoAcumuladoPorDia(
             @Param("fechaDesde") LocalDateTime fechaDesde,
-            @Param("fechaHasta") LocalDateTime fechaHasta);
+            @Param("fechaHasta") LocalDateTime fechaHasta,
+            @Param("metodoPagoId") Long metodoPagoId);
 }

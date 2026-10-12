@@ -7,6 +7,7 @@ import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
 import com.sgiu_group.sgiu.repositories.LineaVentaRepository;
 import com.sgiu_group.sgiu.repositories.MovFinancieroRepository;
+import com.sgiu_group.sgiu.repositories.MetodoPagoRepository;
 import com.sgiu_group.sgiu.repositories.PagoVentaRepository;
 import com.sgiu_group.sgiu.repositories.VentaRepository;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,8 @@ class DashboardServiceTest {
     private ArticuloStockRepository articuloStockRepository;
     @Mock
     private PagoVentaRepository pagoVentaRepository;
+    @Mock
+    private MetodoPagoRepository metodoPagoRepository;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -62,9 +65,9 @@ class DashboardServiceTest {
 
     @Test
     void obtenerDashboard_metodoPagoInvalido_lanzaFiltroInvalido() {
-        assertThatThrownBy(() -> dashboardService.obtenerDashboard(desde, hasta, "CREDITO", null, null))
+        assertThatThrownBy(() -> dashboardService.obtenerDashboard(desde, hasta, 99L, null, null))
                 .isInstanceOf(FiltroInvalidoException.class)
-                .hasMessageContaining("EFECTIVO");
+                .hasMessage("El método de pago especificado no existe.");
     }
 
     @Test
@@ -72,22 +75,22 @@ class DashboardServiceTest {
         LocalDate hoy = LocalDate.of(2026, 9, 15);
         Date fechaSql = Date.valueOf(hoy);
 
-        when(movFinancieroRepository.sumByTipoEnRango(any(), any(), eq(TipoMovimiento.INGRESO)))
+        when(movFinancieroRepository.sumByTipoYMetodoEnRango(any(), any(), eq(TipoMovimiento.INGRESO), any()))
                 .thenReturn(new BigDecimal("1000.00"));
-        when(movFinancieroRepository.sumByTipoEnRango(any(), any(), eq(TipoMovimiento.EGRESO)))
+        when(movFinancieroRepository.sumByTipoYMetodoEnRango(any(), any(), eq(TipoMovimiento.EGRESO), any()))
                 .thenReturn(new BigDecimal("400.00"));
         when(ventaRepository.countVentasEnRango(any(), any())).thenReturn(3L);
         when(ventaRepository.sumTotalVentasEnRango(any(), any())).thenReturn(new BigDecimal("600.00"));
         when(lineaVentaRepository.findTopProductosVendidos(any(), any()))
                 .thenReturn(fila(new Object[]{1L, "Producto A", 4L, new BigDecimal("250.00")}));
         when(articuloStockRepository.countProductosConStockCritico()).thenReturn(2L);
-        when(movFinancieroRepository.findIngresosEgresosPorDia(any(), any()))
+        when(movFinancieroRepository.findIngresosEgresosPorDia(any(), any(), any()))
                 .thenReturn(fila(new Object[]{fechaSql, new BigDecimal("1000.00"), new BigDecimal("400.00")}));
         when(pagoVentaRepository.findVentasAgrupadasPorMetodoPago(any(), any()))
-                .thenReturn(fila(new Object[]{"EFECTIVO", 3L, new BigDecimal("600.00")}));
+                .thenReturn(fila(new Object[]{"Efectivo", 3L, new BigDecimal("600.00")}));
         when(articuloStockRepository.findProductosConStockCriticoDetallado())
                 .thenReturn(fila(new Object[]{1L, "Producto A", 3, 5}));
-        when(movFinancieroRepository.findSaldoNetoAcumuladoPorDia(any(), any()))
+        when(movFinancieroRepository.findSaldoNetoAcumuladoPorDia(any(), any(), any()))
                 .thenReturn(fila(new Object[]{fechaSql, new BigDecimal("600.00")}));
 
         DashboardResponseDTO response = dashboardService.obtenerDashboard(desde, hasta, null, null, null);
@@ -104,7 +107,7 @@ class DashboardServiceTest {
 
         assertThat(response.getGraficos().getIngresosVsEgresosPorDia()).hasSize(1);
         assertThat(response.getGraficos().getVentasPorMetodoPago()).hasSize(1);
-        assertThat(response.getGraficos().getVentasPorMetodoPago().get(0).getMetodoPago()).isEqualTo("EFECTIVO");
+        assertThat(response.getGraficos().getVentasPorMetodoPago().get(0).getMetodoPago()).isEqualTo("Efectivo");
         assertThat(response.getGraficos().getTopProductosMasVendidos()).hasSize(1);
         assertThat(response.getGraficos().getEvolucionSaldoNeto()).hasSize(1);
         assertThat(response.getGraficos().getProductosConMenorStock()).hasSize(1);
@@ -117,10 +120,10 @@ class DashboardServiceTest {
     @Test
     void obtenerDashboard_sinDatos_devuelveMetricasEnCero() {
         when(lineaVentaRepository.findTopProductosVendidos(any(), any())).thenReturn(List.of());
-        when(movFinancieroRepository.findIngresosEgresosPorDia(any(), any())).thenReturn(List.of());
+        when(movFinancieroRepository.findIngresosEgresosPorDia(any(), any(), any())).thenReturn(List.of());
         when(pagoVentaRepository.findVentasAgrupadasPorMetodoPago(any(), any())).thenReturn(List.of());
         when(articuloStockRepository.findProductosConStockCriticoDetallado()).thenReturn(List.of());
-        when(movFinancieroRepository.findSaldoNetoAcumuladoPorDia(any(), any())).thenReturn(List.of());
+        when(movFinancieroRepository.findSaldoNetoAcumuladoPorDia(any(), any(), any())).thenReturn(List.of());
 
         DashboardResponseDTO response = dashboardService.obtenerDashboard(desde, hasta, null, null, null);
 
@@ -137,9 +140,9 @@ class DashboardServiceTest {
     @Test
     void obtenerDashboard_productoEnStockCero_seMarcaComoAgotado() {
         when(lineaVentaRepository.findTopProductosVendidos(any(), any())).thenReturn(List.of());
-        when(movFinancieroRepository.findIngresosEgresosPorDia(any(), any())).thenReturn(List.of());
+        when(movFinancieroRepository.findIngresosEgresosPorDia(any(), any(), any())).thenReturn(List.of());
         when(pagoVentaRepository.findVentasAgrupadasPorMetodoPago(any(), any())).thenReturn(List.of());
-        when(movFinancieroRepository.findSaldoNetoAcumuladoPorDia(any(), any())).thenReturn(List.of());
+        when(movFinancieroRepository.findSaldoNetoAcumuladoPorDia(any(), any(), any())).thenReturn(List.of());
         when(articuloStockRepository.countProductosConStockCritico()).thenReturn(1L);
         when(articuloStockRepository.findProductosConStockCriticoDetallado())
                 .thenReturn(fila(new Object[]{1L, "Producto B", 0, 5}));
@@ -152,11 +155,11 @@ class DashboardServiceTest {
     @Test
     void obtenerDashboard_tipoTransaccionEgreso_ignoraIngresos() {
         when(lineaVentaRepository.findTopProductosVendidos(any(), any())).thenReturn(List.of());
-        when(movFinancieroRepository.findIngresosEgresosPorDia(any(), any())).thenReturn(List.of());
+        when(movFinancieroRepository.findIngresosEgresosPorDia(any(), any(), any())).thenReturn(List.of());
         when(pagoVentaRepository.findVentasAgrupadasPorMetodoPago(any(), any())).thenReturn(List.of());
         when(articuloStockRepository.findProductosConStockCriticoDetallado()).thenReturn(List.of());
-        when(movFinancieroRepository.findSaldoNetoAcumuladoPorDia(any(), any())).thenReturn(List.of());
-        when(movFinancieroRepository.sumByTipoEnRango(any(), any(), eq(TipoMovimiento.EGRESO)))
+        when(movFinancieroRepository.findSaldoNetoAcumuladoPorDia(any(), any(), any())).thenReturn(List.of());
+        when(movFinancieroRepository.sumByTipoYMetodoEnRango(any(), any(), eq(TipoMovimiento.EGRESO), any()))
                 .thenReturn(new BigDecimal("400.00"));
 
         DashboardResponseDTO response = dashboardService.obtenerDashboard(desde, hasta, null, null, "EGRESO");

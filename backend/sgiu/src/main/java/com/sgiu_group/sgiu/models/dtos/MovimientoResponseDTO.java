@@ -14,7 +14,9 @@ public record MovimientoResponseDTO(
     String descripcion,
     LocalDateTime fechaHora,
     BigDecimal costo,
-    BigDecimal ganancia
+    BigDecimal ganancia,
+    /** El nombre va en metodoPago (también de los métodos ya desactivados). */
+    Long metodoPagoId
 ) {
     public MovimientoResponseDTO(
             Long id,
@@ -25,7 +27,7 @@ public record MovimientoResponseDTO(
             String descripcion,
             LocalDateTime fechaHora
     ) {
-        this(id, tipo, monto, metodoPago, categoria, descripcion, fechaHora, BigDecimal.ZERO, monto);
+        this(id, tipo, monto, metodoPago, categoria, descripcion, fechaHora, BigDecimal.ZERO, monto, null);
     }
 
     /** Movimiento sin venta asociada (alta manual). */
@@ -55,12 +57,13 @@ public record MovimientoResponseDTO(
                 mov.getId(),
                 mov.getTipo().name(),
                 mov.getMonto(),
-                mov.getMetodoPago(),
+                mov.getMetodoPago().getNombre(),
                 mov.getCategoria(),
                 mov.getDescripcion(),
                 mov.getFechaHora(),
                 costo,
-                ganancia
+                ganancia,
+                mov.getMetodoPago().getId()
         );
     }
 }
