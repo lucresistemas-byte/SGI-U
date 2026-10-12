@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../models/categoria.dart';
 import '../../models/product.dart';
 import '../../models/receta_detalle.dart';
 import '../../services/api_service.dart';
@@ -22,6 +23,16 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
     on<AgregarFilaInsumo>(_onAgregarFilaInsumo);
     on<RemoverFilaInsumo>(_onRemoverFilaInsumo);
     on<CambiarInsumoFila>(_onCambiarInsumoFila);
+    on<CambiarModoProductoReceta>((event, emit) =>
+        emit(state.copyWith(usarProductoNuevo: event.productoNuevo)));
+    on<ActualizarProductoNuevoReceta>((event, emit) => emit(state.copyWith(
+          nuevoProductoNombre: event.nombre,
+          nuevoProductoCodigo: event.codigo,
+          nuevoProductoCategoriaId: event.categoriaId,
+          quitarNuevoProductoCategoria: event.quitarCategoria,
+          nuevoProductoPorcentaje: event.porcentajeGanancia,
+          nuevoProductoPreparacionBase: event.preparacionBase,
+        )));
     on<ActualizarCantidadFilaInsumo>(_onActualizarCantidadFilaInsumo);
     on<GuardarReceta>(_onGuardarReceta);
     on<CambiarEstadoReceta>(_onCambiarEstadoReceta);
@@ -57,9 +68,15 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       final products = rawProducts
           .map((p) => Product.fromJson(Map<String, dynamic>.from(p as Map)))
           .toList();
+      // Las categorías son opcionales: si fallan, se puede crear sin categoría.
+      var categorias = const <Categoria>[];
+      try {
+        categorias = await _apiService.getCategorias();
+      } catch (_) {}
       emit(state.copyWith(
         availableInsumos: insumos,
         availableProductos: products,
+        availableCategorias: categorias,
       ));
     } catch (e) {
       emit(state.copyWith(errorMessage: e.toString()));
@@ -79,6 +96,12 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       costoTotal: 0.0,
       clearError: true,
       clearSuccess: true,
+      // Por defecto, la receta crea el producto elaborado.
+      usarProductoNuevo: event.defaultProductoCodigo == null,
+      nuevoProductoNombre: '',
+      nuevoProductoCodigo: '',
+      quitarNuevoProductoCategoria: true,
+      nuevoProductoPreparacionBase: false,
     ));
   }
 
@@ -262,7 +285,19 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
   }
 
   Map<String, dynamic> _payloadDelBorrador() => {
-        'espProductoCodigo': state.selectedProductoCodigo,
+        if (state.creaProductoNuevo)
+          'productoNuevo': {
+            'nombre': state.nuevoProductoNombre.trim(),
+            if (state.nuevoProductoCodigo.trim().isNotEmpty)
+              'codigo': state.nuevoProductoCodigo.trim(),
+            if (state.nuevoProductoCategoriaId != null)
+              'categoriaId': state.nuevoProductoCategoriaId,
+            if (state.nuevoProductoPorcentaje != null)
+              'porcentajeGanancia': state.nuevoProductoPorcentaje,
+            'vendible': !state.nuevoProductoPreparacionBase,
+          }
+        else
+          'espProductoCodigo': state.selectedProductoCodigo,
         'nombre': state.nombre,
         if (state.descripcion.isNotEmpty) 'descripcion': state.descripcion,
         'costosAdicionales': state.costosAdicionales,

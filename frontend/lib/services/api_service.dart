@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import '../models/product.dart';
+import '../models/categoria.dart';
 import '../models/configuracion_negocio.dart';
 import '../models/insumo.dart';
 import '../models/receta.dart';
@@ -482,6 +483,21 @@ class ApiService implements PosApi {
     } on DioException catch (e) {
       throw ApiException(mensajeDeError(
           e, 'No se pudo ajustar el stock del insumo. Intente nuevamente.'));
+    }
+  }
+
+  // --- CATEGORÍAS ---
+  /// Categorías activas (para asignar al crear un producto).
+  Future<List<Categoria>> getCategorias() async {
+    try {
+      final response = await dio.get('/api/categorias');
+      final list = response.data as List;
+      return list
+          .map((c) => Categoria.fromJson(Map<String, dynamic>.from(c as Map)))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(
+          e, 'No se pudieron cargar las categorías. Intente nuevamente.'));
     }
   }
 

@@ -157,3 +157,37 @@ class DescartarRecetaInactivaExistente extends RecetasEvent {
 class LimpiarMensajesRecetas extends RecetasEvent {
   const LimpiarMensajesRecetas();
 }
+
+/// Al crear: usar un producto elaborado existente o crear uno nuevo.
+class CambiarModoProductoReceta extends RecetasEvent {
+  final bool productoNuevo;
+
+  const CambiarModoProductoReceta({required this.productoNuevo});
+
+  @override
+  List<Object?> get props => [productoNuevo];
+}
+
+/// Datos del producto elaborado que se crea junto con la receta. Los campos
+/// en null no cambian; [quitarCategoria] deja la categoría vacía.
+class ActualizarProductoNuevoReceta extends RecetasEvent {
+  final String? nombre;
+  final String? codigo;
+  final int? categoriaId;
+  final bool quitarCategoria;
+  final double? porcentajeGanancia;
+  final bool? preparacionBase;
+
+  const ActualizarProductoNuevoReceta({
+    this.nombre,
+    this.codigo,
+    this.categoriaId,
+    this.quitarCategoria = false,
+    this.porcentajeGanancia,
+    this.preparacionBase,
+  });
+
+  @override
+  List<Object?> get props =>
+      [nombre, codigo, categoriaId, quitarCategoria, porcentajeGanancia, preparacionBase];
+}

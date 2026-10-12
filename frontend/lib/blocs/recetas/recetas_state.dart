@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../models/categoria.dart';
 import '../../models/insumo.dart';
 import '../../models/product.dart';
 import '../../models/receta.dart';
@@ -12,6 +13,15 @@ class RecetasState extends Equatable {
   final List<Receta> recetas;
   final List<Insumo> availableInsumos;
   final List<Product> availableProductos;
+  final List<Categoria> availableCategorias;
+
+  /// Al crear: true = la receta crea un producto elaborado nuevo.
+  final bool usarProductoNuevo;
+  final String nuevoProductoNombre;
+  final String nuevoProductoCodigo;
+  final int? nuevoProductoCategoriaId;
+  final double? nuevoProductoPorcentaje;
+  final bool nuevoProductoPreparacionBase;
 
   // Editor draft
   final int? editingRecetaId;
@@ -36,6 +46,13 @@ class RecetasState extends Equatable {
     this.recetas = const [],
     this.availableInsumos = const [],
     this.availableProductos = const [],
+    this.availableCategorias = const [],
+    this.usarProductoNuevo = false,
+    this.nuevoProductoNombre = '',
+    this.nuevoProductoCodigo = '',
+    this.nuevoProductoCategoriaId,
+    this.nuevoProductoPorcentaje,
+    this.nuevoProductoPreparacionBase = false,
     this.editingRecetaId,
     this.selectedProductoCodigo = '',
     this.selectedProductoNombre = '',
@@ -50,8 +67,23 @@ class RecetasState extends Equatable {
 
   factory RecetasState.initial() => const RecetasState();
 
+  /// Productos que pueden recibir una receta nueva: elaborados activos que
+  /// todavía no tienen receta (la reventa no lleva receta).
+  List<Product> get elaboradosSinReceta {
+    final conReceta = recetas.map((r) => r.espProductoCodigo).toSet();
+    return availableProductos
+        .where((p) => p.esElaborado && p.activo && !conReceta.contains(p.codigo))
+        .toList();
+  }
+
+  bool get creaProductoNuevo => editingRecetaId == null && usarProductoNuevo;
+
   bool get isFormValid {
-    if (selectedProductoCodigo.trim().isEmpty) return false;
+    if (creaProductoNuevo) {
+      if (nuevoProductoNombre.trim().isEmpty) return false;
+    } else if (selectedProductoCodigo.trim().isEmpty) {
+      return false;
+    }
     if (nombre.trim().isEmpty) return false;
     if (detalles.isEmpty) return false;
     for (final d in detalles) {
@@ -70,6 +102,14 @@ class RecetasState extends Equatable {
     List<Receta>? recetas,
     List<Insumo>? availableInsumos,
     List<Product>? availableProductos,
+    List<Categoria>? availableCategorias,
+    bool? usarProductoNuevo,
+    String? nuevoProductoNombre,
+    String? nuevoProductoCodigo,
+    int? nuevoProductoCategoriaId,
+    bool quitarNuevoProductoCategoria = false,
+    double? nuevoProductoPorcentaje,
+    bool? nuevoProductoPreparacionBase,
     int? editingRecetaId,
     bool clearEditingId = false,
     String? selectedProductoCodigo,
@@ -93,6 +133,16 @@ class RecetasState extends Equatable {
       recetas: recetas ?? this.recetas,
       availableInsumos: availableInsumos ?? this.availableInsumos,
       availableProductos: availableProductos ?? this.availableProductos,
+      availableCategorias: availableCategorias ?? this.availableCategorias,
+      usarProductoNuevo: usarProductoNuevo ?? this.usarProductoNuevo,
+      nuevoProductoNombre: nuevoProductoNombre ?? this.nuevoProductoNombre,
+      nuevoProductoCodigo: nuevoProductoCodigo ?? this.nuevoProductoCodigo,
+      nuevoProductoCategoriaId: quitarNuevoProductoCategoria
+          ? null
+          : (nuevoProductoCategoriaId ?? this.nuevoProductoCategoriaId),
+      nuevoProductoPorcentaje: nuevoProductoPorcentaje ?? this.nuevoProductoPorcentaje,
+      nuevoProductoPreparacionBase:
+          nuevoProductoPreparacionBase ?? this.nuevoProductoPreparacionBase,
       editingRecetaId: clearEditingId ? null : (editingRecetaId ?? this.editingRecetaId),
       selectedProductoCodigo: selectedProductoCodigo ?? this.selectedProductoCodigo,
       selectedProductoNombre: selectedProductoNombre ?? this.selectedProductoNombre,
@@ -120,6 +170,13 @@ class RecetasState extends Equatable {
         recetas,
         availableInsumos,
         availableProductos,
+        availableCategorias,
+        usarProductoNuevo,
+        nuevoProductoNombre,
+        nuevoProductoCodigo,
+        nuevoProductoCategoriaId,
+        nuevoProductoPorcentaje,
+        nuevoProductoPreparacionBase,
         editingRecetaId,
         selectedProductoCodigo,
         selectedProductoNombre,

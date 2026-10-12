@@ -104,6 +104,142 @@ class _RecetasScreenState extends State<RecetasScreen> {
 
   /// El producto ya tenía una receta desactivada: ofrece reactivarla con los
   /// datos cargados en lugar de crear otra.
+  /// Producto de la receta. Al crear: uno nuevo (la receta crea el
+  /// elaborado) o un elaborado existente sin receta. Al editar, fijo.
+  Widget _buildSelectorProducto(RecetasState state) {
+    if (state.editingRecetaId != null) {
+      return InputDecorator(
+        decoration: const InputDecoration(
+          labelText: 'Producto elaborado',
+          border: OutlineInputBorder(),
+        ),
+        child: Text('${state.selectedProductoNombre} (${state.selectedProductoCodigo})',
+            key: const Key('producto_receta_fijo')),
+      );
+    }
+
+    final elaborados = state.elaboradosSinReceta;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SegmentedButton<bool>(
+          key: const Key('modo_producto_receta'),
+          segments: const [
+            ButtonSegment(value: true, label: Text('Producto nuevo'), icon: Icon(Icons.add)),
+            ButtonSegment(value: false, label: Text('Producto existente'), icon: Icon(Icons.inventory_2)),
+          ],
+          selected: {state.usarProductoNuevo},
+          onSelectionChanged: (v) =>
+              _bloc.add(CambiarModoProductoReceta(productoNuevo: v.first)),
+        ),
+        const SizedBox(height: 12),
+        if (state.usarProductoNuevo) ..._camposProductoNuevo(state)
+        else if (elaborados.isEmpty)
+          const Text(
+            'No hay productos elaborados sin receta. Cree uno nuevo.',
+            key: Key('sin_elaborados_sin_receta'),
+            style: TextStyle(color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+          )
+        else
+          DropdownButtonFormField<String>(
+            key: const Key('selector_producto_receta'),
+            isExpanded: true,
+            initialValue: elaborados.any((p) => p.codigo == state.selectedProductoCodigo)
+                ? state.selectedProductoCodigo
+                : null,
+            decoration: const InputDecoration(
+              labelText: 'Producto elaborado *',
+              border: OutlineInputBorder(),
+            ),
+            items: elaborados
+                .map((p) => DropdownMenuItem<String>(
+                      value: p.codigo,
+                      child: Text('${p.nombre} (${p.codigo})'),
+                    ))
+                .toList(),
+            onChanged: (val) {
+              if (val == null) return;
+              final p = elaborados.firstWhere((item) => item.codigo == val);
+              _bloc.add(CambiarProductoReceta(codigo: p.codigo, nombre: p.nombre));
+            },
+          ),
+      ],
+    );
+  }
+
+  List<Widget> _camposProductoNuevo(RecetasState state) => [
+        TextFormField(
+          key: const Key('nuevo_producto_nombre'),
+          initialValue: state.nuevoProductoNombre,
+          decoration: const InputDecoration(
+            labelText: 'Nombre del producto *',
+            hintText: 'Ej: Tarta de coco',
+            border: OutlineInputBorder(),
+          ),
+          onChanged: (v) => _bloc.add(ActualizarProductoNuevoReceta(nombre: v)),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                key: const Key('nuevo_producto_codigo'),
+                initialValue: state.nuevoProductoCodigo,
+                decoration: const InputDecoration(
+                  labelText: 'Código (opcional)',
+                  hintText: 'Si lo deja vacío: ELA-0001',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (v) => _bloc.add(ActualizarProductoNuevoReceta(codigo: v)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 140,
+              child: TextFormField(
+                key: const Key('nuevo_producto_porcentaje'),
+                initialValue: state.nuevoProductoPorcentaje?.toString() ?? '',
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: '% ganancia',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (v) => _bloc.add(ActualizarProductoNuevoReceta(
+                    porcentajeGanancia: double.tryParse(v.replaceAll(',', '.')) ?? 0)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (state.availableCategorias.isNotEmpty)
+          DropdownButtonFormField<int?>(
+            key: const Key('nuevo_producto_categoria'),
+            isExpanded: true,
+            initialValue: state.nuevoProductoCategoriaId,
+            decoration: const InputDecoration(
+              labelText: 'Categoría (opcional)',
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              const DropdownMenuItem<int?>(value: null, child: Text('Sin categoría')),
+              ...state.availableCategorias.map(
+                  (c) => DropdownMenuItem<int?>(value: c.id, child: Text(c.nombre))),
+            ],
+            onChanged: (v) => _bloc.add(v == null
+                ? const ActualizarProductoNuevoReceta(quitarCategoria: true)
+                : ActualizarProductoNuevoReceta(categoriaId: v)),
+          ),
+        CheckboxListTile(
+          key: const Key('nuevo_producto_preparacion_base'),
+          contentPadding: EdgeInsets.zero,
+          value: state.nuevoProductoPreparacionBase,
+          onChanged: (v) =>
+              _bloc.add(ActualizarProductoNuevoReceta(preparacionBase: v ?? false)),
+          title: const Text('Preparación base (no se vende)'),
+          subtitle: const Text('Ej.: ganache. No aparece en el punto de venta.'),
+        ),
+      ];
+
   bool _ofreciendoReactivar = false;
 
   Future<void> _ofrecerReactivar(RecetasState state) async {
@@ -435,44 +571,8 @@ class _RecetasScreenState extends State<RecetasScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Selector de Producto
-                      Expanded(
-                        child: state.availableProductos.isNotEmpty
-                            ? DropdownButtonFormField<String>(
-                                key: const Key('selector_producto_receta'),
-                                isExpanded: true,
-                                initialValue: state.selectedProductoCodigo.isNotEmpty
-                                    ? state.selectedProductoCodigo
-                                    : null,
-                                decoration: const InputDecoration(
-                                  labelText: 'Producto Elaborado *',
-                                  border: OutlineInputBorder(),
-                                ),
-                                items: state.availableProductos.map((p) {
-                                  return DropdownMenuItem<String>(
-                                    value: p.codigo,
-                                    child: Text('${p.nombre} (${p.codigo})'),
-                                  );
-                                }).toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    final p = state.availableProductos.firstWhere((item) => item.codigo == val);
-                                    _bloc.add(CambiarProductoReceta(codigo: p.codigo, nombre: p.nombre));
-                                  }
-                                },
-                              )
-                            : TextFormField(
-                                key: const Key('selector_producto_receta'),
-                                initialValue: state.selectedProductoCodigo,
-                                decoration: const InputDecoration(
-                                  labelText: 'Código de Producto Elaborado *',
-                                  border: OutlineInputBorder(),
-                                ),
-                                onChanged: (val) {
-                                  _bloc.add(CambiarProductoReceta(codigo: val, nombre: val));
-                                },
-                              ),
-                      ),
+                      // Producto elaborado: existente o nuevo (la receta lo crea)
+                      Expanded(child: _buildSelectorProducto(state)),
                       const SizedBox(width: 16),
                       // Nombre de la receta
                       Expanded(
