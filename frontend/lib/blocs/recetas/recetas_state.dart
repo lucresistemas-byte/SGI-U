@@ -73,6 +73,12 @@ class RecetasState extends Equatable {
         .toList();
   }
 
+  static const mensajeFilasIncompletas =
+      'Complete el insumo y la cantidad de todas las filas para guardar la receta.';
+
+  /// Alguna fila sin insumo elegido o sin cantidad.
+  bool get hayFilasIncompletas => detalles.any((d) => !d.completa);
+
   bool get creaProductoNuevo => editingRecetaId == null && usarProductoNuevo;
 
   bool get isFormValid {

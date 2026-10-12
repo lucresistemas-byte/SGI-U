@@ -113,7 +113,7 @@ void main() {
         await tester.tap(agregarInsumoBtnFinder);
         await tester.pump();
 
-        verify(() => mockRecetasBloc.add(any(that: isA<AgregarFilaInsumo>()))).called(1);
+        verify(() => mockRecetasBloc.add(any(that: isA<AgregarFilaVacia>()))).called(1);
 
         // Emitimos estado con 1 fila
         final stateWith1Row = initialState.copyWith(
@@ -145,7 +145,7 @@ void main() {
         await tester.tap(agregarInsumoBtnFinder);
         await tester.pump();
 
-        verify(() => mockRecetasBloc.add(any(that: isA<AgregarFilaInsumo>()))).called(1);
+        verify(() => mockRecetasBloc.add(any(that: isA<AgregarFilaVacia>()))).called(1);
 
         final stateWith2Rows = stateWith1Row.copyWith(
           detalles: const [

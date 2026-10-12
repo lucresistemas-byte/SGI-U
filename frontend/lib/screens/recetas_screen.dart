@@ -487,6 +487,18 @@ class _RecetasScreenState extends State<RecetasScreen> {
               ),
             ],
           ),
+          if (state.hayFilasIncompletas)
+            const Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  RecetasState.mensajeFilasIncompletas,
+                  key: Key('aviso_filas_incompletas'),
+                  style: TextStyle(color: Color(0xFFB45309), fontSize: 13),
+                ),
+              ),
+            ),
           const SizedBox(height: 20),
 
           // Card Datos Básicos
@@ -591,8 +603,8 @@ class _RecetasScreenState extends State<RecetasScreen> {
                 ),
                 onPressed: () {
                   if (state.availableInsumos.isNotEmpty) {
-                    // La fila nueva usa el primer insumo que todavía no está
-                    // en la receta (antes siempre el primero: quedaban repetidos).
+                    // La fila nueva llega vacía: el usuario elige el insumo
+                    // (solo entre los que no están en la receta) y la cantidad.
                     final usados = state.detalles.map((d) => d.materiaPrimaId).toSet();
                     final libres = state.availableInsumos
                         .where((i) => !usados.contains(i.id))
@@ -605,7 +617,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                       );
                       return;
                     }
-                    _bloc.add(AgregarFilaInsumo(insumo: libres.first, cantidad: 1.0));
+                    _bloc.add(const AgregarFilaVacia());
                   } else {
                     // Sin insumos no hay qué agregar: antes se agregaba uno
                     // ficticio (id 1) que se guardaba contra otro insumo real.
@@ -644,12 +656,6 @@ class _RecetasScreenState extends State<RecetasScreen> {
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final detalle = state.detalles[index];
-                // Clave estable por insumo (no por posición): al quitar o
-                // cambiar una fila, cada widget conserva su propio insumo.
-                final repeticion = state.detalles
-                    .take(index)
-                    .where((d) => d.materiaPrimaId == detalle.materiaPrimaId)
-                    .length;
                 // Insumos ofrecidos: los que no están en otra fila.
                 final usadosEnOtras = {
                   for (var i = 0; i < state.detalles.length; i++)
@@ -659,7 +665,9 @@ class _RecetasScreenState extends State<RecetasScreen> {
                     .where((i) => !usadosEnOtras.contains(i.id))
                     .toList();
                 return Card(
-                  key: ValueKey('fila_insumo_id_${detalle.materiaPrimaId}_$repeticion'),
+                  // Clave estable por fila (no por posición ni por insumo): al
+                  // quitar o cambiar una fila, cada widget conserva sus datos.
+                  key: ValueKey('fila_insumo_${detalle.claveUi}'),
                   margin: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -682,9 +690,10 @@ class _RecetasScreenState extends State<RecetasScreen> {
                               ? DropdownButtonFormField<int>(
                                   key: Key('selector_insumo_fila_$index'),
                                   isExpanded: true,
-                                  initialValue: detalle.materiaPrimaId > 0
-                                      ? detalle.materiaPrimaId
-                                      : state.availableInsumos.first.id,
+                                  initialValue: detalle.sinInsumo
+                                      ? null
+                                      : detalle.materiaPrimaId,
+                                  hint: const Text('Elegir insumo'),
                                   decoration: const InputDecoration(
                                     labelText: 'Insumo',
                                     border: OutlineInputBorder(),
@@ -746,7 +755,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            detalle.unidadMedida,
+                            detalle.unidadMedida.isEmpty ? '—' : detalle.unidadMedida,
                             key: Key('unidad_insumo_fila_$index'),
                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                           ),

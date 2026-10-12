@@ -89,6 +89,11 @@ class AgregarFilaInsumo extends RecetasEvent {
   List<Object?> get props => [insumo, cantidad];
 }
 
+/// Agrega una fila vacía: el usuario elige el insumo y escribe la cantidad.
+class AgregarFilaVacia extends RecetasEvent {
+  const AgregarFilaVacia();
+}
+
 /// Cambia el insumo de una fila en su lugar, conservando la cantidad.
 class CambiarInsumoFila extends RecetasEvent {
   final int index;

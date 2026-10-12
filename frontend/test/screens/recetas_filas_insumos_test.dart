@@ -61,14 +61,29 @@ void main() {
       .map((i) => ((i.child as Text).data ?? ''))
       .toList();
 
-  testWidgets('cada fila nueva usa un insumo todavía no usado', (t) async {
+  Future<void> elegir(WidgetTester t, int fila, String opcion) async {
+    await t.tap(find.byKey(Key('selector_insumo_fila_$fila')));
+    await t.pumpAndSettle();
+    await t.tap(find.text(opcion).last);
+    await t.pumpAndSettle();
+  }
+
+  testWidgets('cada fila nueva llega vacía y ofrece solo los insumos no usados', (t) async {
     final bloc = await montar(t);
 
     await agregar(t);
-    await agregar(t);
-    await agregar(t);
+    // Antes: la fila llegaba con el primer insumo libre y cantidad 1.
+    expect(bloc.state.detalles.single.sinInsumo, isTrue);
+    expect(bloc.state.detalles.single.cantidad, 0);
+    expect(find.text('Elegir insumo'), findsOneWidget);
+    expect(opcionesDeLaFila(t, 0), ['Arroz (MP-001)', 'Bolsa (MP-002)', 'Etiqueta (MP-003)']);
 
-    // Antes: [Arroz, Arroz, Arroz].
+    await elegir(t, 0, 'Arroz (MP-001)');
+    await agregar(t);
+    expect(opcionesDeLaFila(t, 1), ['Bolsa (MP-002)', 'Etiqueta (MP-003)']);
+    await elegir(t, 1, 'Bolsa (MP-002)');
+    await agregar(t);
+    await elegir(t, 2, 'Etiqueta (MP-003)');
     expect(nombres(bloc), ['Arroz', 'Bolsa', 'Etiqueta']);
 
     await agregar(t);
@@ -79,29 +94,65 @@ void main() {
   testWidgets('el dropdown no ofrece los insumos de otras filas', (t) async {
     await montar(t);
     await agregar(t);
+    await elegir(t, 0, 'Bolsa (MP-002)');
     await agregar(t);
+    await elegir(t, 1, 'Arroz (MP-001)');
 
-    expect(opcionesDeLaFila(t, 0), ['Arroz (MP-001)', 'Etiqueta (MP-003)']);
-    expect(opcionesDeLaFila(t, 1), ['Bolsa (MP-002)', 'Etiqueta (MP-003)']);
+    expect(opcionesDeLaFila(t, 0), ['Bolsa (MP-002)', 'Etiqueta (MP-003)']);
+    expect(opcionesDeLaFila(t, 1), ['Arroz (MP-001)', 'Etiqueta (MP-003)']);
   });
 
   testWidgets('cambiar el insumo de una fila lo reemplaza en su lugar y conserva la cantidad',
       (t) async {
     final bloc = await montar(t);
     await agregar(t);
+    await elegir(t, 0, 'Arroz (MP-001)');
     await agregar(t);
-    bloc.add(const ActualizarCantidadFilaInsumo(index: 0, cantidad: 0.25));
+    await elegir(t, 1, 'Bolsa (MP-002)');
+    await t.enterText(find.byKey(const Key('cantidad_insumo_fila_0')), '0.25');
     await t.pumpAndSettle();
 
-    await t.tap(find.byKey(const Key('selector_insumo_fila_0')));
-    await t.pumpAndSettle();
-    await t.tap(find.text('Etiqueta (MP-003)').last);
-    await t.pumpAndSettle();
+    await elegir(t, 0, 'Etiqueta (MP-003)');
 
-    // Antes: la fila se iba al final -> [Bolsa, Etiqueta].
     expect(nombres(bloc), ['Etiqueta', 'Bolsa']);
     expect(bloc.state.detalles.first.cantidad, 0.25);
     expect(find.text('Etiqueta (MP-003)'), findsOneWidget);
+  });
+
+  testWidgets('con filas incompletas no se puede guardar y se explica por qué', (t) async {
+    final bloc = await montar(t);
+    await agregar(t);
+    await t.pumpAndSettle();
+
+    Finder guardar() => find.byKey(const Key('guardar_receta_button'));
+    expect(t.widget<ElevatedButton>(guardar()).onPressed, isNull);
+    expect(find.byKey(const Key('aviso_filas_incompletas')), findsOneWidget);
+
+    // Con insumo pero sin cantidad sigue incompleta.
+    await elegir(t, 0, 'Arroz (MP-001)');
+    expect(bloc.state.hayFilasIncompletas, isTrue);
+    expect(find.byKey(const Key('aviso_filas_incompletas')), findsOneWidget);
+
+    await t.enterText(find.byKey(const Key('cantidad_insumo_fila_0')), '2');
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('aviso_filas_incompletas')), findsNothing);
+  });
+
+  testWidgets('cada fila conserva su clave al quitar la de arriba', (t) async {
+    final bloc = await montar(t);
+    await agregar(t);
+    await elegir(t, 0, 'Arroz (MP-001)');
+    await agregar(t);
+    await elegir(t, 1, 'Bolsa (MP-002)');
+    final claveBolsa = bloc.state.detalles[1].claveUi;
+    expect(bloc.state.detalles[0].claveUi, isNot(claveBolsa));
+
+    await t.tap(find.byKey(const Key('eliminar_insumo_fila_0')));
+    await t.pumpAndSettle();
+
+    expect(bloc.state.detalles.single.claveUi, claveBolsa);
+    expect(find.byKey(ValueKey('fila_insumo_$claveBolsa')), findsOneWidget);
+    expect(find.text('Bolsa (MP-002)'), findsOneWidget);
   });
 
   group('RecetasBloc', () {
@@ -122,6 +173,39 @@ void main() {
             (s) => s.errorMessage, 'error', 'El insumo Arroz está dos veces en la receta.'),
       ],
       verify: (_) => verifyNever(() => api.createReceta(any())),
+    );
+
+    blocTest<RecetasBloc, RecetasState>(
+      'guardar con una fila sin insumo muestra un error claro y no llama a la API',
+      build: () => RecetasBloc(apiService: api),
+      seed: () => RecetasState.initial().copyWith(
+        selectedProductoCodigo: 'DUL-001',
+        nombre: 'Flan',
+        detalles: const [
+          RecetaDetalle(materiaPrimaId: 1, materiaPrimaNombre: 'Arroz', cantidad: 1, unidadMedida: 'KILO'),
+          RecetaDetalle(materiaPrimaId: 0, cantidad: 0, unidadMedida: ''),
+        ],
+      ),
+      act: (b) => b.add(const GuardarReceta()),
+      expect: () => [
+        isA<RecetasState>()
+            .having((s) => s.errorMessage, 'error', RecetasState.mensajeFilasIncompletas),
+      ],
+      verify: (_) => verifyNever(() => api.createReceta(any())),
+    );
+
+    blocTest<RecetasBloc, RecetasState>(
+      'AgregarFilaVacia agrega una fila sin insumo con clave propia',
+      build: () => RecetasBloc(apiService: api),
+      act: (b) => b
+        ..add(const AgregarFilaVacia())
+        ..add(const AgregarFilaVacia()),
+      skip: 1,
+      expect: () => [
+        isA<RecetasState>().having((s) => s.detalles.map((d) => d.sinInsumo).toList(), 'vacías',
+            [true, true]).having((s) => s.detalles.map((d) => d.claveUi).toSet().length,
+            'claves distintas', 2),
+      ],
     );
   });
 }

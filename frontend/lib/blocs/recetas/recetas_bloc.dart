@@ -21,6 +21,10 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
     on<CambiarDescripcionReceta>(_onCambiarDescripcionReceta);
     on<CambiarCostosAdicionales>(_onCambiarCostosAdicionales);
     on<AgregarFilaInsumo>(_onAgregarFilaInsumo);
+    on<AgregarFilaVacia>((event, emit) => emit(state.copyWith(detalles: [
+          ...state.detalles,
+          RecetaDetalle(materiaPrimaId: 0, cantidad: 0, unidadMedida: '', claveUi: _nuevaClave()),
+        ])));
     on<RemoverFilaInsumo>(_onRemoverFilaInsumo);
     on<CambiarInsumoFila>(_onCambiarInsumoFila);
     on<CambiarModoProductoReceta>((event, emit) =>
@@ -38,6 +42,13 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
     on<LimpiarMensajesRecetas>((event, emit) =>
         emit(state.copyWith(clearError: true, clearSuccess: true)));
   }
+
+  /// Clave estable para cada fila del armador.
+  int _ultimaClave = 0;
+  int _nuevaClave() => ++_ultimaClave;
+
+  List<RecetaDetalle> _conClaves(List<RecetaDetalle> detalles) =>
+      [for (final d in detalles) d.claveUi == null ? d.copyWith(claveUi: _nuevaClave()) : d];
 
   double _calcularCostoTotal(List<RecetaDetalle> detalles, double adicionales) {
     final sum = detalles.fold<double>(0.0, (acc, item) => acc + item.subtotal);
@@ -109,7 +120,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       nombre: event.receta.nombre,
       descripcion: event.receta.descripcion ?? '',
       costosAdicionales: event.receta.costosAdicionales,
-      detalles: List<RecetaDetalle>.from(event.receta.detalles),
+      detalles: _conClaves(event.receta.detalles),
       costoTotal: event.receta.costoTotal,
       clearError: true,
       clearSuccess: true,
@@ -153,6 +164,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       unidadMedida: event.insumo.unidadMedida,
       costoUnitario: event.insumo.costoUnitario,
       subtotal: event.cantidad * event.insumo.costoUnitario,
+      claveUi: _nuevaClave(),
     );
 
     final nuevosDetalles = List<RecetaDetalle>.from(state.detalles)..add(nuevoDetalle);
@@ -180,6 +192,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       unidadMedida: insumo.unidadMedida,
       costoUnitario: insumo.costoUnitario,
       subtotal: actual.cantidad * insumo.costoUnitario,
+      claveUi: actual.claveUi,
     );
     emit(state.copyWith(
       detalles: nuevosDetalles,
@@ -221,6 +234,10 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
 
   Future<void> _onGuardarReceta(
       GuardarReceta event, Emitter<RecetasState> emit) async {
+    if (state.hayFilasIncompletas) {
+      emit(state.copyWith(errorMessage: RecetasState.mensajeFilasIncompletas));
+      return;
+    }
     if (!state.isFormValid) {
       emit(state.copyWith(
         errorMessage: 'Por favor complete todos los campos requeridos de la receta.',
@@ -262,7 +279,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
   String? _insumoRepetido() {
     final vistos = <int>{};
     for (final d in state.detalles) {
-      if (!vistos.add(d.materiaPrimaId)) {
+      if (!d.sinInsumo && !vistos.add(d.materiaPrimaId)) {
         return d.materiaPrimaNombre ?? 'con ID ${d.materiaPrimaId}';
       }
     }

@@ -48,6 +48,13 @@ void main() {
     await t.enterText(find.byKey(const Key('input_nombre_receta')), 'Torta base');
     await t.tap(find.byKey(const Key('agregar_insumo_fila_button')));
     await t.pumpAndSettle();
+    // La fila llega vacía: se elige el insumo y se escribe la cantidad.
+    await t.tap(find.byKey(const Key('selector_insumo_fila_0')));
+    await t.pumpAndSettle();
+    await t.tap(find.byType(DropdownMenuItem<int>).last);
+    await t.pumpAndSettle();
+    await t.enterText(find.byKey(const Key('cantidad_insumo_fila_0')), '1');
+    await t.pumpAndSettle();
     final guardar = find.text('Guardar Receta');
     await t.ensureVisible(guardar);
     await t.tap(guardar);
