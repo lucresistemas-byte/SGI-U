@@ -17,6 +17,9 @@ class RecetasState extends Equatable {
 
   /// Al crear: true = la receta crea un producto elaborado nuevo.
   final bool usarProductoNuevo;
+
+  /// Al editar: false = el producto de la receta está desactivado.
+  final bool productoEditadoActivo;
   final String nuevoProductoNombre;
   final String nuevoProductoCodigo;
   final int? nuevoProductoCategoriaId;
@@ -33,11 +36,6 @@ class RecetasState extends Equatable {
   final List<RecetaDetalle> detalles;
   final double costoTotal;
 
-  /// Al crear: el producto ya tiene esta receta desactivada (id y mensaje
-  /// del backend). La pantalla ofrece reactivarla con los datos cargados.
-  final int? recetaInactivaExistenteId;
-  final String? recetaInactivaExistenteMensaje;
-
   const RecetasState({
     this.isLoading = false,
     this.isSaving = false,
@@ -48,6 +46,7 @@ class RecetasState extends Equatable {
     this.availableProductos = const [],
     this.availableCategorias = const [],
     this.usarProductoNuevo = false,
+    this.productoEditadoActivo = true,
     this.nuevoProductoNombre = '',
     this.nuevoProductoCodigo = '',
     this.nuevoProductoCategoriaId,
@@ -61,8 +60,6 @@ class RecetasState extends Equatable {
     this.costosAdicionales = 0.0,
     this.detalles = const [],
     this.costoTotal = 0.0,
-    this.recetaInactivaExistenteId,
-    this.recetaInactivaExistenteMensaje,
   });
 
   factory RecetasState.initial() => const RecetasState();
@@ -104,6 +101,7 @@ class RecetasState extends Equatable {
     List<Product>? availableProductos,
     List<Categoria>? availableCategorias,
     bool? usarProductoNuevo,
+    bool? productoEditadoActivo,
     String? nuevoProductoNombre,
     String? nuevoProductoCodigo,
     int? nuevoProductoCategoriaId,
@@ -121,9 +119,6 @@ class RecetasState extends Equatable {
     double? costoTotal,
     bool clearError = false,
     bool clearSuccess = false,
-    int? recetaInactivaExistenteId,
-    String? recetaInactivaExistenteMensaje,
-    bool clearRecetaInactivaExistente = false,
   }) {
     return RecetasState(
       isLoading: isLoading ?? this.isLoading,
@@ -135,6 +130,7 @@ class RecetasState extends Equatable {
       availableProductos: availableProductos ?? this.availableProductos,
       availableCategorias: availableCategorias ?? this.availableCategorias,
       usarProductoNuevo: usarProductoNuevo ?? this.usarProductoNuevo,
+      productoEditadoActivo: productoEditadoActivo ?? this.productoEditadoActivo,
       nuevoProductoNombre: nuevoProductoNombre ?? this.nuevoProductoNombre,
       nuevoProductoCodigo: nuevoProductoCodigo ?? this.nuevoProductoCodigo,
       nuevoProductoCategoriaId: quitarNuevoProductoCategoria
@@ -151,13 +147,6 @@ class RecetasState extends Equatable {
       costosAdicionales: costosAdicionales ?? this.costosAdicionales,
       detalles: detalles ?? this.detalles,
       costoTotal: costoTotal ?? this.costoTotal,
-      recetaInactivaExistenteId: clearRecetaInactivaExistente
-          ? null
-          : (recetaInactivaExistenteId ?? this.recetaInactivaExistenteId),
-      recetaInactivaExistenteMensaje: clearRecetaInactivaExistente
-          ? null
-          : (recetaInactivaExistenteMensaje ??
-              this.recetaInactivaExistenteMensaje),
     );
   }
 
@@ -172,6 +161,7 @@ class RecetasState extends Equatable {
         availableProductos,
         availableCategorias,
         usarProductoNuevo,
+        productoEditadoActivo,
         nuevoProductoNombre,
         nuevoProductoCodigo,
         nuevoProductoCategoriaId,
@@ -185,7 +175,5 @@ class RecetasState extends Equatable {
         costosAdicionales,
         detalles,
         costoTotal,
-        recetaInactivaExistenteId,
-        recetaInactivaExistenteMensaje,
       ];
 }

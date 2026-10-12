@@ -77,33 +77,6 @@ class _RecetasScreenState extends State<RecetasScreen> {
     });
   }
 
-  Future<void> _confirmarDesactivar(Receta receta) async {
-    final confirmado = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Desactivar receta'),
-        content: Text(
-            '¿Desactivar la receta "${receta.nombre}"? Deja de usarse para el '
-            'costo del producto. Podrá reactivarla cuando quiera.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Desactivar'),
-          ),
-        ],
-      ),
-    );
-    if (confirmado == true && mounted) {
-      _bloc.add(CambiarEstadoReceta(receta.id!, activo: false));
-    }
-  }
-
-  /// El producto ya tenía una receta desactivada: ofrece reactivarla con los
-  /// datos cargados en lugar de crear otra.
   /// Producto de la receta. Al crear: uno nuevo (la receta crea el
   /// elaborado) o un elaborado existente sin receta. Al editar, fijo.
   Widget _buildSelectorProducto(RecetasState state) {
@@ -113,8 +86,20 @@ class _RecetasScreenState extends State<RecetasScreen> {
           labelText: 'Producto elaborado',
           border: OutlineInputBorder(),
         ),
-        child: Text('${state.selectedProductoNombre} (${state.selectedProductoCodigo})',
-            key: const Key('producto_receta_fijo')),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text('${state.selectedProductoNombre} (${state.selectedProductoCodigo})',
+                  key: const Key('producto_receta_fijo')),
+            ),
+            if (!state.productoEditadoActivo)
+              const Chip(
+                key: Key('producto_inactivo_armador'),
+                label: Text('Producto inactivo'),
+                visualDensity: VisualDensity.compact,
+              ),
+          ],
+        ),
       );
     }
 
@@ -240,38 +225,6 @@ class _RecetasScreenState extends State<RecetasScreen> {
         ),
       ];
 
-  bool _ofreciendoReactivar = false;
-
-  Future<void> _ofrecerReactivar(RecetasState state) async {
-    // El listener puede volver a dispararse mientras el diálogo está abierto.
-    if (_ofreciendoReactivar) return;
-    _ofreciendoReactivar = true;
-    final id = state.recetaInactivaExistenteId!;
-    final reactivar = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Receta desactivada'),
-        content: Text('${state.recetaInactivaExistenteMensaje ?? ''}\n\n'
-            '¿Reactivarla guardando los datos que cargó?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Reactivar con estos datos'),
-          ),
-        ],
-      ),
-    );
-    _ofreciendoReactivar = false;
-    if (!mounted) return;
-    _bloc.add(reactivar == true
-        ? ReactivarRecetaConDatos(id)
-        : const DescartarRecetaInactivaExistente());
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
@@ -283,17 +236,11 @@ class _RecetasScreenState extends State<RecetasScreen> {
           // (p. ej. la recarga de la lista) lo volvía a mostrar.
           listenWhen: (previous, current) =>
               previous.successMessage != current.successMessage ||
-              previous.errorMessage != current.errorMessage ||
-              previous.recetaInactivaExistenteId !=
-                  current.recetaInactivaExistenteId,
+              previous.errorMessage != current.errorMessage,
           listener: (context, state) {
-            if (state.recetaInactivaExistenteId != null) {
-              _ofrecerReactivar(state);
-              return;
-            }
             if (state.successMessage != null) {
-              // En el armador, el único éxito posible es guardar (o reactivar
-              // con los datos): recién ahí se vuelve a la lista.
+              // En el armador, el único éxito posible es guardar: recién ahí
+              // se vuelve a la lista.
               if (_isBuilding) {
                 setState(() => _isBuilding = false);
               }
@@ -417,6 +364,10 @@ class _RecetasScreenState extends State<RecetasScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: SingleChildScrollView(
+                  // Scroll horizontal: con nombres largos o el chip "Producto
+                  // inactivo", la tabla puede ser más ancha que la pantalla.
+                  child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
                   child: DataTable(
                     headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
                     columns: const [
@@ -428,8 +379,9 @@ class _RecetasScreenState extends State<RecetasScreen> {
                       DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold))),
                     ],
                     rows: state.recetas.map((r) {
-                      // Las desactivadas se ven atenuadas y se pueden reactivar.
-                      final atenuado = r.activo
+                      // La receta siempre se ve; si su producto está
+                      // desactivado, se marca (no se vende en el POS).
+                      final atenuado = r.productoActivo
                           ? null
                           : const TextStyle(color: Color(0xFF94A3B8));
                       return DataRow(
@@ -441,10 +393,11 @@ class _RecetasScreenState extends State<RecetasScreen> {
                               Text(r.espProductoNombre ?? r.espProductoCodigo,
                                   style: (atenuado ?? const TextStyle())
                                       .copyWith(fontWeight: FontWeight.w600)),
-                              if (!r.activo) ...[
+                              if (!r.productoActivo) ...[
                                 const SizedBox(width: 8),
                                 const Chip(
-                                  label: Text('Inactiva'),
+                                  key: Key('producto_inactivo_chip'),
+                                  label: Text('Producto inactivo'),
                                   visualDensity: VisualDensity.compact,
                                 ),
                               ],
@@ -465,28 +418,13 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                   icon: const Icon(Icons.edit, color: Color(0xFF64748B)),
                                   onPressed: () => _editarReceta(r),
                                 ),
-                                if (r.activo)
-                                  IconButton(
-                                    key: Key('desactivar_receta_${r.id}'),
-                                    tooltip: 'Desactivar',
-                                    icon: const Icon(Icons.toggle_on, color: Color(0xFF13894E)),
-                                    onPressed: r.id == null ? null : () => _confirmarDesactivar(r),
-                                  )
-                                else
-                                  IconButton(
-                                    key: Key('activar_receta_${r.id}'),
-                                    tooltip: 'Activar',
-                                    icon: const Icon(Icons.toggle_off, color: Color(0xFF94A3B8)),
-                                    onPressed: r.id == null
-                                        ? null
-                                        : () => _bloc.add(CambiarEstadoReceta(r.id!, activo: true)),
-                                  ),
                               ],
                             ),
                           ),
                         ],
                       );
                     }).toList(),
+                  ),
                   ),
                 ),
               ),

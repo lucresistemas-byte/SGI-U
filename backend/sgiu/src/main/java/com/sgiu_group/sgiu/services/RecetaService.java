@@ -1,6 +1,5 @@
 package com.sgiu_group.sgiu.services;
 
-import com.sgiu_group.sgiu.exceptions.RecetaInactivaExistenteException;
 import com.sgiu_group.sgiu.exceptions.RecetaInvalidaException;
 import com.sgiu_group.sgiu.exceptions.RecursoNoEncontradoException;
 import com.sgiu_group.sgiu.models.dtos.RecetaDetalleRequestDTO;
@@ -36,11 +35,8 @@ public class RecetaService {
     private final EspProductoRepository espProductoRepository;
 
     @Transactional(readOnly = true)
-    public List<RecetaResponseDTO> listarTodas(boolean incluirInactivas) {
-        List<Receta> recetas = incluirInactivas
-                ? recetaRepository.findAll()
-                : recetaRepository.findByActivoTrue();
-        return recetas.stream()
+    public List<RecetaResponseDTO> listarTodas() {
+        return recetaRepository.findAll().stream()
                 .map(this::toResponseDTO)
                 .toList();
     }
@@ -77,16 +73,11 @@ public class RecetaService {
                     + producto.getNombre() + " es de " + descripcionTipo(producto.getTipo()) + ".");
         }
 
+        // Un producto tiene una sola receta (UNIQUE), que siempre está visible.
         Optional<Receta> existente = recetaRepository.findByProducto(producto);
-        if (existente.isPresent() && existente.get().isActivo()) {
-            throw new RecetaInvalidaException("El producto ya cuenta con una receta activa (ID: " + existente.get().getId() + ")");
-        }
         if (existente.isPresent()) {
-            // Un producto tiene una sola receta (UNIQUE): se reactiva la existente.
-            throw new RecetaInactivaExistenteException(
-                    "El producto " + producto.getNombre() + " ya tiene una receta desactivada ("
-                            + existente.get().getNombre() + "). Puede reactivarla y editarla.",
-                    existente.get().getId());
+            throw new RecetaInvalidaException("El producto " + producto.getNombre() + " ya tiene una receta ("
+                    + existente.get().getNombre() + "). Edítela en lugar de crear otra.");
         }
 
         validarDuplicadosYExistencia(dto.detalles(), Set.of());
@@ -205,21 +196,6 @@ public class RecetaService {
         return toResponseDTO(guardada);
     }
 
-    /** Activa o desactiva la receta. Al reactivarla, vuelve a costear el producto. */
-    @Transactional
-    public RecetaResponseDTO cambiarEstado(Long id, boolean activo) {
-        Receta receta = recetaRepository.findById(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Receta no encontrada con ID: " + id));
-
-        receta.setActivo(activo);
-        Receta guardada = recetaRepository.save(receta);
-        if (activo) {
-            actualizarCostosProductoElaborado(guardada);
-        }
-        log.info("[RECETA] Receta ID {} {}", id, activo ? "activada" : "desactivada");
-        return toResponseDTO(guardada);
-    }
-
     private void validarDuplicadosYExistencia(List<RecetaDetalleRequestDTO> detalles,
                                               Set<Long> insumosPermitidosInactivos) {
         Set<Long> insumosVistos = new HashSet<>();
@@ -309,7 +285,8 @@ public class RecetaService {
                 r.getCostosAdicionales(),
                 r.calcularCostoTotal(),
                 detallesDTO,
-                r.isActivo()
+                r.isActivo(),
+                r.getProducto().isActivo()
         );
     }
 }

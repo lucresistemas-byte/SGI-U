@@ -30,7 +30,7 @@ void main() {
     when(() => api.getProducts()).thenAnswer((_) async => [
           {'codigo': 'DUL-001', 'nombre': 'Flan', 'precioUnitario': 10, 'stockActual': 1, 'activo': true}
         ]);
-    when(() => api.getRecetas(incluirInactivas: any(named: 'incluirInactivas')))
+    when(() => api.getRecetas())
         .thenAnswer((_) async => []);
     when(() => api.createReceta(any())).thenAnswer(
         (_) async => const Receta(id: 9, espProductoCodigo: 'DUL-001', nombre: 'x'));

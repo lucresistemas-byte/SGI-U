@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -47,12 +48,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
     }
 
-    @ExceptionHandler(RecetaInactivaExistenteException.class)
-    public ResponseEntity<?> handleRecetaInactivaExistente(RecetaInactivaExistenteException e) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
-                "error", e.getMessage(),
-                "codigo", "RECETA_INACTIVA_EXISTENTE",
-                "recetaId", e.getRecetaId()));
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<?> handleRutaInexistente(NoResourceFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "error", "Operación no disponible: la ruta no existe."));
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)

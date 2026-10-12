@@ -25,9 +25,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Recetas sin eliminar: solo se activan/desactivan y se editan (E-6). */
+/**
+ * Recetas (corrección 4): no se eliminan ni se desactivan; lo que se desactiva
+ * es el producto elaborado, y la receta sigue visible con "productoActivo".
+ */
 @WithMockUser
-class RecetaEstadoIntegrationTest extends AbstractIntegrationTest {
+class RecetaIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private TestDataFactory datos;
@@ -53,10 +56,6 @@ class RecetaEstadoIntegrationTest extends AbstractIntegrationTest {
         return receta;
     }
 
-    private String estado(boolean activo) {
-        return "{\"activo\": " + activo + "}";
-    }
-
     private String recetaJson(String nombre, String cantidadHarina, String adicionales) {
         return "{\"espProductoCodigo\": \"REC-TORTA\", \"nombre\": \"" + nombre + "\", "
                 + "\"costosAdicionales\": " + adicionales + ", \"detalles\": [{\"materiaPrimaId\": "
@@ -68,21 +67,14 @@ class RecetaEstadoIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void desactivar_laOcultaDelListadoPorDefectoYSeVeConIncluirInactivas() throws Exception {
+    void elEndpointDeEstadoYaNoExiste_devuelve404EnJson() throws Exception {
         Receta receta = tortaConReceta();
 
         mockMvc.perform(patch("/api/recetas/" + receta.getId() + "/estado")
-                        .contentType(MediaType.APPLICATION_JSON).content(estado(false)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.activo").value(false));
-
-        mockMvc.perform(get("/api/recetas"))
-                .andExpect(jsonPath("$.length()").value(0));
-        mockMvc.perform(get("/api/recetas").param("incluirInactivas", "true"))
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].activo").value(false));
-        mockMvc.perform(get("/api/recetas/" + receta.getId()))
-                .andExpect(status().isOk());
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"activo\": false}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").isString());
+        assertThat(recetaRepository.findById(receta.getId()).orElseThrow().isActivo()).isTrue();
     }
 
     @Test
@@ -92,67 +84,48 @@ class RecetaEstadoIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(delete("/api/recetas/" + receta.getId()))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(jsonPath("$.error").isString());
-
-        assertThat(recetaRepository.findById(receta.getId()).orElseThrow().isActivo()).isTrue();
     }
 
     @Test
-    void crear_paraProductoConRecetaInactiva_devuelve409ConLaRecetaParaReactivar() throws Exception {
+    void conElProductoDesactivado_laRecetaSigueVisibleYLoIndica() throws Exception {
         Receta receta = tortaConReceta();
-        receta.setActivo(false);
+        mockMvc.perform(get("/api/recetas"))
+                .andExpect(jsonPath("$[0].productoActivo").value(true));
 
-        // Antes: 409 "El código de producto ya existe." (UNIQUE de la base).
-        mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
-                        .content(recetaJson("Nueva", "0.300", "0")))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.codigo").value("RECETA_INACTIVA_EXISTENTE"))
-                .andExpect(jsonPath("$.recetaId").value(receta.getId()))
-                .andExpect(jsonPath("$.error").value(
-                        "El producto Torta ya tiene una receta desactivada (Torta base). "
-                                + "Puede reactivarla y editarla."));
-    }
-
-    @Test
-    void editarUnaRecetaInactiva_seGuardaPeroNoCambiaElCostoDelProducto() throws Exception {
-        Receta receta = tortaConReceta();
-        receta.setActivo(false);
-
-        mockMvc.perform(put("/api/recetas/" + receta.getId()).contentType(MediaType.APPLICATION_JSON)
-                        .content(recetaJson("Torta v2", "0.500", "0")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nombre").value("Torta v2"))
-                .andExpect(jsonPath("$.activo").value(false));
-
-        assertThat(costoTorta()).isEqualByComparingTo("300.00");
-    }
-
-    @Test
-    void reactivar_recalculaElCostoDelProductoConLaReceta() throws Exception {
-        Receta receta = tortaConReceta();
-        receta.setActivo(false);
-        mockMvc.perform(put("/api/recetas/" + receta.getId()).contentType(MediaType.APPLICATION_JSON)
-                        .content(recetaJson("Torta v2", "0.500", "0")))
+        mockMvc.perform(put("/api/productos/editar/REC-TORTA").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"activo\": false}"))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(patch("/api/recetas/" + receta.getId() + "/estado")
-                        .contentType(MediaType.APPLICATION_JSON).content(estado(true)))
+        mockMvc.perform(get("/api/recetas"))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].espProductoCodigo").value("REC-TORTA"))
+                .andExpect(jsonPath("$[0].productoActivo").value(false));
+        mockMvc.perform(get("/api/recetas/" + receta.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.activo").value(true));
+                .andExpect(jsonPath("$.productoActivo").value(false));
+    }
+
+    @Test
+    void crearOtraRecetaParaUnProductoQueYaTiene_devuelve400() throws Exception {
+        tortaConReceta();
+
+        mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
+                        .content(recetaJson("Otra", "0.300", "0")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(
+                        "El producto Torta ya tiene una receta (Torta base). Edítela en lugar de crear otra."));
+    }
+
+    @Test
+    void editar_recalculaElCostoDelProducto() throws Exception {
+        Receta receta = tortaConReceta();
+
+        mockMvc.perform(put("/api/recetas/" + receta.getId()).contentType(MediaType.APPLICATION_JSON)
+                        .content(recetaJson("Torta v2", "0.500", "0")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombre").value("Torta v2"));
 
         assertThat(costoTorta()).isEqualByComparingTo("500.00");
-    }
-
-    @Test
-    void cambiarCostoDeUnInsumoDeRecetaInactiva_noTocaElProducto() throws Exception {
-        Receta receta = tortaConReceta();
-        receta.setActivo(false);
-
-        mockMvc.perform(put("/api/insumos/" + harina.getId()).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"codigo\": \"REC-HAR\", \"nombre\": \"Harina\", \"costoUnitario\": 2000, "
-                                + "\"unidadMedida\": \"KILO\"}"))
-                .andExpect(status().isOk());
-
-        assertThat(costoTorta()).isEqualByComparingTo("300.00");
     }
 
     /** Problema 2: el error nombraba el ID del insumo ("ID de insumo: 4"). */

@@ -540,12 +540,10 @@ class ApiService implements PosApi {
   }
 
   // --- RECETAS ---
-  /// Con [incluirInactivas] trae también las recetas desactivadas.
-  Future<List<Receta>> getRecetas({bool incluirInactivas = false}) async {
+  /// Todas las recetas (no se eliminan ni se desactivan; ver productoActivo).
+  Future<List<Receta>> getRecetas() async {
     try {
-      final response = await dio.get('/api/recetas',
-          queryParameters:
-              incluirInactivas ? {'incluirInactivas': true} : null);
+      final response = await dio.get('/api/recetas');
       if (response.statusCode == 200) {
         final List list = response.data as List;
         return list.map((item) => Receta.fromJson(item as Map<String, dynamic>)).toList();
@@ -600,22 +598,6 @@ class ApiService implements PosApi {
     }
   }
 
-  /// Activa o desactiva una receta (las recetas no se eliminan).
-  Future<Receta> cambiarEstadoReceta(int id, {required bool activo}) async {
-    try {
-      final response =
-          await dio.patch('/api/recetas/$id/estado', data: {'activo': activo});
-      if (response.statusCode == 200) {
-        return Receta.fromJson(response.data as Map<String, dynamic>);
-      } else {
-        throw const ApiException(
-            'No se pudo cambiar el estado de la receta. Intente nuevamente.');
-      }
-    } on DioException catch (e) {
-      throw ApiException(mensajeDeError(
-          e, 'No se pudo cambiar el estado de la receta. Intente nuevamente.'));
-    }
-  }
 
   // --- PEDIDOS CON SEÑA ---
   Future<List<Pedido>> getPedidos({String? query}) async {

@@ -27,7 +27,7 @@ void main() {
           {'codigo': 'REV-1', 'nombre': 'Coca-Cola', 'precioUnitario': 1500, 'stockActual': 24, 'tipo': 'REVENTA'},
         ]);
     when(() => api.getCategorias()).thenAnswer((_) async => const [Categoria(id: 7, nombre: 'Tortas')]);
-    when(() => api.getRecetas(incluirInactivas: any(named: 'incluirInactivas'))).thenAnswer((_) async => const [
+    when(() => api.getRecetas()).thenAnswer((_) async => const [
           Receta(id: 1, espProductoCodigo: 'ELA-1', espProductoNombre: 'Tarta de coco', nombre: 'Tarta'),
         ]);
     when(() => api.createReceta(any())).thenAnswer(
