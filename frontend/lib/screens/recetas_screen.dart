@@ -143,6 +143,13 @@ class _RecetasScreenState extends State<RecetasScreen> {
       child: AppScaffold(
         body: BlocConsumer<RecetasBloc, RecetasState>(
           bloc: _bloc,
+          // Solo cuando aparece un mensaje nuevo: si no, cada estado posterior
+          // (p. ej. la recarga de la lista) lo volvía a mostrar.
+          listenWhen: (previous, current) =>
+              previous.successMessage != current.successMessage ||
+              previous.errorMessage != current.errorMessage ||
+              previous.recetaInactivaExistenteId !=
+                  current.recetaInactivaExistenteId,
           listener: (context, state) {
             if (state.recetaInactivaExistenteId != null) {
               _ofrecerReactivar(state);
@@ -163,6 +170,9 @@ class _RecetasScreenState extends State<RecetasScreen> {
                   backgroundColor: Colors.redAccent,
                 ),
               );
+            }
+            if (state.successMessage != null || state.errorMessage != null) {
+              _bloc.add(const LimpiarMensajesRecetas());
             }
           },
           builder: (context, state) {

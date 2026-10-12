@@ -141,3 +141,8 @@ class ReactivarRecetaConDatos extends RecetasEvent {
 class DescartarRecetaInactivaExistente extends RecetasEvent {
   const DescartarRecetaInactivaExistente();
 }
+
+/// Los mensajes ya se mostraron: se limpian para que no se repitan.
+class LimpiarMensajesRecetas extends RecetasEvent {
+  const LimpiarMensajesRecetas();
+}

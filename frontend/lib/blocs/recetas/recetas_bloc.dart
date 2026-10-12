@@ -25,6 +25,8 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
     on<GuardarReceta>(_onGuardarReceta);
     on<CambiarEstadoReceta>(_onCambiarEstadoReceta);
     on<ReactivarRecetaConDatos>(_onReactivarRecetaConDatos);
+    on<LimpiarMensajesRecetas>((event, emit) =>
+        emit(state.copyWith(clearError: true, clearSuccess: true)));
     on<DescartarRecetaInactivaExistente>((event, emit) =>
         emit(state.copyWith(clearRecetaInactivaExistente: true)));
   }

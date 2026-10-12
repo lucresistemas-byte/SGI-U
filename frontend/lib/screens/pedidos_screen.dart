@@ -439,6 +439,11 @@ class _PedidosScreenState extends State<PedidosScreen> {
       child: AppScaffold(
         body: BlocConsumer<PedidosBloc, PedidosState>(
           bloc: _bloc,
+          // Solo cuando aparece un mensaje nuevo: la recarga posterior a crear o
+          // abonar volvía a emitirlo antes de que se limpiara.
+          listenWhen: (previous, current) =>
+              previous.successMessage != current.successMessage ||
+              previous.errorMessage != current.errorMessage,
           listener: (context, state) {
             if (state.successMessage != null) {
               ScaffoldMessenger.of(context).showSnackBar(
