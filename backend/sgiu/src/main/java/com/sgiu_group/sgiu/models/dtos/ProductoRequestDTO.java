@@ -17,7 +17,11 @@ public record ProductoRequestDTO(
     @Min(value = 0, message = "El stock no puede ser negativo.")
     Long stockActual,
     Integer stockMinimo,
-    Boolean activo
+    Boolean activo,
+    /** Obligatorio al crear (ver TipoArticulo); no se puede cambiar al editar. */
+    String tipo,
+    /** false = preparación base (solo ELABORADO). */
+    Boolean vendible
 ) {
     public ProductoRequestDTO(
             String codigo,
@@ -37,7 +41,9 @@ public record ProductoRequestDTO(
             null,
             stockActual,
             stockMinimo,
-            activo
+            activo,
+            "REVENTA",
+            null
         );
     }
 
@@ -63,7 +69,9 @@ public record ProductoRequestDTO(
             categoriaId,
             stockActual,
             stockMinimo,
-            activo
+            activo,
+            "REVENTA",
+            null
         );
     }
 }

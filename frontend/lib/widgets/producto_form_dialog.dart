@@ -214,6 +214,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
       'codigo': _esEdicion
           ? widget.productoAEditar!.codigo
           : _codigoController.text.trim(),
+      // Desde Productos solo se crea reventa; los elaborados nacen en Recetas.
+      if (!_esEdicion) 'tipo': 'REVENTA',
       'nombre': _nombreController.text.trim(),
       'precioUnitario': double.parse(
           _precioController.text.trim().replaceAll(',', '.')), // aceptar coma

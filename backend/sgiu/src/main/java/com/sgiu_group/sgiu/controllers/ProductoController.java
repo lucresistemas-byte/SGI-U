@@ -22,8 +22,12 @@ public class ProductoController {
     private final ProductoService productoService;
 
     @GetMapping
-    public ResponseEntity<List<ProductoCatalogoDTO>> listarProductos(@RequestParam(required = false) String categoria) {
-        return ResponseEntity.ok(productoService.getCatalogo(categoria));
+    /** Filtros opcionales: categoria, tipo (TipoArticulo) y vendible (true = lo que ve el POS). */
+    public ResponseEntity<List<ProductoCatalogoDTO>> listarProductos(
+            @RequestParam(required = false) String categoria,
+            @RequestParam(required = false) String tipo,
+            @RequestParam(required = false) Boolean vendible) {
+        return ResponseEntity.ok(productoService.getCatalogo(categoria, tipo, vendible));
     }
 
     @PostMapping("/crear")

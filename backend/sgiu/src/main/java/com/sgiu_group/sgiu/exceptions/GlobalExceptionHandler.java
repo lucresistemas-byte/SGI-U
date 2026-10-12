@@ -61,6 +61,11 @@ public class GlobalExceptionHandler {
                 "error", "Operación no disponible: " + e.getMethod() + " no está permitido en esta ruta."));
     }
 
+    @ExceptionHandler(ProductoInvalidoException.class)
+    public ResponseEntity<?> handleProductoInvalido(ProductoInvalidoException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+    }
+
     @ExceptionHandler(StockInsuficienteException.class)
     public ResponseEntity<?> handleStockInsuficiente(StockInsuficienteException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));

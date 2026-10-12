@@ -28,12 +28,14 @@ public interface EspProductoRepository extends JpaRepository<EspProducto, Long> 
                c.nombre,
                COALESCE(SUM(s.cantidad), 0L),
                COALESCE(s.stockMinimo, 0),
-               p.activo
+               p.activo,
+               p.tipo,
+               p.vendible
            )
            FROM EspProducto p
            LEFT JOIN p.categoria c
            LEFT JOIN ArticuloStock s ON s.espProducto = p
-           GROUP BY p.codigo, p.nombre, p.precioUnitario, p.precioCosto, p.porcentajeGanancia, p.unidadMedida, c.nombre, p.activo, s.stockMinimo
+           GROUP BY p.codigo, p.nombre, p.precioUnitario, p.precioCosto, p.porcentajeGanancia, p.unidadMedida, c.nombre, p.activo, s.stockMinimo, p.tipo, p.vendible
            """)
     List<ProductoCatalogoDTO> obtenerCatalogo();
 
@@ -48,13 +50,15 @@ public interface EspProductoRepository extends JpaRepository<EspProducto, Long> 
                c.nombre,
                COALESCE(SUM(s.cantidad), 0L),
                COALESCE(s.stockMinimo, 0),
-               p.activo
+               p.activo,
+               p.tipo,
+               p.vendible
            )
            FROM EspProducto p
            LEFT JOIN p.categoria c
            LEFT JOIN ArticuloStock s ON s.espProducto = p
            WHERE (:categoria IS NULL OR LOWER(c.nombre) = LOWER(:categoria))
-           GROUP BY p.codigo, p.nombre, p.precioUnitario, p.precioCosto, p.porcentajeGanancia, p.unidadMedida, c.nombre, p.activo, s.stockMinimo
+           GROUP BY p.codigo, p.nombre, p.precioUnitario, p.precioCosto, p.porcentajeGanancia, p.unidadMedida, c.nombre, p.activo, s.stockMinimo, p.tipo, p.vendible
            """)
     List<ProductoCatalogoDTO> obtenerCatalogoPorCategoria(@Param("categoria") String categoria);
 }
