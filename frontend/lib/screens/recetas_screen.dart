@@ -156,6 +156,11 @@ class _RecetasScreenState extends State<RecetasScreen> {
               return;
             }
             if (state.successMessage != null) {
+              // En el armador, el único éxito posible es guardar (o reactivar
+              // con los datos): recién ahí se vuelve a la lista.
+              if (_isBuilding) {
+                setState(() => _isBuilding = false);
+              }
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.successMessage!),
@@ -400,10 +405,9 @@ class _RecetasScreenState extends State<RecetasScreen> {
                 ),
                 onPressed: (state.isFormValid && !state.isSaving)
                     ? () {
+                        // El armador se cierra recién cuando el guardado sale
+                        // bien (ver listener); si falla, queda abierto.
                         _bloc.add(const GuardarReceta());
-                        setState(() {
-                          _isBuilding = false;
-                        });
                       }
                     : null,
               ),
