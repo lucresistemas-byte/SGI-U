@@ -71,15 +71,19 @@ class _SideMenuState extends State<SideMenu> {
                 if (!compacto) ...[
                   const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      ApiService.configuracionActual?.nombre.isNotEmpty == true
-                          ? ApiService.configuracionActual!.nombre
-                          : 'SGI-U',
-                      style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E293B)),
-                      overflow: TextOverflow.ellipsis,
+                    // Escucha la configuración: al guardar un nombre nuevo en
+                    // Configuración, se ve acá en el momento.
+                    child: ValueListenableBuilder(
+                      valueListenable: ApiService.configuracion,
+                      builder: (context, config, _) => Text(
+                        config?.nombre.isNotEmpty == true ? config!.nombre : 'SGI-U',
+                        key: const Key('nombre_negocio_menu'),
+                        style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1E293B)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 ]

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../models/product.dart';
 import '../models/categoria.dart';
 import '../models/configuracion_negocio.dart';
@@ -370,7 +371,13 @@ class ApiService implements PosApi {
     }
   }
 
-  static ConfiguracionNegocio? configuracionActual;
+  /// Configuración del negocio vigente. Es un ValueNotifier para que la UI
+  /// (p. ej. el nombre en el menú lateral) se actualice al guardarla.
+  static final ValueNotifier<ConfiguracionNegocio?> configuracion = ValueNotifier(null);
+
+  static ConfiguracionNegocio? get configuracionActual => configuracion.value;
+
+  static set configuracionActual(ConfiguracionNegocio? valor) => configuracion.value = valor;
 
   Future<ConfiguracionNegocio> getConfiguracion() async {
     try {
