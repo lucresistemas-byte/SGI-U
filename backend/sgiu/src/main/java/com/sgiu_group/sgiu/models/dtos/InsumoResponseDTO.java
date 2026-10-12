@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 public record InsumoResponseDTO(
     Long id,
     String codigo,
+    String tipo,
     String nombre,
     BigDecimal costoUnitario,
     String unidadMedida,

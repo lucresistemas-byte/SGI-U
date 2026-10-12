@@ -11,6 +11,16 @@ class RecetaDetalle extends Equatable {
   final double costoUnitario;
   final double subtotal;
 
+  /// Clave estable de la fila en el armador (solo UI, no se envía ni se
+  /// compara): identifica la fila aunque cambie su insumo o esté vacía.
+  final int? claveUi;
+
+  /// Fila recién agregada, todavía sin insumo elegido.
+  bool get sinInsumo => materiaPrimaId <= 0;
+
+  /// Fila con insumo y cantidad: se puede guardar.
+  bool get completa => !sinInsumo && cantidad > 0;
+
   const RecetaDetalle({
     this.id,
     required this.materiaPrimaId,
@@ -20,6 +30,7 @@ class RecetaDetalle extends Equatable {
     this.unidadMedida = 'UNIDAD',
     this.costoUnitario = 0.0,
     double? subtotal,
+    this.claveUi,
   }) : subtotal = subtotal ?? (cantidad * costoUnitario);
 
   factory RecetaDetalle.fromJson(Map<String, dynamic> json) {
@@ -63,6 +74,7 @@ class RecetaDetalle extends Equatable {
     String? unidadMedida,
     double? costoUnitario,
     double? subtotal,
+    int? claveUi,
   }) {
     final cant = cantidad ?? this.cantidad;
     final costo = costoUnitario ?? this.costoUnitario;
@@ -75,6 +87,7 @@ class RecetaDetalle extends Equatable {
       unidadMedida: unidadMedida ?? this.unidadMedida,
       costoUnitario: costo,
       subtotal: subtotal ?? (cant * costo),
+      claveUi: claveUi ?? this.claveUi,
     );
   }
 

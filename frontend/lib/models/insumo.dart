@@ -11,6 +11,17 @@ class Insumo extends Equatable {
   final int? stockMinimo;
   final bool activo;
 
+  /// MATERIA_PRIMA, INSUMO o REVENTA_MATERIA_PRIMA (define el prefijo del código).
+  final String tipo;
+
+  static const tipos = {
+    'MATERIA_PRIMA': 'Materia prima',
+    'INSUMO': 'Insumo',
+    'REVENTA_MATERIA_PRIMA': 'Reventa + materia prima',
+  };
+
+  String get descripcionTipo => tipos[tipo] ?? tipo;
+
   const Insumo({
     this.id,
     required this.codigo,
@@ -20,6 +31,7 @@ class Insumo extends Equatable {
     this.stockActual = 0,
     this.stockMinimo,
     this.activo = true,
+    this.tipo = 'MATERIA_PRIMA',
   });
 
   factory Insumo.fromJson(Map<String, dynamic> json) {
@@ -32,6 +44,7 @@ class Insumo extends Equatable {
       stockActual: parseInt(json['stockActual'] ?? json['stock_actual']),
       stockMinimo: json['stockMinimo'] != null ? parseInt(json['stockMinimo']) : null,
       activo: json['activo'] == true || json['activo'] == 1 || json['activo'] == null,
+      tipo: json['tipo']?.toString() ?? 'MATERIA_PRIMA',
     );
   }
 
@@ -45,6 +58,7 @@ class Insumo extends Equatable {
       'stockActual': stockActual,
       if (stockMinimo != null) 'stockMinimo': stockMinimo,
       'activo': activo,
+      'tipo': tipo,
     };
   }
 
@@ -57,6 +71,7 @@ class Insumo extends Equatable {
     int? stockActual,
     int? stockMinimo,
     bool? activo,
+    String? tipo,
   }) {
     return Insumo(
       id: id ?? this.id,
@@ -67,6 +82,7 @@ class Insumo extends Equatable {
       stockActual: stockActual ?? this.stockActual,
       stockMinimo: stockMinimo ?? this.stockMinimo,
       activo: activo ?? this.activo,
+      tipo: tipo ?? this.tipo,
     );
   }
 
@@ -80,5 +96,6 @@ class Insumo extends Equatable {
         stockActual,
         stockMinimo,
         activo,
+        tipo,
       ];
 }

@@ -16,17 +16,20 @@ class ProductoFormDialog extends StatefulWidget {
 
 class _ProductoFormDialogState extends State<ProductoFormDialog> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _codigoController;
   late TextEditingController _nombreController;
   late TextEditingController _precioController;
   late TextEditingController _costoController;
   late TextEditingController _porcentajeController;
   late bool _activo;
 
+  /// Preparación base: solo aplica a productos elaborados.
+  late bool _preparacionBase;
+
   // Stock inicial (solo creación)
   late TextEditingController _stockInicialController;
   // Controles de ajuste (solo edición)
   late TextEditingController _ajusteCantidadController;
+  late TextEditingController _stockMinimoController;
   String _ajusteTipo = 'sumar';
   int _stockActualMostrado = 0;
 
@@ -47,8 +50,6 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   void initState() {
     super.initState();
     final prod = widget.productoAEditar;
-    _codigoController = TextEditingController(
-        text: _esEdicion ? prod!.codigo : '');
     _nombreController = TextEditingController(
         text: _esEdicion ? prod!.nombre : '');
     _precioController = TextEditingController(
@@ -70,32 +71,35 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                 : prod.porcentajeGanancia!.toString())
             : '');
     _activo = _esEdicion ? prod!.activo : true;
+    _preparacionBase = _esEdicion && prod!.esPreparacionBase;
     _unidadMedida = prod?.unidadMedida ?? 'UNIDAD';
     _stockInicialController = TextEditingController(text: '0');
     _ajusteCantidadController = TextEditingController(text: '0');
+    _stockMinimoController =
+        TextEditingController(text: '${prod?.stockMinimo ?? 0}');
     if (_esEdicion) {
       _stockActualMostrado = prod!.stockActual;
     }
 
     // Listeners para actualizar estado del diálogo cuando cambian campos
-    _codigoController.addListener(() => setState(() {}));
     _nombreController.addListener(() => setState(() {}));
     _precioController.addListener(() => setState(() {}));
     _costoController.addListener(() => setState(() {}));
     _porcentajeController.addListener(() => setState(() {}));
     _stockInicialController.addListener(() => setState(() {}));
     _ajusteCantidadController.addListener(() => setState(() {}));
+    _stockMinimoController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
-    _codigoController.dispose();
     _nombreController.dispose();
     _precioController.dispose();
     _costoController.dispose();
     _porcentajeController.dispose();
     _stockInicialController.dispose();
     _ajusteCantidadController.dispose();
+    _stockMinimoController.dispose();
     super.dispose();
   }
 
@@ -178,6 +182,11 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     return stock != null && stock >= 0;
   }
 
+  bool _isStockMinimoValido() {
+    final minimo = int.tryParse(_stockMinimoController.text.trim());
+    return minimo != null && minimo >= 0;
+  }
+
   bool _isAjusteValido() {
     if (!_esEdicion) return true;
     final cantidad = int.tryParse(_ajusteCantidadController.text.trim()) ?? 0;
@@ -191,14 +200,13 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
 
   bool _isFormValid() {
     final nombreValido = _nombreController.text.trim().isNotEmpty;
-    final codigoValido = _codigoController.text.trim().isNotEmpty;
     final precioValido = _isPrecioValido();
     final stockInicialValido = _isStockInicialValido();
     final ajusteValido = _isAjusteValido();
     return nombreValido &&
-        codigoValido &&
         precioValido &&
         stockInicialValido &&
+        _isStockMinimoValido() &&
         ajusteValido;
   }
 
@@ -211,19 +219,22 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
         : 0.0;
 
     final data = <String, dynamic>{
-      'codigo': _esEdicion
-          ? widget.productoAEditar!.codigo
-          : _codigoController.text.trim(),
+      // Al crear, el código lo genera el sistema (REV-0001, ...).
+      if (_esEdicion) 'codigo': widget.productoAEditar!.codigo,
+      // Desde Productos solo se crea reventa; los elaborados nacen en Recetas.
+      if (!_esEdicion) 'tipo': 'REVENTA',
       'nombre': _nombreController.text.trim(),
       'precioUnitario': double.parse(
           _precioController.text.trim().replaceAll(',', '.')), // aceptar coma
       'activo': _activo,
+      if (_esEdicion && widget.productoAEditar!.esElaborado) 'vendible': !_preparacionBase,
       'unidadMedida': _unidadMedida,
       'unidad_medida': _unidadMedida,
       'precioCosto': costoVal,
       'precio_costo': costoVal,
       'porcentajeGanancia': porcentajeVal,
       'porcentaje_ganancia': porcentajeVal,
+      'stockMinimo': int.parse(_stockMinimoController.text.trim()),
     };
 
     if (widget.productoAEditar?.categoria != null) {
@@ -307,14 +318,28 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Código
-                    TextFormField(
-                      controller: _codigoController,
-                      decoration:
-                          const InputDecoration(labelText: 'Código (SKU)'),
-                      enabled: !_esEdicion,
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'Requerido' : null,
+                    // Tipo: desde acá solo se crea reventa; al editar no cambia.
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _esEdicion
+                            ? 'Tipo: ${widget.productoAEditar!.esElaborado ? 'Elaborado' : 'Reventa'}'
+                            : 'Tipo: Reventa. Los productos elaborados se crean desde Recetas.',
+                        key: const Key('tipo_producto_form'),
+                        style: const TextStyle(color: Color(0xFF475569)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Código: lo genera el sistema; solo se muestra al editar.
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _esEdicion
+                            ? 'Código: ${widget.productoAEditar!.codigo}'
+                            : 'El código se genera automáticamente al guardar.',
+                        key: const Key('codigo_producto_form'),
+                        style: const TextStyle(color: Color(0xFF475569)),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     // Nombre
@@ -422,6 +447,22 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                         if (value != null) {
                           setStateDialog(() => _unidadMedida = value);
                         }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      key: const Key('producto_stock_minimo_input'),
+                      controller: _stockMinimoController,
+                      decoration: const InputDecoration(
+                        labelText: 'Stock mínimo: avisar cuando queden menos de',
+                        suffixText: 'unidades',
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        final minimo = int.tryParse(value?.trim() ?? '');
+                        if (minimo == null) return 'Debe ser un número entero';
+                        if (minimo < 0) return 'No puede ser negativo';
+                        return null;
                       },
                     ),
                     const SizedBox(height: 16),
@@ -535,6 +576,16 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                       ),
                       const SizedBox(height: 16),
                     ],
+                    if (_esEdicion && widget.productoAEditar!.esElaborado)
+                      CheckboxListTile(
+                        key: const Key('preparacion_base_check'),
+                        contentPadding: EdgeInsets.zero,
+                        value: _preparacionBase,
+                        onChanged: (v) =>
+                            setStateDialog(() => _preparacionBase = v ?? false),
+                        title: const Text('Preparación base (no se vende)'),
+                        subtitle: const Text('Ej.: ganache. No aparece en el punto de venta.'),
+                      ),
                     // Estado
                     Row(
                       children: [

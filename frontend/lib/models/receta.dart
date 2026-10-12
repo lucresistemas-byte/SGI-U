@@ -13,6 +13,10 @@ class Receta extends Equatable {
   final List<RecetaDetalle> detalles;
   final bool activo;
 
+  /// false = el producto elaborado está desactivado (no se vende en el POS).
+  /// La receta sigue visible.
+  final bool productoActivo;
+
   const Receta({
     this.id,
     required this.espProductoCodigo,
@@ -23,6 +27,7 @@ class Receta extends Equatable {
     double? costoTotal,
     this.detalles = const [],
     this.activo = true,
+    this.productoActivo = true,
   }) : costoTotal = costoTotal ?? 0.0;
 
   factory Receta.fromJson(Map<String, dynamic> json) {
@@ -49,6 +54,7 @@ class Receta extends Equatable {
       costoTotal: calculatedCosto,
       detalles: detallesList,
       activo: json['activo'] == true || json['activo'] == 1 || json['activo'] == null,
+      productoActivo: json['productoActivo'] != false,
     );
   }
 
@@ -80,6 +86,7 @@ class Receta extends Equatable {
     double? costoTotal,
     List<RecetaDetalle>? detalles,
     bool? activo,
+    bool? productoActivo,
   }) {
     final list = detalles ?? this.detalles;
     final extra = costosAdicionales ?? this.costosAdicionales;
@@ -95,6 +102,7 @@ class Receta extends Equatable {
       costoTotal: total,
       detalles: list,
       activo: activo ?? this.activo,
+      productoActivo: productoActivo ?? this.productoActivo,
     );
   }
 

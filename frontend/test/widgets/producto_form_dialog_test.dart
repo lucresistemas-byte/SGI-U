@@ -90,9 +90,6 @@ void main() {
     testWidgets('precio <= 0 o campos sin completar mantienen el botón '
         'deshabilitado', (WidgetTester tester) async {
       await _pumpDialog(tester, fake);
-
-      await tester.enterText(
-          find.widgetWithText(TextFormField, 'Código (SKU)'), 'P9');
       await tester.enterText(
           find.widgetWithText(TextFormField, 'Nombre del Producto'), 'Agua');
       await tester.enterText(
@@ -105,9 +102,6 @@ void main() {
     testWidgets('formulario válido: habilita Guardar y crea el producto',
         (WidgetTester tester) async {
       await _pumpDialog(tester, fake);
-
-      await tester.enterText(
-          find.widgetWithText(TextFormField, 'Código (SKU)'), 'P9');
       await tester.enterText(
           find.widgetWithText(TextFormField, 'Nombre del Producto'), 'Agua');
       await tester.enterText(
@@ -121,19 +115,39 @@ void main() {
 
       expect(find.text('Nuevo Producto'), findsNothing);
       expect(fake.createCalled, isTrue);
-      expect(fake.createData!['codigo'], 'P9');
+      // El código lo genera el backend: no se envía al crear.
+      expect(fake.createData!.containsKey('codigo'), isFalse);
       expect(fake.createData!['nombre'], 'Agua');
       expect(fake.createData!['precioUnitario'], 50.0);
       expect(fake.getProductsCalled, isTrue);
     });
 
-    testWidgets('el backend 409 muestra el mensaje de código duplicado',
+    testWidgets('el stock mínimo se envía al crear y bloquea Guardar si es inválido',
+        (WidgetTester tester) async {
+      await _pumpDialog(tester, fake);
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Nombre del Producto'), 'Agua');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Precio Unitario (\$)'), '50');
+      final minimo = find.byKey(const Key('producto_stock_minimo_input'));
+      expect(find.text('Stock mínimo: avisar cuando queden menos de'), findsOneWidget);
+
+      await tester.enterText(minimo, '-1');
+      await tester.pump();
+      expect(_btnGuardar(tester).onPressed, isNull);
+
+      await tester.enterText(minimo, '6');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar Producto'));
+      await tester.pumpAndSettle();
+
+      expect(fake.createData!['stockMinimo'], 6);
+    });
+
+    testWidgets('si el backend rechaza el alta, muestra el mensaje y no cierra',
         (WidgetTester tester) async {
       fake.createError = Exception('El código de producto ya existe');
       await _pumpDialog(tester, fake);
-
-      await tester.enterText(
-          find.widgetWithText(TextFormField, 'Código (SKU)'), 'P1');
       await tester.enterText(
           find.widgetWithText(TextFormField, 'Nombre del Producto'), 'Duplicado');
       await tester.enterText(
@@ -167,7 +181,7 @@ void main() {
       await _pumpDialog(tester, fake, producto: producto);
 
       expect(find.text('Editar Producto'), findsOneWidget);
-      expect(find.text('P1'), findsOneWidget);
+      expect(find.text('Código: P1'), findsOneWidget);
       expect(find.text('Café'), findsOneWidget);
       expect(find.text('150'), findsOneWidget);
       expect(find.text('Stock actual: 10 unidades'), findsOneWidget);

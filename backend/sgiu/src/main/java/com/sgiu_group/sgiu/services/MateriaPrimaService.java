@@ -8,6 +8,7 @@ import com.sgiu_group.sgiu.models.dtos.InsumoResponseDTO;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.models.entities.MateriaPrima;
 import com.sgiu_group.sgiu.models.entities.Receta;
+import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.models.entities.UnidadMedida;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
 import com.sgiu_group.sgiu.repositories.MateriaPrimaRepository;
@@ -28,6 +29,7 @@ public class MateriaPrimaService {
     private final MateriaPrimaRepository materiaPrimaRepository;
     private final RecetaRepository recetaRepository;
     private final EspProductoRepository espProductoRepository;
+    private final CodigoService codigoService;
 
     @Transactional(readOnly = true)
     public List<InsumoResponseDTO> listarTodos(boolean incluirInactivos) {
@@ -48,19 +50,17 @@ public class MateriaPrimaService {
 
     @Transactional
     public InsumoResponseDTO crear(InsumoRequestDTO dto) {
-        if (materiaPrimaRepository.existsByCodigo(dto.codigo())) {
-            throw new RecetaInvalidaException("Ya existe un insumo con el código: " + dto.codigo());
-        }
-
+        TipoArticulo tipo = parseTipo(dto.tipo());
         UnidadMedida unidad = parseUnidad(dto.unidadMedida());
         MateriaPrima mp = new MateriaPrima(
-                dto.codigo().trim(),
+                codigoService.siguiente(tipo),
                 dto.nombre().trim(),
                 dto.costoUnitario(),
                 unidad,
                 dto.stockActual() != null ? dto.stockActual() : 0,
                 dto.stockMinimo() != null ? dto.stockMinimo() : 0
         );
+        mp.setTipo(tipo);
 
         MateriaPrima guardada = materiaPrimaRepository.save(mp);
         log.info("[INSUMO] Creado insumo '{}' ({}) con costo unitario ${}", guardada.getNombre(), guardada.getCodigo(), guardada.getCostoUnitario());
@@ -112,6 +112,23 @@ public class MateriaPrimaService {
                 guardada.getNombre(), dto.cantidad(), dto.motivo(), guardada.getStockActual());
 
         return toResponseDTO(guardada);
+    }
+
+    /** Tipo elegido en el alta de Materia Prima; por defecto, materia prima. */
+    private static TipoArticulo parseTipo(String tipo) {
+        if (tipo == null || tipo.isBlank()) {
+            return TipoArticulo.MATERIA_PRIMA;
+        }
+        try {
+            TipoArticulo t = TipoArticulo.valueOf(tipo.trim().toUpperCase());
+            if (t.esDeMateriaPrima()) {
+                return t;
+            }
+        } catch (IllegalArgumentException ignored) {
+            // cae al mensaje de abajo
+        }
+        throw new RecetaInvalidaException(
+                "Tipo no válido: " + tipo + ". Elija materia prima, insumo o reventa + materia prima.");
     }
 
     /**
@@ -178,6 +195,7 @@ public class MateriaPrimaService {
         return new InsumoResponseDTO(
                 mp.getId(),
                 mp.getCodigo(),
+                mp.getTipo().name(),
                 mp.getNombre(),
                 mp.getCostoUnitario(),
                 mp.getUnidadMedida().name(),

@@ -89,6 +89,11 @@ class AgregarFilaInsumo extends RecetasEvent {
   List<Object?> get props => [insumo, cantidad];
 }
 
+/// Agrega una fila vacía: el usuario elige el insumo y escribe la cantidad.
+class AgregarFilaVacia extends RecetasEvent {
+  const AgregarFilaVacia();
+}
+
 /// Cambia el insumo de una fila en su lugar, conservando la cantidad.
 class CambiarInsumoFila extends RecetasEvent {
   final int index;
@@ -126,34 +131,48 @@ class GuardarReceta extends RecetasEvent {
   const GuardarReceta();
 }
 
-/// Activa o desactiva una receta (las recetas no se eliminan).
-class CambiarEstadoReceta extends RecetasEvent {
-  final int id;
-  final bool activo;
-
-  const CambiarEstadoReceta(this.id, {required this.activo});
-
-  @override
-  List<Object?> get props => [id, activo];
-}
-
-/// El producto ya tenía una receta desactivada: se le guardan los datos del
-/// formulario y se la reactiva, en lugar de crear otra.
-class ReactivarRecetaConDatos extends RecetasEvent {
-  final int id;
-
-  const ReactivarRecetaConDatos(this.id);
-
-  @override
-  List<Object?> get props => [id];
-}
-
-/// El usuario no quiso reactivar la receta existente.
-class DescartarRecetaInactivaExistente extends RecetasEvent {
-  const DescartarRecetaInactivaExistente();
-}
-
 /// Los mensajes ya se mostraron: se limpian para que no se repitan.
 class LimpiarMensajesRecetas extends RecetasEvent {
   const LimpiarMensajesRecetas();
+}
+
+/// Al crear: usar un producto elaborado existente o crear uno nuevo.
+class CambiarModoProductoReceta extends RecetasEvent {
+  final bool productoNuevo;
+
+  const CambiarModoProductoReceta({required this.productoNuevo});
+
+  @override
+  List<Object?> get props => [productoNuevo];
+}
+
+/// Datos del producto elaborado que se crea junto con la receta. Los campos
+/// en null no cambian; [quitarCategoria] deja la categoría vacía.
+/// Crea una categoría desde el armador y la deja elegida para el producto nuevo.
+class CrearCategoriaReceta extends RecetasEvent {
+  final String nombre;
+  const CrearCategoriaReceta(this.nombre);
+
+  @override
+  List<Object?> get props => [nombre];
+}
+
+class ActualizarProductoNuevoReceta extends RecetasEvent {
+  final String? nombre;
+  final int? categoriaId;
+  final bool quitarCategoria;
+  final double? porcentajeGanancia;
+  final bool? preparacionBase;
+
+  const ActualizarProductoNuevoReceta({
+    this.nombre,
+    this.categoriaId,
+    this.quitarCategoria = false,
+    this.porcentajeGanancia,
+    this.preparacionBase,
+  });
+
+  @override
+  List<Object?> get props =>
+      [nombre, categoriaId, quitarCategoria, porcentajeGanancia, preparacionBase];
 }

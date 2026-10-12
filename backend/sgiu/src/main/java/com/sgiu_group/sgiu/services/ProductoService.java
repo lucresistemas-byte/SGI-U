@@ -5,6 +5,8 @@ import com.sgiu_group.sgiu.models.dtos.ProductoRequestDTO;
 import com.sgiu_group.sgiu.models.entities.ArticuloStock;
 import com.sgiu_group.sgiu.models.entities.Categoria;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
+import com.sgiu_group.sgiu.models.entities.TipoArticulo;
+import com.sgiu_group.sgiu.exceptions.ProductoInvalidoException;
 import com.sgiu_group.sgiu.models.entities.UnidadMedida;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
 import com.sgiu_group.sgiu.repositories.CategoriaRepository;
@@ -21,16 +23,58 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductoService {
 
+    private final CodigoService codigoService;
     private final EspProductoRepository productoRepository;
     private final ArticuloStockRepository stockRepository;
     private final CategoriaRepository categoriaRepository;
 
     @Transactional(readOnly = true)
     public List<ProductoCatalogoDTO> getCatalogo(String categoria) {
-        if (categoria != null && !categoria.isBlank()) {
-            return productoRepository.obtenerCatalogoPorCategoria(categoria.trim());
+        return getCatalogo(categoria, null, null);
+    }
+
+    /**
+     * Catálogo con filtros opcionales: [tipo] (ver TipoArticulo) y [vendible]
+     * (true = lo que se vende en el POS: activo, de un tipo vendible y que no
+     * sea preparación base).
+     */
+    @Transactional(readOnly = true)
+    public List<ProductoCatalogoDTO> getCatalogo(String categoria, String tipo, Boolean vendible) {
+        List<ProductoCatalogoDTO> catalogo = (categoria != null && !categoria.isBlank())
+                ? productoRepository.obtenerCatalogoPorCategoria(categoria.trim())
+                : productoRepository.obtenerCatalogo();
+        TipoArticulo filtroTipo = (tipo != null && !tipo.isBlank()) ? parseTipo(tipo) : null;
+        return catalogo.stream()
+                .filter(p -> filtroTipo == null || p.tipo() == filtroTipo)
+                .filter(p -> vendible == null || esVendibleEnPos(p) == vendible)
+                .toList();
+    }
+
+    private static boolean esVendibleEnPos(ProductoCatalogoDTO p) {
+        return Boolean.TRUE.equals(p.activo()) && p.tipo().seVende() && Boolean.TRUE.equals(p.vendible());
+    }
+
+    private static TipoArticulo parseTipo(String tipo) {
+        try {
+            return TipoArticulo.valueOf(tipo.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ProductoInvalidoException("Tipo de producto no válido: " + tipo);
         }
-        return productoRepository.obtenerCatalogo();
+    }
+
+    /** Desde Productos solo se crea reventa; los elaborados nacen desde Recetas. */
+    private static TipoArticulo tipoParaCrear(String tipo) {
+        if (tipo == null || tipo.isBlank()) {
+            throw new ProductoInvalidoException("El tipo de producto es obligatorio.");
+        }
+        TipoArticulo t = parseTipo(tipo);
+        if (t == TipoArticulo.ELABORADO) {
+            throw new ProductoInvalidoException("Los productos elaborados se crean desde Recetas.");
+        }
+        if (t != TipoArticulo.REVENTA) {
+            throw new ProductoInvalidoException("El tipo " + t.name() + " todavía no está disponible.");
+        }
+        return t;
     }
 
     @Transactional(readOnly = true)
@@ -40,6 +84,7 @@ public class ProductoService {
 
     @Transactional
     public ProductoCatalogoDTO crearProducto(ProductoRequestDTO dto) {
+        TipoArticulo tipo = tipoParaCrear(dto.tipo());
         if (dto.stockActual() != null && dto.stockActual() < 0) {
             throw new IllegalArgumentException("El stock no puede ser negativo.");
         }
@@ -71,10 +116,6 @@ public class ProductoService {
             throw new IllegalArgumentException("El precio debe ser un valor mayor a $0.");
         }
 
-        if (productoRepository.existsByCodigo(dto.codigo())) {
-            throw new IllegalArgumentException("El código de producto ya existe.");
-        }
-
         UnidadMedida unidad = UnidadMedida.UNIDAD;
         if (dto.unidadMedida() != null && !dto.unidadMedida().isBlank()) {
             try {
@@ -88,8 +129,9 @@ public class ProductoService {
             categoria = categoriaRepository.findById(dto.categoriaId()).orElse(null);
         }
 
+        // El código lo genera el sistema (REV-0001, ...); el enviado se ignora.
         EspProducto nuevoProducto = new EspProducto(
-                dto.codigo(),
+                codigoService.siguiente(tipo),
                 dto.nombre(),
                 precioVenta,
                 costo,
@@ -98,6 +140,7 @@ public class ProductoService {
                 categoria
         );
 
+        nuevoProducto.setTipo(tipo);
         if (dto.activo() != null) {
             nuevoProducto.setActivo(dto.activo());
         }
@@ -109,24 +152,24 @@ public class ProductoService {
         nuevoStock.setStockMinimo(dto.stockMinimo() != null ? dto.stockMinimo() : 0);
         stockRepository.save(nuevoStock);
 
-        return new ProductoCatalogoDTO(
-                nuevoProducto.getCodigo(),
-                nuevoProducto.getNombre(),
-                nuevoProducto.getPrecioUnitario(),
-                nuevoProducto.getPrecioCosto(),
-                nuevoProducto.getPorcentajeGanancia(),
-                nuevoProducto.getUnidadMedida(),
-                nuevoProducto.getCategoria() != null ? nuevoProducto.getCategoria().getNombre() : null,
-                Long.valueOf(nuevoStock.getCantidad()),
-                nuevoStock.getStockMinimo(),
-                nuevoProducto.isActivo()
-        );
+        return aDTO(nuevoProducto, nuevoStock.getCantidad(), nuevoStock.getStockMinimo());
     }
 
     @Transactional
     public ProductoCatalogoDTO actualizarProducto(String codigo, ProductoRequestDTO dto) {
         EspProducto productoExistente = productoRepository.findByCodigo(codigo)
                 .orElseThrow(() -> new IllegalArgumentException("No se encontró un producto con el código: " + codigo));
+
+        if (dto.tipo() != null && !dto.tipo().isBlank()
+                && parseTipo(dto.tipo()) != productoExistente.getTipo()) {
+            throw new ProductoInvalidoException("El tipo de un producto no se puede cambiar.");
+        }
+        if (dto.vendible() != null) {
+            if (!dto.vendible() && productoExistente.getTipo() != TipoArticulo.ELABORADO) {
+                throw new ProductoInvalidoException("Solo un producto elaborado puede ser preparación base.");
+            }
+            productoExistente.setVendible(dto.vendible());
+        }
 
         if (dto.nombre() != null) {
             productoExistente.setNombre(dto.nombre());
@@ -189,18 +232,7 @@ public class ProductoService {
             stockRepository.save(stock);
         }
 
-        return new ProductoCatalogoDTO(
-                productoExistente.getCodigo(),
-                productoExistente.getNombre(),
-                productoExistente.getPrecioUnitario(),
-                productoExistente.getPrecioCosto(),
-                productoExistente.getPorcentajeGanancia(),
-                productoExistente.getUnidadMedida(),
-                productoExistente.getCategoria() != null ? productoExistente.getCategoria().getNombre() : null,
-                Long.valueOf(stock.getCantidad()),
-                stock.getStockMinimo(),
-                productoExistente.isActivo()
-        );
+        return aDTO(productoExistente, stock.getCantidad(), stock.getStockMinimo());
     }
 
     @Transactional
@@ -224,17 +256,23 @@ public class ProductoService {
         stock.setCantidad(nuevoStock);
         stockRepository.save(stock);
 
+        return aDTO(producto, nuevoStock, stock.getStockMinimo());
+    }
+
+    private static ProductoCatalogoDTO aDTO(EspProducto p, int cantidad, Integer stockMinimo) {
         return new ProductoCatalogoDTO(
-                producto.getCodigo(),
-                producto.getNombre(),
-                producto.getPrecioUnitario(),
-                producto.getPrecioCosto(),
-                producto.getPorcentajeGanancia(),
-                producto.getUnidadMedida(),
-                producto.getCategoria() != null ? producto.getCategoria().getNombre() : null,
-                Long.valueOf(nuevoStock),
-                stock.getStockMinimo(),
-                producto.isActivo()
+                p.getCodigo(),
+                p.getNombre(),
+                p.getPrecioUnitario(),
+                p.getPrecioCosto(),
+                p.getPorcentajeGanancia(),
+                p.getUnidadMedida(),
+                p.getCategoria() != null ? p.getCategoria().getNombre() : null,
+                Long.valueOf(cantidad),
+                stockMinimo,
+                p.isActivo(),
+                p.getTipo(),
+                p.isVendible()
         );
     }
 }

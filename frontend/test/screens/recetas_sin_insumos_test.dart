@@ -35,6 +35,7 @@ void main() {
     await tester.pump();
 
     verifyNever(() => bloc.add(any(that: isA<AgregarFilaInsumo>())));
+    verifyNever(() => bloc.add(any(that: isA<AgregarFilaVacia>())));
     expect(
         find.text('No hay insumos activos. Cárguelos en Materia Prima antes de armar la receta.'),
         findsOneWidget);

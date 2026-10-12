@@ -46,6 +46,19 @@ public class EspProducto extends BaseEntity {
     @Column(nullable = false)
     private boolean activo;
 
+    /** El comportamiento depende del tipo (ver TipoArticulo). */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private TipoArticulo tipo = TipoArticulo.REVENTA;
+
+    /** false = preparación base (un ELABORADO que nunca se vende). */
+    @Column(nullable = false)
+    private boolean vendible = true;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     public EspProducto() {
         this.activo = true;
         this.unidadMedida = UnidadMedida.UNIDAD;
@@ -99,6 +112,36 @@ public class EspProducto extends BaseEntity {
     }
 
     // --- GETTERS Y SETTERS ---
+
+    public TipoArticulo getTipo() {
+        return tipo;
+    }
+
+    public void setTipo(TipoArticulo tipo) {
+        this.tipo = tipo;
+    }
+
+    public boolean isVendible() {
+        return vendible;
+    }
+
+    public void setVendible(boolean vendible) {
+        this.vendible = vendible;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    /** Se muestra y se puede vender en el POS. */
+    public boolean esVendibleEnPos() {
+        return activo && tipo.seVende() && vendible;
+    }
+
+    /** ELABORADO que no se vende (ej. ganache): "Preparación base". */
+    public boolean esPreparacionBase() {
+        return tipo == TipoArticulo.ELABORADO && !vendible;
+    }
 
     public String getCodigo() {
         return codigo;

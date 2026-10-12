@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Min;
 import java.math.BigDecimal;
 
 public record ProductoRequestDTO(
+    /** Se ignora al crear: el código lo genera el sistema según el tipo. */
     String codigo,
     String nombre,
     @DecimalMin(value = "0.01", message = "El precio debe ser un valor mayor a $0.")
@@ -16,8 +17,13 @@ public record ProductoRequestDTO(
     Long categoriaId,
     @Min(value = 0, message = "El stock no puede ser negativo.")
     Long stockActual,
+    @Min(value = 0, message = "El stock mínimo no puede ser negativo.")
     Integer stockMinimo,
-    Boolean activo
+    Boolean activo,
+    /** Obligatorio al crear (ver TipoArticulo); no se puede cambiar al editar. */
+    String tipo,
+    /** false = preparación base (solo ELABORADO). */
+    Boolean vendible
 ) {
     public ProductoRequestDTO(
             String codigo,
@@ -37,7 +43,9 @@ public record ProductoRequestDTO(
             null,
             stockActual,
             stockMinimo,
-            activo
+            activo,
+            "REVENTA",
+            null
         );
     }
 
@@ -63,7 +71,9 @@ public record ProductoRequestDTO(
             categoriaId,
             stockActual,
             stockMinimo,
-            activo
+            activo,
+            "REVENTA",
+            null
         );
     }
 }

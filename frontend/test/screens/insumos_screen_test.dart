@@ -74,7 +74,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Nuevo Insumo'), findsNWidgets(2));
-      expect(find.byKey(const Key('insumo_codigo_input')), findsOneWidget);
+      // Corrección 9: sin campo de código; se elige el tipo.
+      expect(find.byKey(const Key('insumo_codigo_input')), findsNothing);
+      expect(find.byKey(const Key('insumo_tipo_dropdown')), findsOneWidget);
       expect(find.byKey(const Key('insumo_nombre_input')), findsOneWidget);
       expect(find.byKey(const Key('insumo_costo_input')), findsOneWidget);
       expect(find.byKey(const Key('guardar_insumo_button')), findsOneWidget);

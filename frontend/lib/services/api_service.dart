@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../models/product.dart';
+import '../models/categoria.dart';
 import '../models/configuracion_negocio.dart';
 import '../models/insumo.dart';
 import '../models/receta.dart';
@@ -369,7 +371,13 @@ class ApiService implements PosApi {
     }
   }
 
-  static ConfiguracionNegocio? configuracionActual;
+  /// Configuración del negocio vigente. Es un ValueNotifier para que la UI
+  /// (p. ej. el nombre en el menú lateral) se actualice al guardarla.
+  static final ValueNotifier<ConfiguracionNegocio?> configuracion = ValueNotifier(null);
+
+  static ConfiguracionNegocio? get configuracionActual => configuracion.value;
+
+  static set configuracionActual(ConfiguracionNegocio? valor) => configuracion.value = valor;
 
   Future<ConfiguracionNegocio> getConfiguracion() async {
     try {
@@ -485,13 +493,57 @@ class ApiService implements PosApi {
     }
   }
 
-  // --- RECETAS ---
-  /// Con [incluirInactivas] trae también las recetas desactivadas.
-  Future<List<Receta>> getRecetas({bool incluirInactivas = false}) async {
+  // --- CATEGORÍAS ---
+  /// Categorías activas (las que se ofrecen en los formularios). Con
+  /// [incluirInactivas], todas (pantalla de Configuración).
+  Future<List<Categoria>> getCategorias({bool incluirInactivas = false}) async {
     try {
-      final response = await dio.get('/api/recetas',
-          queryParameters:
-              incluirInactivas ? {'incluirInactivas': true} : null);
+      final response = await dio.get('/api/categorias',
+          queryParameters: incluirInactivas ? {'incluirInactivas': true} : null);
+      final list = response.data as List;
+      return list
+          .map((c) => Categoria.fromJson(Map<String, dynamic>.from(c as Map)))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(
+          e, 'No se pudieron cargar las categorías. Intente nuevamente.'));
+    }
+  }
+
+  Future<Categoria> crearCategoria(String nombre) async {
+    try {
+      final response = await dio.post('/api/categorias', data: {'nombre': nombre});
+      return Categoria.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo crear la categoría. Intente nuevamente.'));
+    }
+  }
+
+  Future<Categoria> actualizarCategoria(int id, String nombre) async {
+    try {
+      final response = await dio.put('/api/categorias/$id', data: {'nombre': nombre});
+      return Categoria.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo renombrar la categoría. Intente nuevamente.'));
+    }
+  }
+
+  /// Las categorías no se eliminan: se desactivan o reactivan.
+  Future<Categoria> cambiarEstadoCategoria(int id, {required bool activo}) async {
+    try {
+      final response = await dio.patch('/api/categorias/$id/estado', data: {'activo': activo});
+      return Categoria.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo cambiar el estado de la categoría. Intente nuevamente.'));
+    }
+  }
+
+  // --- RECETAS ---
+  /// Todas las recetas (no se eliminan ni se desactivan; ver productoActivo).
+  Future<List<Receta>> getRecetas() async {
+    try {
+      final response = await dio.get('/api/recetas');
       if (response.statusCode == 200) {
         final List list = response.data as List;
         return list.map((item) => Receta.fromJson(item as Map<String, dynamic>)).toList();
@@ -546,22 +598,6 @@ class ApiService implements PosApi {
     }
   }
 
-  /// Activa o desactiva una receta (las recetas no se eliminan).
-  Future<Receta> cambiarEstadoReceta(int id, {required bool activo}) async {
-    try {
-      final response =
-          await dio.patch('/api/recetas/$id/estado', data: {'activo': activo});
-      if (response.statusCode == 200) {
-        return Receta.fromJson(response.data as Map<String, dynamic>);
-      } else {
-        throw const ApiException(
-            'No se pudo cambiar el estado de la receta. Intente nuevamente.');
-      }
-    } on DioException catch (e) {
-      throw ApiException(mensajeDeError(
-          e, 'No se pudo cambiar el estado de la receta. Intente nuevamente.'));
-    }
-  }
 
   // --- PEDIDOS CON SEÑA ---
   Future<List<Pedido>> getPedidos({String? query}) async {

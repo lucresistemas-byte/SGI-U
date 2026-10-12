@@ -50,7 +50,9 @@ class _InsumosScreenState extends State<InsumosScreen> {
 
   void _mostrarDialogoInsumo({Insumo? insumoExistente}) {
     final formKey = GlobalKey<FormState>();
-    final codigoCtrl = TextEditingController(text: insumoExistente?.codigo ?? '');
+    // El código lo genera el sistema según el tipo (MP-, INS-, RMP-); el
+    // tipo se elige solo al crear.
+    String? tipoSeleccionado;
     final nombreCtrl = TextEditingController(text: insumoExistente?.nombre ?? '');
     final costoCtrl = TextEditingController(
       text: insumoExistente != null
@@ -87,17 +89,32 @@ class _InsumosScreenState extends State<InsumosScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        TextFormField(
-                          key: const Key('insumo_codigo_input'),
-                          controller: codigoCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Código *',
-                            hintText: 'Ej: HAR-001',
-                            border: OutlineInputBorder(),
+                        if (insumoExistente == null)
+                          DropdownButtonFormField<String>(
+                            key: const Key('insumo_tipo_dropdown'),
+                            initialValue: tipoSeleccionado,
+                            hint: const Text('Elegir tipo'),
+                            decoration: const InputDecoration(
+                              labelText: 'Tipo *',
+                              helperText: 'El código se genera automáticamente al guardar.',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: [
+                              for (final t in Insumo.tipos.entries)
+                                DropdownMenuItem(value: t.key, child: Text(t.value)),
+                            ],
+                            validator: (v) => v == null ? 'Elija el tipo' : null,
+                            onChanged: (v) => setDialogState(() => tipoSeleccionado = v),
+                          )
+                        else
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Código: ${insumoExistente.codigo} · Tipo: ${insumoExistente.descripcionTipo}',
+                              key: const Key('insumo_codigo_tipo_fijo'),
+                              style: const TextStyle(color: Color(0xFF475569)),
+                            ),
                           ),
-                          validator: (v) =>
-                              (v == null || v.trim().isEmpty) ? 'Requerido' : null,
-                        ),
                         const SizedBox(height: 12),
                         TextFormField(
                           key: const Key('insumo_nombre_input'),
@@ -208,7 +225,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
                   onPressed: () {
                     if (!formKey.currentState!.validate()) return;
                     final data = {
-                      'codigo': codigoCtrl.text.trim(),
+                      if (insumoExistente == null) 'tipo': tipoSeleccionado,
                       'nombre': nombreCtrl.text.trim(),
                       'costoUnitario': double.tryParse(costoCtrl.text.replaceAll(',', '.')) ?? 0.0,
                       'unidadMedida': unidadSeleccionada,

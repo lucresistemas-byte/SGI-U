@@ -26,6 +26,11 @@ public class MateriaPrima extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String nombre;
 
+    /** MATERIA_PRIMA, INSUMO o REVENTA_MATERIA_PRIMA; define el prefijo del código. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private TipoArticulo tipo = TipoArticulo.MATERIA_PRIMA;
+
     @Column(name = "costo_unitario", nullable = false, precision = 10, scale = 2)
     private BigDecimal costoUnitario = BigDecimal.ZERO;
 

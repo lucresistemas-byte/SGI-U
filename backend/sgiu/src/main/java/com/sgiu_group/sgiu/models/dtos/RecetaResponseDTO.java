@@ -12,5 +12,7 @@ public record RecetaResponseDTO(
     BigDecimal costosAdicionales,
     BigDecimal costoTotal,
     List<RecetaDetalleResponseDTO> detalles,
-    boolean activo
+    boolean activo,
+    /** false = el producto elaborado está desactivado (no se vende en el POS). */
+    boolean productoActivo
 ) {}

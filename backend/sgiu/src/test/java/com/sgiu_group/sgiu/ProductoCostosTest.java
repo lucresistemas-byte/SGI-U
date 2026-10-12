@@ -35,6 +35,7 @@ public class ProductoCostosTest extends AbstractIntegrationTest {
         String json = """
                 {
                     "codigo": "P-RECIP-1",
+                    "tipo": "REVENTA",
                     "nombre": "Producto Con Margen",
                     "precioCosto": 100.00,
                     "porcentajeGanancia": 25.00
@@ -57,6 +58,7 @@ public class ProductoCostosTest extends AbstractIntegrationTest {
         String json = """
                 {
                     "codigo": "P-RECIP-2",
+                    "tipo": "REVENTA",
                     "nombre": "Producto Con Precio",
                     "precioUnitario": 125.00,
                     "precioCosto": 100.00
@@ -77,6 +79,7 @@ public class ProductoCostosTest extends AbstractIntegrationTest {
         String json = """
                 {
                     "codigo": "P-NEG",
+                    "tipo": "REVENTA",
                     "nombre": "Producto Negativo",
                     "precioUnitario": 100.00,
                     "precioCosto": -5.00

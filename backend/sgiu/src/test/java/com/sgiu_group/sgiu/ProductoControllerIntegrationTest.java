@@ -67,25 +67,31 @@ class ProductoControllerIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(dto)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.codigo").value("NEW-1"))
+                .andExpect(jsonPath("$.codigo").value("REV-0001"))
                 .andExpect(jsonPath("$.stockActual").value(10));
 
-        assertThat(productoRepository.findByCodigo("NEW-1")).isPresent();
-        assertThat(stockRepository.findByEspProducto_Codigo("NEW-1"))
+        assertThat(productoRepository.findByCodigo("REV-0001")).isPresent();
+        assertThat(stockRepository.findByEspProducto_Codigo("REV-0001"))
                 .get().extracting("cantidad").isEqualTo(10);
     }
 
     @Test
-    void crear_codigoDuplicado_devuelve409() throws Exception {
-        datos.crearProducto("DUP-1", "Existente", new BigDecimal("5.00"), 1, 0);
+    void crear_codigoEnviado_seIgnoraYSeGeneraElSiguienteLibre() throws Exception {
+        // REV-0001 ya existe (cargado de otra forma): se saltea.
+        datos.crearProducto("REV-0001", "Existente", new BigDecimal("5.00"), 1, 0);
         ProductoRequestDTO dto = new ProductoRequestDTO(
-                "DUP-1", "Duplicado", new BigDecimal("6.00"), 1L, 0, true);
+                "REV-0001", "Otro", new BigDecimal("6.00"), 1L, 0, true);
 
         mockMvc.perform(post("/api/productos/crear")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(dto)))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("El código de producto ya existe."));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.codigo").value("REV-0002"));
+        mockMvc.perform(post("/api/productos/crear")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(dto)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.codigo").value("REV-0003"));
     }
 
     @Test
@@ -109,6 +115,49 @@ class ProductoControllerIntegrationTest extends AbstractIntegrationTest {
                         .content(body(dto)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("El stock no puede ser negativo."));
+    }
+
+    @Test
+    void crear_conStockMinimo_loGuardaEnArticulosStock() throws Exception {
+        ProductoRequestDTO dto = new ProductoRequestDTO(
+                "MIN-1", "Con mínimo", new BigDecimal("20.00"), 10L, 4, true);
+
+        mockMvc.perform(post("/api/productos/crear")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(dto)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.stockMinimo").value(4));
+
+        assertThat(stockRepository.findByEspProducto_Codigo("REV-0001").orElseThrow().getStockMinimo())
+                .isEqualTo(4);
+    }
+
+    @Test
+    void editar_cambiaElStockMinimo() throws Exception {
+        datos.crearProducto("MIN-2", "Con mínimo", new BigDecimal("10.00"), 5, 1);
+        ProductoRequestDTO dto = new ProductoRequestDTO(
+                "MIN-2", "Con mínimo", new BigDecimal("10.00"), null, 7, true);
+
+        mockMvc.perform(put("/api/productos/editar/MIN-2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(dto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stockMinimo").value(7));
+
+        assertThat(stockRepository.findByEspProducto_Codigo("MIN-2").orElseThrow().getStockMinimo())
+                .isEqualTo(7);
+    }
+
+    @Test
+    void crear_stockMinimoNegativo_devuelve400PorValidacion() throws Exception {
+        ProductoRequestDTO dto = new ProductoRequestDTO(
+                "MIN-N", "Mínimo negativo", new BigDecimal("10.00"), 1L, -2, true);
+
+        mockMvc.perform(post("/api/productos/crear")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("El stock mínimo no puede ser negativo."));
     }
 
     @Test

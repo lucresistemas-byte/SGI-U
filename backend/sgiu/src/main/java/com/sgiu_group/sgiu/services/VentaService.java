@@ -3,6 +3,7 @@ package com.sgiu_group.sgiu.services;
 import com.sgiu_group.sgiu.models.dtos.VentaRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.LineaVentaDTO;
 import com.sgiu_group.sgiu.models.entities.*;
+import com.sgiu_group.sgiu.exceptions.ProductoInvalidoException;
 import com.sgiu_group.sgiu.exceptions.ProductoNoEncontradoException;
 import com.sgiu_group.sgiu.exceptions.StockInsuficienteException;
 import com.sgiu_group.sgiu.repositories.*;
@@ -52,6 +53,7 @@ public class VentaService {
             ArticuloStock stock = stockRepository.findByEspProducto_Codigo(dto.codigoProducto())
                 .orElseThrow(() -> new ProductoNoEncontradoException("Producto no encontrado: " + dto.codigoProducto()));
             stockPorCodigo.put(dto.codigoProducto(), stock);
+            validarVendible(stock.getEspProducto());
 
             // RN02: Verificación de stock de producto final
             if (stock.getCantidad() < dto.cantidad()) {
@@ -99,5 +101,19 @@ public class VentaService {
             pago
         );
         movFinancieroRepository.save(movimiento);
+    }
+
+    /** Solo se vende lo que el POS muestra (ver EspProducto.esVendibleEnPos). */
+    private static void validarVendible(EspProducto producto) {
+        if (producto.esVendibleEnPos()) {
+            return;
+        }
+        if (!producto.isActivo()) {
+            throw new ProductoInvalidoException(producto.getNombre() + " está desactivado y no se puede vender.");
+        }
+        if (producto.esPreparacionBase()) {
+            throw new ProductoInvalidoException(producto.getNombre() + " es una preparación base y no se vende.");
+        }
+        throw new ProductoInvalidoException(producto.getNombre() + " no se vende en el punto de venta.");
     }
 }

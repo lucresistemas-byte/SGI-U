@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../models/categoria.dart';
 import '../../models/product.dart';
 import '../../models/receta_detalle.dart';
 import '../../services/api_service.dart';
@@ -20,17 +21,49 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
     on<CambiarDescripcionReceta>(_onCambiarDescripcionReceta);
     on<CambiarCostosAdicionales>(_onCambiarCostosAdicionales);
     on<AgregarFilaInsumo>(_onAgregarFilaInsumo);
+    on<AgregarFilaVacia>((event, emit) => emit(state.copyWith(detalles: [
+          ...state.detalles,
+          RecetaDetalle(materiaPrimaId: 0, cantidad: 0, unidadMedida: '', claveUi: _nuevaClave()),
+        ])));
     on<RemoverFilaInsumo>(_onRemoverFilaInsumo);
     on<CambiarInsumoFila>(_onCambiarInsumoFila);
+    on<CambiarModoProductoReceta>((event, emit) =>
+        emit(state.copyWith(usarProductoNuevo: event.productoNuevo)));
+    on<ActualizarProductoNuevoReceta>((event, emit) => emit(state.copyWith(
+          nuevoProductoNombre: event.nombre,
+          nuevoProductoCategoriaId: event.categoriaId,
+          quitarNuevoProductoCategoria: event.quitarCategoria,
+          nuevoProductoPorcentaje: event.porcentajeGanancia,
+          nuevoProductoPreparacionBase: event.preparacionBase,
+        )));
+    on<CrearCategoriaReceta>(_onCrearCategoriaReceta);
     on<ActualizarCantidadFilaInsumo>(_onActualizarCantidadFilaInsumo);
     on<GuardarReceta>(_onGuardarReceta);
-    on<CambiarEstadoReceta>(_onCambiarEstadoReceta);
-    on<ReactivarRecetaConDatos>(_onReactivarRecetaConDatos);
     on<LimpiarMensajesRecetas>((event, emit) =>
         emit(state.copyWith(clearError: true, clearSuccess: true)));
-    on<DescartarRecetaInactivaExistente>((event, emit) =>
-        emit(state.copyWith(clearRecetaInactivaExistente: true)));
   }
+
+  /// La categoría nueva se agrega a la lista y queda elegida; el resto de
+  /// los datos del armador no se toca.
+  Future<void> _onCrearCategoriaReceta(
+      CrearCategoriaReceta event, Emitter<RecetasState> emit) async {
+    try {
+      final categoria = await _apiService.crearCategoria(event.nombre.trim());
+      emit(state.copyWith(
+        availableCategorias: [...state.availableCategorias, categoria],
+        nuevoProductoCategoriaId: categoria.id,
+      ));
+    } catch (e) {
+      emit(state.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  /// Clave estable para cada fila del armador.
+  int _ultimaClave = 0;
+  int _nuevaClave() => ++_ultimaClave;
+
+  List<RecetaDetalle> _conClaves(List<RecetaDetalle> detalles) =>
+      [for (final d in detalles) d.claveUi == null ? d.copyWith(claveUi: _nuevaClave()) : d];
 
   double _calcularCostoTotal(List<RecetaDetalle> detalles, double adicionales) {
     final sum = detalles.fold<double>(0.0, (acc, item) => acc + item.subtotal);
@@ -41,8 +74,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       CargarRecetas event, Emitter<RecetasState> emit) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
-      // Se listan también las desactivadas, para poder reactivarlas.
-      final recetas = await _apiService.getRecetas(incluirInactivas: true);
+      final recetas = await _apiService.getRecetas();
       emit(state.copyWith(isLoading: false, recetas: recetas));
     } catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
@@ -57,9 +89,15 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       final products = rawProducts
           .map((p) => Product.fromJson(Map<String, dynamic>.from(p as Map)))
           .toList();
+      // Las categorías son opcionales: si fallan, se puede crear sin categoría.
+      var categorias = const <Categoria>[];
+      try {
+        categorias = await _apiService.getCategorias();
+      } catch (_) {}
       emit(state.copyWith(
         availableInsumos: insumos,
         availableProductos: products,
+        availableCategorias: categorias,
       ));
     } catch (e) {
       emit(state.copyWith(errorMessage: e.toString()));
@@ -79,18 +117,24 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       costoTotal: 0.0,
       clearError: true,
       clearSuccess: true,
+      // Por defecto, la receta crea el producto elaborado.
+      usarProductoNuevo: event.defaultProductoCodigo == null,
+      nuevoProductoNombre: '',
+      quitarNuevoProductoCategoria: true,
+      nuevoProductoPreparacionBase: false,
     ));
   }
 
   void _onEditarReceta(EditarReceta event, Emitter<RecetasState> emit) {
     emit(state.copyWith(
       editingRecetaId: event.receta.id,
+      productoEditadoActivo: event.receta.productoActivo,
       selectedProductoCodigo: event.receta.espProductoCodigo,
       selectedProductoNombre: event.receta.espProductoNombre ?? '',
       nombre: event.receta.nombre,
       descripcion: event.receta.descripcion ?? '',
       costosAdicionales: event.receta.costosAdicionales,
-      detalles: List<RecetaDetalle>.from(event.receta.detalles),
+      detalles: _conClaves(event.receta.detalles),
       costoTotal: event.receta.costoTotal,
       clearError: true,
       clearSuccess: true,
@@ -134,6 +178,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       unidadMedida: event.insumo.unidadMedida,
       costoUnitario: event.insumo.costoUnitario,
       subtotal: event.cantidad * event.insumo.costoUnitario,
+      claveUi: _nuevaClave(),
     );
 
     final nuevosDetalles = List<RecetaDetalle>.from(state.detalles)..add(nuevoDetalle);
@@ -161,6 +206,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       unidadMedida: insumo.unidadMedida,
       costoUnitario: insumo.costoUnitario,
       subtotal: actual.cantidad * insumo.costoUnitario,
+      claveUi: actual.claveUi,
     );
     emit(state.copyWith(
       detalles: nuevosDetalles,
@@ -202,6 +248,10 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
 
   Future<void> _onGuardarReceta(
       GuardarReceta event, Emitter<RecetasState> emit) async {
+    if (state.hayFilasIncompletas) {
+      emit(state.copyWith(errorMessage: RecetasState.mensajeFilasIncompletas));
+      return;
+    }
     if (!state.isFormValid) {
       emit(state.copyWith(
         errorMessage: 'Por favor complete todos los campos requeridos de la receta.',
@@ -234,17 +284,6 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
         ));
       }
       add(const CargarRecetas());
-    } on ApiException catch (e) {
-      final recetaId = e.datos?['recetaId'];
-      if (e.codigo == 'RECETA_INACTIVA_EXISTENTE' && recetaId is int) {
-        emit(state.copyWith(
-          isSaving: false,
-          recetaInactivaExistenteId: recetaId,
-          recetaInactivaExistenteMensaje: e.mensaje,
-        ));
-      } else {
-        emit(state.copyWith(isSaving: false, errorMessage: e.toString()));
-      }
     } catch (e) {
       emit(state.copyWith(isSaving: false, errorMessage: e.toString()));
     }
@@ -254,7 +293,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
   String? _insumoRepetido() {
     final vistos = <int>{};
     for (final d in state.detalles) {
-      if (!vistos.add(d.materiaPrimaId)) {
+      if (!d.sinInsumo && !vistos.add(d.materiaPrimaId)) {
         return d.materiaPrimaNombre ?? 'con ID ${d.materiaPrimaId}';
       }
     }
@@ -262,7 +301,17 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
   }
 
   Map<String, dynamic> _payloadDelBorrador() => {
-        'espProductoCodigo': state.selectedProductoCodigo,
+        if (state.creaProductoNuevo)
+          'productoNuevo': {
+            'nombre': state.nuevoProductoNombre.trim(),
+            if (state.nuevoProductoCategoriaId != null)
+              'categoriaId': state.nuevoProductoCategoriaId,
+            if (state.nuevoProductoPorcentaje != null)
+              'porcentajeGanancia': state.nuevoProductoPorcentaje,
+            'vendible': !state.nuevoProductoPreparacionBase,
+          }
+        else
+          'espProductoCodigo': state.selectedProductoCodigo,
         'nombre': state.nombre,
         if (state.descripcion.isNotEmpty) 'descripcion': state.descripcion,
         'costosAdicionales': state.costosAdicionales,
@@ -272,37 +321,4 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
           'unidadMedida': d.unidadMedida,
         }).toList(),
       };
-
-  Future<void> _onCambiarEstadoReceta(
-      CambiarEstadoReceta event, Emitter<RecetasState> emit) async {
-    emit(state.copyWith(isLoading: true, clearError: true));
-    try {
-      await _apiService.cambiarEstadoReceta(event.id, activo: event.activo);
-      emit(state.copyWith(
-        isLoading: false,
-        successMessage:
-            event.activo ? 'Receta activada' : 'Receta desactivada',
-      ));
-      add(const CargarRecetas());
-    } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
-    }
-  }
-
-  Future<void> _onReactivarRecetaConDatos(
-      ReactivarRecetaConDatos event, Emitter<RecetasState> emit) async {
-    emit(state.copyWith(
-        isSaving: true, clearError: true, clearRecetaInactivaExistente: true));
-    try {
-      await _apiService.updateReceta(event.id, _payloadDelBorrador());
-      await _apiService.cambiarEstadoReceta(event.id, activo: true);
-      emit(state.copyWith(
-        isSaving: false,
-        successMessage: 'Receta reactivada con los datos cargados',
-      ));
-      add(const CargarRecetas());
-    } catch (e) {
-      emit(state.copyWith(isSaving: false, errorMessage: e.toString()));
-    }
-  }
 }

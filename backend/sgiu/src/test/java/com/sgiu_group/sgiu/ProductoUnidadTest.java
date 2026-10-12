@@ -34,6 +34,7 @@ public class ProductoUnidadTest extends AbstractIntegrationTest {
         String json = """
                 {
                     "codigo": "PROD-KILO",
+                    "tipo": "REVENTA",
                     "nombre": "Naranjas",
                     "precioUnitario": 150.00,
                     "unidadMedida": "KILO",
@@ -54,6 +55,7 @@ public class ProductoUnidadTest extends AbstractIntegrationTest {
         String json = """
                 {
                     "codigo": "PROD-INVALIDO",
+                    "tipo": "REVENTA",
                     "nombre": "Producto Invalido",
                     "precioUnitario": 100.00,
                     "unidadMedida": "UNIDAD_INEXISTENTE"

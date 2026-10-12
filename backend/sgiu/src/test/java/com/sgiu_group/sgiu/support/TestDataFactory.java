@@ -67,6 +67,15 @@ public class TestDataFactory {
         return producto;
     }
 
+    /** Producto ELABORADO (vendible = false: preparación base). */
+    public EspProducto crearElaborado(String codigo, String nombre, BigDecimal precio,
+                                      int cantidadStock, boolean vendible) {
+        EspProducto producto = crearProducto(codigo, nombre, precio, cantidadStock, 0);
+        producto.setTipo(com.sgiu_group.sgiu.models.entities.TipoArticulo.ELABORADO);
+        producto.setVendible(vendible);
+        return productoRepository.save(producto);
+    }
+
     public MovFinanciero crearMovimiento(TipoMovimiento tipo, BigDecimal monto, String metodoPago,
                                          String categoria, LocalDateTime fechaHora) {
         MovFinanciero mov = new MovFinanciero(

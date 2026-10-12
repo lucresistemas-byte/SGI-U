@@ -41,6 +41,30 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     super.dispose();
   }
 
+  /// Tipo de artículo: el comportamiento depende de él, no de la categoría.
+  Widget _buildTipo(Product producto) {
+    final etiqueta = producto.esPreparacionBase
+        ? 'Preparación base'
+        : switch (producto.tipo) {
+            'ELABORADO' => 'Elaborado',
+            'REVENTA' => 'Reventa',
+            'MATERIA_PRIMA' => 'Materia prima',
+            'INSUMO' => 'Insumo',
+            'REVENTA_MATERIA_PRIMA' => 'Reventa + materia prima',
+            'PAQUETE' => 'Paquete',
+            _ => producto.tipo,
+          };
+    return Container(
+      key: Key('tipo_${producto.codigo}'),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(etiqueta, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+    );
+  }
+
   Widget _buildBadge(bool isActive) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -260,6 +284,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                           DataColumn(
                                               label:
                                                   Text('Nombre del Producto')),
+                                          DataColumn(label: Text('Tipo')),
                                           DataColumn(label: Text('Categoría')),
                                           DataColumn(
                                               label: Text('Precio Unit. (\$)')),
@@ -276,6 +301,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                                 style: const TextStyle(
                                                     fontWeight: FontWeight.w500,
                                                     color: Color(0xFF1E293B)))),
+                                            DataCell(_buildTipo(producto)),
                                             DataCell(Text(producto.categoria ?? '-',
                                                 style: const TextStyle(
                                                     color: Color(0xFF475569)))),

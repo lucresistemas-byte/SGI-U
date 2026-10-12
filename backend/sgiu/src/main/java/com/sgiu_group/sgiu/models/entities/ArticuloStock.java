@@ -4,7 +4,10 @@ import com.sgiu_group.sgiu.models.base.BaseEntity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "articulos_stock")
+@Table(
+    name = "articulos_stock",
+    uniqueConstraints = @UniqueConstraint(name = "uk_articulo_stock_producto", columnNames = "esp_producto_id")
+)
 public class ArticuloStock extends BaseEntity {
 
     @ManyToOne(optional = false)
@@ -17,6 +20,10 @@ public class ArticuloStock extends BaseEntity {
 
     @Column(name = "stock_minimo")
     private Integer stockMinimo = 0;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     public ArticuloStock() {}
 

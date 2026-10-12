@@ -6,8 +6,11 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 public record InsumoRequestDTO(
-    @NotBlank(message = "El código de insumo es obligatorio")
-    String codigo,
+    /**
+     * Solo al crear: MATERIA_PRIMA (por defecto), INSUMO o REVENTA_MATERIA_PRIMA.
+     * El código lo genera el sistema según el tipo (MP-, INS-, RMP-).
+     */
+    String tipo,
 
     @NotBlank(message = "El nombre de insumo es obligatorio")
     String nombre,
