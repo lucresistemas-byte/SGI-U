@@ -33,6 +33,9 @@ class PedidosBloc extends Bloc<PedidosEvent, PedidosState> {
     }
   }
 
+  static String _soloDigitos(String valor) =>
+      valor.replaceAll(RegExp(r'\D'), '');
+
   void _onBuscarPedidos(BuscarPedidos event, Emitter<PedidosState> emit) {
     final q = event.query.trim().toLowerCase();
     if (q.isEmpty) {
@@ -41,10 +44,14 @@ class PedidosBloc extends Bloc<PedidosEvent, PedidosState> {
         searchQuery: '',
       ));
     } else {
+      // El teléfono se compara solo por dígitos: "1155550001" encuentra
+      // "11-5555-0001" (igual que el backend).
+      final digitos = _soloDigitos(q);
       final filtered = state.pedidos.where((p) {
         return p.clienteNombre.toLowerCase().contains(q) ||
-            p.clienteTelefono.toLowerCase().contains(q) ||
-            p.descripcion.toLowerCase().contains(q);
+            p.descripcion.toLowerCase().contains(q) ||
+            (digitos.isNotEmpty &&
+                _soloDigitos(p.clienteTelefono).contains(digitos));
       }).toList();
       emit(state.copyWith(
         filteredPedidos: filtered,

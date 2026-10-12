@@ -1,5 +1,6 @@
 package com.sgiu_group.sgiu.controllers;
 
+import com.sgiu_group.sgiu.models.dtos.EstadoRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.RecetaRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.RecetaResponseDTO;
 import com.sgiu_group.sgiu.services.RecetaService;
@@ -19,8 +20,9 @@ public class RecetaController {
     private final RecetaService recetaService;
 
     @GetMapping
-    public ResponseEntity<List<RecetaResponseDTO>> listarTodas() {
-        return ResponseEntity.ok(recetaService.listarTodas());
+    public ResponseEntity<List<RecetaResponseDTO>> listarTodas(
+            @RequestParam(defaultValue = "false") boolean incluirInactivas) {
+        return ResponseEntity.ok(recetaService.listarTodas(incluirInactivas));
     }
 
     @GetMapping("/{id}")
@@ -43,9 +45,10 @@ public class RecetaController {
         return ResponseEntity.ok(recetaService.actualizar(id, dto));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
-        recetaService.eliminar(id);
-        return ResponseEntity.noContent().build();
+    /** Las recetas no se eliminan: se activan o desactivan. */
+    @PatchMapping("/{id}/estado")
+    public ResponseEntity<RecetaResponseDTO> cambiarEstado(@PathVariable Long id,
+                                                           @Valid @RequestBody EstadoRequestDTO dto) {
+        return ResponseEntity.ok(recetaService.cambiarEstado(id, dto.activo()));
     }
 }

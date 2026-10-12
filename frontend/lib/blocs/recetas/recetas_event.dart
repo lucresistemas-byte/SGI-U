@@ -89,6 +89,17 @@ class AgregarFilaInsumo extends RecetasEvent {
   List<Object?> get props => [insumo, cantidad];
 }
 
+/// Cambia el insumo de una fila en su lugar, conservando la cantidad.
+class CambiarInsumoFila extends RecetasEvent {
+  final int index;
+  final Insumo insumo;
+
+  const CambiarInsumoFila({required this.index, required this.insumo});
+
+  @override
+  List<Object?> get props => [index, insumo];
+}
+
 class RemoverFilaInsumo extends RecetasEvent {
   final int index;
 
@@ -115,11 +126,34 @@ class GuardarReceta extends RecetasEvent {
   const GuardarReceta();
 }
 
-class EliminarReceta extends RecetasEvent {
+/// Activa o desactiva una receta (las recetas no se eliminan).
+class CambiarEstadoReceta extends RecetasEvent {
+  final int id;
+  final bool activo;
+
+  const CambiarEstadoReceta(this.id, {required this.activo});
+
+  @override
+  List<Object?> get props => [id, activo];
+}
+
+/// El producto ya tenía una receta desactivada: se le guardan los datos del
+/// formulario y se la reactiva, en lugar de crear otra.
+class ReactivarRecetaConDatos extends RecetasEvent {
   final int id;
 
-  const EliminarReceta(this.id);
+  const ReactivarRecetaConDatos(this.id);
 
   @override
   List<Object?> get props => [id];
+}
+
+/// El usuario no quiso reactivar la receta existente.
+class DescartarRecetaInactivaExistente extends RecetasEvent {
+  const DescartarRecetaInactivaExistente();
+}
+
+/// Los mensajes ya se mostraron: se limpian para que no se repitan.
+class LimpiarMensajesRecetas extends RecetasEvent {
+  const LimpiarMensajesRecetas();
 }

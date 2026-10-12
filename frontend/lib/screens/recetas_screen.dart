@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../blocs/recetas/recetas_bloc.dart';
 import '../blocs/recetas/recetas_event.dart';
 import '../blocs/recetas/recetas_state.dart';
-import '../models/insumo.dart';
 import '../models/receta.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
@@ -78,6 +77,65 @@ class _RecetasScreenState extends State<RecetasScreen> {
     });
   }
 
+  Future<void> _confirmarDesactivar(Receta receta) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Desactivar receta'),
+        content: Text(
+            '¿Desactivar la receta "${receta.nombre}"? Deja de usarse para el '
+            'costo del producto. Podrá reactivarla cuando quiera.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Desactivar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado == true && mounted) {
+      _bloc.add(CambiarEstadoReceta(receta.id!, activo: false));
+    }
+  }
+
+  /// El producto ya tenía una receta desactivada: ofrece reactivarla con los
+  /// datos cargados en lugar de crear otra.
+  bool _ofreciendoReactivar = false;
+
+  Future<void> _ofrecerReactivar(RecetasState state) async {
+    // El listener puede volver a dispararse mientras el diálogo está abierto.
+    if (_ofreciendoReactivar) return;
+    _ofreciendoReactivar = true;
+    final id = state.recetaInactivaExistenteId!;
+    final reactivar = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Receta desactivada'),
+        content: Text('${state.recetaInactivaExistenteMensaje ?? ''}\n\n'
+            '¿Reactivarla guardando los datos que cargó?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Reactivar con estos datos'),
+          ),
+        ],
+      ),
+    );
+    _ofreciendoReactivar = false;
+    if (!mounted) return;
+    _bloc.add(reactivar == true
+        ? ReactivarRecetaConDatos(id)
+        : const DescartarRecetaInactivaExistente());
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
@@ -85,8 +143,24 @@ class _RecetasScreenState extends State<RecetasScreen> {
       child: AppScaffold(
         body: BlocConsumer<RecetasBloc, RecetasState>(
           bloc: _bloc,
+          // Solo cuando aparece un mensaje nuevo: si no, cada estado posterior
+          // (p. ej. la recarga de la lista) lo volvía a mostrar.
+          listenWhen: (previous, current) =>
+              previous.successMessage != current.successMessage ||
+              previous.errorMessage != current.errorMessage ||
+              previous.recetaInactivaExistenteId !=
+                  current.recetaInactivaExistenteId,
           listener: (context, state) {
+            if (state.recetaInactivaExistenteId != null) {
+              _ofrecerReactivar(state);
+              return;
+            }
             if (state.successMessage != null) {
+              // En el armador, el único éxito posible es guardar (o reactivar
+              // con los datos): recién ahí se vuelve a la lista.
+              if (_isBuilding) {
+                setState(() => _isBuilding = false);
+              }
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.successMessage!),
@@ -101,6 +175,9 @@ class _RecetasScreenState extends State<RecetasScreen> {
                   backgroundColor: Colors.redAccent,
                 ),
               );
+            }
+            if (state.successMessage != null || state.errorMessage != null) {
+              _bloc.add(const LimpiarMensajesRecetas());
             }
           },
           builder: (context, state) {
@@ -215,13 +292,34 @@ class _RecetasScreenState extends State<RecetasScreen> {
                       DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold))),
                     ],
                     rows: state.recetas.map((r) {
+                      // Las desactivadas se ven atenuadas y se pueden reactivar.
+                      final atenuado = r.activo
+                          ? null
+                          : const TextStyle(color: Color(0xFF94A3B8));
                       return DataRow(
+                        key: ValueKey('fila_receta_${r.id}'),
                         cells: [
-                          DataCell(Text(r.espProductoNombre ?? r.espProductoCodigo, style: const TextStyle(fontWeight: FontWeight.w600))),
-                          DataCell(Text(r.nombre)),
-                          DataCell(Text('${r.detalles.length} insumos')),
-                          DataCell(Text(_currencyFormat.format(r.costosAdicionales))),
-                          DataCell(Text(_currencyFormat.format(r.costoTotal), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF13894E)))),
+                          DataCell(Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(r.espProductoNombre ?? r.espProductoCodigo,
+                                  style: (atenuado ?? const TextStyle())
+                                      .copyWith(fontWeight: FontWeight.w600)),
+                              if (!r.activo) ...[
+                                const SizedBox(width: 8),
+                                const Chip(
+                                  label: Text('Inactiva'),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ],
+                            ],
+                          )),
+                          DataCell(Text(r.nombre, style: atenuado)),
+                          DataCell(Text('${r.detalles.length} insumos', style: atenuado)),
+                          DataCell(Text(_currencyFormat.format(r.costosAdicionales), style: atenuado)),
+                          DataCell(Text(_currencyFormat.format(r.costoTotal),
+                              style: atenuado ??
+                                  const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF13894E)))),
                           DataCell(
                             Row(
                               mainAxisSize: MainAxisSize.min,
@@ -231,15 +329,22 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                   icon: const Icon(Icons.edit, color: Color(0xFF64748B)),
                                   onPressed: () => _editarReceta(r),
                                 ),
-                                IconButton(
-                                  key: Key('eliminar_receta_${r.id}'),
-                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                  onPressed: () {
-                                    if (r.id != null) {
-                                      _bloc.add(EliminarReceta(r.id!));
-                                    }
-                                  },
-                                ),
+                                if (r.activo)
+                                  IconButton(
+                                    key: Key('desactivar_receta_${r.id}'),
+                                    tooltip: 'Desactivar',
+                                    icon: const Icon(Icons.toggle_on, color: Color(0xFF13894E)),
+                                    onPressed: r.id == null ? null : () => _confirmarDesactivar(r),
+                                  )
+                                else
+                                  IconButton(
+                                    key: Key('activar_receta_${r.id}'),
+                                    tooltip: 'Activar',
+                                    icon: const Icon(Icons.toggle_off, color: Color(0xFF94A3B8)),
+                                    onPressed: r.id == null
+                                        ? null
+                                        : () => _bloc.add(CambiarEstadoReceta(r.id!, activo: true)),
+                                  ),
                               ],
                             ),
                           ),
@@ -300,10 +405,9 @@ class _RecetasScreenState extends State<RecetasScreen> {
                 ),
                 onPressed: (state.isFormValid && !state.isSaving)
                     ? () {
+                        // El armador se cierra recién cuando el guardado sale
+                        // bien (ver listener); si falla, queda abierto.
                         _bloc.add(const GuardarReceta());
-                        setState(() {
-                          _isBuilding = false;
-                        });
                       }
                     : null,
               ),
@@ -449,21 +553,30 @@ class _RecetasScreenState extends State<RecetasScreen> {
                 ),
                 onPressed: () {
                   if (state.availableInsumos.isNotEmpty) {
-                    _bloc.add(AgregarFilaInsumo(
-                      insumo: state.availableInsumos.first,
-                      cantidad: 1.0,
-                    ));
+                    // La fila nueva usa el primer insumo que todavía no está
+                    // en la receta (antes siempre el primero: quedaban repetidos).
+                    final usados = state.detalles.map((d) => d.materiaPrimaId).toSet();
+                    final libres = state.availableInsumos
+                        .where((i) => !usados.contains(i.id))
+                        .toList();
+                    if (libres.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Todos los insumos disponibles ya están en la receta.'),
+                        ),
+                      );
+                      return;
+                    }
+                    _bloc.add(AgregarFilaInsumo(insumo: libres.first, cantidad: 1.0));
                   } else {
-                    _bloc.add(const AgregarFilaInsumo(
-                      insumo: Insumo(
-                        id: 1,
-                        codigo: 'INS-001',
-                        nombre: 'Insumo Base',
-                        costoUnitario: 100.0,
-                        unidadMedida: 'UNIDAD',
+                    // Sin insumos no hay qué agregar: antes se agregaba uno
+                    // ficticio (id 1) que se guardaba contra otro insumo real.
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No hay insumos activos. Cárguelos en '
+                            'Materia Prima antes de armar la receta.'),
                       ),
-                      cantidad: 1.0,
-                    ));
+                    );
                   }
                 },
               ),
@@ -493,21 +606,41 @@ class _RecetasScreenState extends State<RecetasScreen> {
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final detalle = state.detalles[index];
+                // Clave estable por insumo (no por posición): al quitar o
+                // cambiar una fila, cada widget conserva su propio insumo.
+                final repeticion = state.detalles
+                    .take(index)
+                    .where((d) => d.materiaPrimaId == detalle.materiaPrimaId)
+                    .length;
+                // Insumos ofrecidos: los que no están en otra fila.
+                final usadosEnOtras = {
+                  for (var i = 0; i < state.detalles.length; i++)
+                    if (i != index) state.detalles[i].materiaPrimaId,
+                };
+                final ofrecidos = state.availableInsumos
+                    .where((i) => !usadosEnOtras.contains(i.id))
+                    .toList();
                 return Card(
-                  key: Key('fila_insumo_$index'),
+                  key: ValueKey('fila_insumo_id_${detalle.materiaPrimaId}_$repeticion'),
                   margin: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                     side: const BorderSide(color: Color(0xFFE2E8F0)),
                   ),
                   child: Padding(
+                    key: Key('fila_insumo_$index'),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Row(
                       children: [
                         // Insumo Dropdown / Name
                         Expanded(
                           flex: 3,
-                          child: state.availableInsumos.isNotEmpty
+                          // Un insumo desactivado ya no está entre los
+                          // disponibles: se muestra fijo, sin dropdown.
+                          child: state.availableInsumos.isNotEmpty &&
+                                  (detalle.materiaPrimaId <= 0 ||
+                                      ofrecidos.any(
+                                          (i) => i.id == detalle.materiaPrimaId))
                               ? DropdownButtonFormField<int>(
                                   key: Key('selector_insumo_fila_$index'),
                                   isExpanded: true,
@@ -519,7 +652,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                     border: OutlineInputBorder(),
                                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                   ),
-                                  items: state.availableInsumos.map((i) {
+                                  items: ofrecidos.map((i) {
                                     return DropdownMenuItem<int>(
                                       value: i.id,
                                       child: Text('${i.nombre} (${i.codigo})'),
@@ -529,16 +662,14 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                     if (selectedId != null) {
                                       final found = state.availableInsumos
                                           .firstWhere((i) => i.id == selectedId);
-                                      _bloc.add(RemoverFilaInsumo(index));
-                                      _bloc.add(AgregarFilaInsumo(
-                                        insumo: found,
-                                        cantidad: detalle.cantidad,
-                                      ));
+                                      _bloc.add(CambiarInsumoFila(index: index, insumo: found));
                                     }
                                   },
                                 )
                               : Text(
-                                  detalle.materiaPrimaNombre ?? 'Insumo #${detalle.materiaPrimaId}',
+                                  '${detalle.materiaPrimaNombre ?? 'Insumo #${detalle.materiaPrimaId}'}'
+                                  '${state.availableInsumos.isEmpty ? '' : state.availableInsumos.any((i) => i.id == detalle.materiaPrimaId) ? ' (repetido)' : ' (desactivado)'}',
+                                  key: Key('insumo_fijo_fila_$index'),
                                   style: const TextStyle(fontWeight: FontWeight.w600),
                                 ),
                         ),

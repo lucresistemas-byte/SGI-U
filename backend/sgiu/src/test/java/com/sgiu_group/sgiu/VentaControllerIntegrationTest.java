@@ -1,11 +1,17 @@
 package com.sgiu_group.sgiu;
 
 import com.sgiu_group.sgiu.models.entities.EspProducto;
+import com.sgiu_group.sgiu.models.entities.MateriaPrima;
+import com.sgiu_group.sgiu.models.entities.Receta;
+import com.sgiu_group.sgiu.models.entities.RecetaDetalle;
+import com.sgiu_group.sgiu.models.entities.UnidadMedida;
 import com.sgiu_group.sgiu.models.entities.MovFinanciero;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
+import com.sgiu_group.sgiu.repositories.MateriaPrimaRepository;
 import com.sgiu_group.sgiu.repositories.MovFinancieroRepository;
 import com.sgiu_group.sgiu.repositories.PagoVentaRepository;
+import com.sgiu_group.sgiu.repositories.RecetaRepository;
 import com.sgiu_group.sgiu.repositories.VentaRepository;
 import com.sgiu_group.sgiu.support.TestDataFactory;
 import org.junit.jupiter.api.Test;
@@ -33,6 +39,10 @@ class VentaControllerIntegrationTest extends AbstractIntegrationTest {
     private PagoVentaRepository pagoRepository;
     @Autowired
     private MovFinancieroRepository movFinancieroRepository;
+    @Autowired
+    private MateriaPrimaRepository materiaPrimaRepository;
+    @Autowired
+    private RecetaRepository recetaRepository;
 
     private String venta(EspProducto producto, int cantidad) {
         return "{\"metodoPago\": null, \"lineas\": [{\"codigoProducto\": \""
@@ -76,7 +86,7 @@ class VentaControllerIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"lineas\": [{\"codigoProducto\": \"NO-EXISTE\", \"cantidad\": 1}]}"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$").value("Producto no encontrado: NO-EXISTE"));
+                .andExpect(jsonPath("$.error").value("Producto no encontrado: NO-EXISTE"));
 
         assertThat(ventaRepository.count()).isZero();
         assertThat(movFinancieroRepository.count()).isZero();
@@ -91,7 +101,8 @@ class VentaControllerIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(venta(producto, 5)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$").value("Stock insuficiente para: " + idCodigo));
+                .andExpect(jsonPath("$.error").value(
+                        "Stock insuficiente para Poco Stock (código VTA-2): disponible 2, solicitado 5."));
 
         assertThat(stockRepository.findByEspProducto_Codigo(idCodigo).orElseThrow().getCantidad())
                 .isEqualTo(2);
@@ -106,5 +117,57 @@ class VentaControllerIntegrationTest extends AbstractIntegrationTest {
                         .content("{lineas rotas"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Error en el formato de los datos o valor inválido."));
+    }
+
+    // --- Venta por tanda: solo se descuenta el producto final ---
+
+    /** Producto elaborado con receta: 0,2 kg de harina por unidad. */
+    private MateriaPrima elaboradoConReceta(EspProducto producto, int stockHarina) {
+        MateriaPrima harina = materiaPrimaRepository.save(new MateriaPrima(
+                "VTA-HAR", "Harina", new BigDecimal("1200.00"), UnidadMedida.KILO, stockHarina, 0));
+        Receta receta = new Receta(producto, "Torta", null, BigDecimal.ZERO);
+        receta.addDetalle(new RecetaDetalle(receta, harina, new BigDecimal("0.200"), UnidadMedida.KILO));
+        recetaRepository.save(receta);
+        return harina;
+    }
+
+    @Test
+    void crearVenta_productoConReceta_descuentaSoloElProductoFinalYNoLosInsumos() throws Exception {
+        EspProducto torta = datos.crearProducto("VTA-TORTA", "Torta", new BigDecimal("7600.00"), 5, 0);
+        MateriaPrima harina = elaboradoConReceta(torta, 3);
+
+        mockMvc.perform(post("/api/ventas").contentType(MediaType.APPLICATION_JSON).content(venta(torta, 1)))
+                .andExpect(status().isCreated());
+
+        assertThat(stockRepository.findByEspProducto_Codigo("VTA-TORTA").orElseThrow().getCantidad())
+                .isEqualTo(4);
+        // Antes: 3 -> 2 (descontaba la receta y además redondeaba 0,2 kg a 1 kg).
+        assertThat(materiaPrimaRepository.findById(harina.getId()).orElseThrow().getStockActual())
+                .isEqualTo(3);
+    }
+
+    @Test
+    void crearVenta_productoConRecetaSinInsumosSuficientes_igualSeVendeSiHayProductoFinal() throws Exception {
+        EspProducto torta = datos.crearProducto("VTA-TORTA", "Torta", new BigDecimal("7600.00"), 2, 0);
+        elaboradoConReceta(torta, 0);
+
+        // Antes: 500 "Error interno del servidor" (InsumoInsuficienteException).
+        mockMvc.perform(post("/api/ventas").contentType(MediaType.APPLICATION_JSON).content(venta(torta, 1)))
+                .andExpect(status().isCreated());
+
+        assertThat(stockRepository.findByEspProducto_Codigo("VTA-TORTA").orElseThrow().getCantidad())
+                .isEqualTo(1);
+    }
+
+    @Test
+    void crearVenta_productoConRecetaSinStockFinal_devuelve400JsonConElProducto() throws Exception {
+        EspProducto torta = datos.crearProducto("VTA-TORTA", "Torta", new BigDecimal("7600.00"), 0, 0);
+        elaboradoConReceta(torta, 10);
+
+        mockMvc.perform(post("/api/ventas").contentType(MediaType.APPLICATION_JSON).content(venta(torta, 1)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(
+                        "Stock insuficiente para Torta (código VTA-TORTA): disponible 0, solicitado 1."));
+        assertThat(ventaRepository.count()).isZero();
     }
 }

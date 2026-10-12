@@ -1,8 +1,6 @@
 package com.sgiu_group.sgiu.controllers;
 
 import com.sgiu_group.sgiu.models.dtos.VentaRequestDTO;
-import com.sgiu_group.sgiu.exceptions.ProductoNoEncontradoException;
-import com.sgiu_group.sgiu.exceptions.StockInsuficienteException;
 import com.sgiu_group.sgiu.services.VentaService;
 import jakarta.validation.Valid; 
 import org.springframework.http.HttpStatus;
@@ -18,18 +16,11 @@ public class VentaController {
     @Autowired
     private VentaService ventaService;
 
+    /** Los errores (producto inexistente, stock insuficiente, validación) los
+     *  responde GlobalExceptionHandler en JSON: {"error": "..."}. */
     @PostMapping
-    public ResponseEntity<?> crearVenta(@Valid @RequestBody VentaRequestDTO request) { // 2. Agregar @Valid
-        try {
-            ventaService.procesarVenta(request);
-            return ResponseEntity.status(HttpStatus.CREATED).build(); // 201 Created
-        } catch (ProductoNoEncontradoException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (StockInsuficienteException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error interno del servidor");
-        }
+    public ResponseEntity<Void> crearVenta(@Valid @RequestBody VentaRequestDTO request) {
+        ventaService.procesarVenta(request);
+        return ResponseEntity.status(HttpStatus.CREATED).build(); // 201 Created
     }
 }

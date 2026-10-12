@@ -50,3 +50,14 @@ class AjustarStockInsumoEvent extends InsumosEvent {
   @override
   List<Object?> get props => [id, cantidad, motivo];
 }
+
+/// Activa o desactiva un insumo (los insumos no se eliminan).
+class CambiarEstadoInsumoEvent extends InsumosEvent {
+  final int id;
+  final bool activo;
+
+  const CambiarEstadoInsumoEvent(this.id, {required this.activo});
+
+  @override
+  List<Object?> get props => [id, activo];
+}

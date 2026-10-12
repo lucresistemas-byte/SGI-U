@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -14,6 +15,10 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 
 import java.util.Map;
 
+/**
+ * Formato único de error (E-9): {"error": "<mensaje para el usuario>"} y,
+ * cuando sirve para distinguir el caso, "codigo".
+ */
 @Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -40,6 +45,30 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CategoriaDuplicadaException.class)
     public ResponseEntity<?> handleCategoriaDuplicada(CategoriaDuplicadaException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(RecetaInactivaExistenteException.class)
+    public ResponseEntity<?> handleRecetaInactivaExistente(RecetaInactivaExistenteException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "error", e.getMessage(),
+                "codigo", "RECETA_INACTIVA_EXISTENTE",
+                "recetaId", e.getRecetaId()));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<?> handleMetodoNoSoportado(HttpRequestMethodNotSupportedException e) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(Map.of(
+                "error", "Operación no disponible: " + e.getMethod() + " no está permitido en esta ruta."));
+    }
+
+    @ExceptionHandler(StockInsuficienteException.class)
+    public ResponseEntity<?> handleStockInsuficiente(StockInsuficienteException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(ProductoNoEncontradoException.class)
+    public ResponseEntity<?> handleProductoNoEncontrado(ProductoNoEncontradoException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
     }
 
     @ExceptionHandler(InsumoInsuficienteException.class)
@@ -70,36 +99,32 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(FechasInvalidasException.class)
     public ResponseEntity<?> handleFechasInvalidas(FechasInvalidasException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
-                "error", true,
-                "codigo", "FECHAS_INVALIDAS",
-                "mensaje", e.getMessage()
+                "error", e.getMessage(),
+                "codigo", "FECHAS_INVALIDAS"
         ));
     }
 
     @ExceptionHandler(FiltroInvalidoException.class)
     public ResponseEntity<?> handleFiltroInvalido(FiltroInvalidoException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
-                "error", true,
-                "codigo", "FILTRO_INVALIDO",
-                "mensaje", e.getMessage()
+                "error", e.getMessage(),
+                "codigo", "FILTRO_INVALIDO"
         ));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<?> handleAccessDenied(AccessDeniedException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                "error", true,
-                "codigo", "TOKEN_INVALIDO",
-                "mensaje", "Token inválido o expirado"
+                "error", "Token inválido o expirado",
+                "codigo", "TOKEN_INVALIDO"
         ));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<?> handleMissingParam(MissingServletRequestParameterException e) {
         return ResponseEntity.badRequest().body(Map.of(
-                "error", true,
-                "codigo", "PARAMETRO_REQUERIDO",
-                "mensaje", "Parámetro requerido no provisto: " + e.getParameterName()
+                "error", "Parámetro requerido no provisto: " + e.getParameterName(),
+                "codigo", "PARAMETRO_REQUERIDO"
         ));
     }
 
@@ -113,9 +138,8 @@ public class GlobalExceptionHandler {
         // Sin esto el error inesperado se pierde: la respuesta es genérica.
         log.error("Error no controlado", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "error", true,
-                "codigo", "ERROR_DASHBOARD",
-                "mensaje", "No se pudo generar el Dashboard"
+                "error", "Ocurrió un error inesperado en el servidor. Intente nuevamente.",
+                "codigo", "ERROR_INTERNO"
         ));
     }
 }

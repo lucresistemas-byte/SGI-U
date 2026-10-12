@@ -23,6 +23,11 @@ class RecetasState extends Equatable {
   final List<RecetaDetalle> detalles;
   final double costoTotal;
 
+  /// Al crear: el producto ya tiene esta receta desactivada (id y mensaje
+  /// del backend). La pantalla ofrece reactivarla con los datos cargados.
+  final int? recetaInactivaExistenteId;
+  final String? recetaInactivaExistenteMensaje;
+
   const RecetasState({
     this.isLoading = false,
     this.isSaving = false,
@@ -39,6 +44,8 @@ class RecetasState extends Equatable {
     this.costosAdicionales = 0.0,
     this.detalles = const [],
     this.costoTotal = 0.0,
+    this.recetaInactivaExistenteId,
+    this.recetaInactivaExistenteMensaje,
   });
 
   factory RecetasState.initial() => const RecetasState();
@@ -74,6 +81,9 @@ class RecetasState extends Equatable {
     double? costoTotal,
     bool clearError = false,
     bool clearSuccess = false,
+    int? recetaInactivaExistenteId,
+    String? recetaInactivaExistenteMensaje,
+    bool clearRecetaInactivaExistente = false,
   }) {
     return RecetasState(
       isLoading: isLoading ?? this.isLoading,
@@ -91,6 +101,13 @@ class RecetasState extends Equatable {
       costosAdicionales: costosAdicionales ?? this.costosAdicionales,
       detalles: detalles ?? this.detalles,
       costoTotal: costoTotal ?? this.costoTotal,
+      recetaInactivaExistenteId: clearRecetaInactivaExistente
+          ? null
+          : (recetaInactivaExistenteId ?? this.recetaInactivaExistenteId),
+      recetaInactivaExistenteMensaje: clearRecetaInactivaExistente
+          ? null
+          : (recetaInactivaExistenteMensaje ??
+              this.recetaInactivaExistenteMensaje),
     );
   }
 
@@ -111,5 +128,7 @@ class RecetasState extends Equatable {
         costosAdicionales,
         detalles,
         costoTotal,
+        recetaInactivaExistenteId,
+        recetaInactivaExistenteMensaje,
       ];
 }

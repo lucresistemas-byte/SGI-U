@@ -1,5 +1,6 @@
 package com.sgiu_group.sgiu.services;
 
+import com.sgiu_group.sgiu.exceptions.RecetaInactivaExistenteException;
 import com.sgiu_group.sgiu.exceptions.RecetaInvalidaException;
 import com.sgiu_group.sgiu.exceptions.RecursoNoEncontradoException;
 import com.sgiu_group.sgiu.models.dtos.RecetaDetalleRequestDTO;
@@ -30,8 +31,11 @@ public class RecetaService {
     private final EspProductoRepository espProductoRepository;
 
     @Transactional(readOnly = true)
-    public List<RecetaResponseDTO> listarTodas() {
-        return recetaRepository.findByActivoTrue().stream()
+    public List<RecetaResponseDTO> listarTodas(boolean incluirInactivas) {
+        List<Receta> recetas = incluirInactivas
+                ? recetaRepository.findAll()
+                : recetaRepository.findByActivoTrue();
+        return recetas.stream()
                 .map(this::toResponseDTO)
                 .toList();
     }
@@ -39,7 +43,6 @@ public class RecetaService {
     @Transactional(readOnly = true)
     public RecetaResponseDTO obtenerPorId(Long id) {
         Receta receta = recetaRepository.findById(id)
-                .filter(Receta::isActivo)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Receta no encontrada con ID: " + id));
         return toResponseDTO(receta);
     }
@@ -56,12 +59,19 @@ public class RecetaService {
         EspProducto producto = espProductoRepository.findByCodigo(dto.espProductoCodigo().trim())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Producto no encontrado: " + dto.espProductoCodigo()));
 
-        Optional<Receta> existente = recetaRepository.findByProducto_IdAndActivoTrue(producto.getId());
-        if (existente.isPresent()) {
+        Optional<Receta> existente = recetaRepository.findByProducto(producto);
+        if (existente.isPresent() && existente.get().isActivo()) {
             throw new RecetaInvalidaException("El producto ya cuenta con una receta activa (ID: " + existente.get().getId() + ")");
         }
+        if (existente.isPresent()) {
+            // Un producto tiene una sola receta (UNIQUE): se reactiva la existente.
+            throw new RecetaInactivaExistenteException(
+                    "El producto " + producto.getNombre() + " ya tiene una receta desactivada ("
+                            + existente.get().getNombre() + "). Puede reactivarla y editarla.",
+                    existente.get().getId());
+        }
 
-        validarDuplicadosYExistencia(dto.detalles());
+        validarDuplicadosYExistencia(dto.detalles(), Set.of());
         validarCiclos(producto.getId(), dto.detalles(), new HashSet<>());
 
         Receta receta = new Receta(
@@ -86,10 +96,13 @@ public class RecetaService {
     @Transactional
     public RecetaResponseDTO actualizar(Long id, RecetaRequestDTO dto) {
         Receta receta = recetaRepository.findById(id)
-                .filter(Receta::isActivo)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Receta no encontrada con ID: " + id));
 
-        validarDuplicadosYExistencia(dto.detalles());
+        // Un insumo que ya estaba en la receta puede quedar aunque se haya
+        // desactivado; uno nuevo tiene que estar activo.
+        Set<Long> yaEnLaReceta = new HashSet<>();
+        receta.getDetalles().forEach(d -> yaEnLaReceta.add(d.getMateriaPrima().getId()));
+        validarDuplicadosYExistencia(dto.detalles(), yaEnLaReceta);
         validarCiclos(receta.getProducto().getId(), dto.detalles(), new HashSet<>());
 
         receta.setNombre(dto.nombre().trim());
@@ -100,32 +113,43 @@ public class RecetaService {
         poblarDetalles(receta, dto.detalles());
 
         Receta guardada = recetaRepository.save(receta);
-        actualizarCostosProductoElaborado(guardada);
+        // Una receta inactiva no participa en el costo del producto.
+        if (guardada.isActivo()) {
+            actualizarCostosProductoElaborado(guardada);
+        }
 
         log.info("[RECETA] Actualizada receta ID {} ('{}'). Nuevo costo: ${}",
                 guardada.getId(), guardada.getNombre(), guardada.calcularCostoTotal());
         return toResponseDTO(guardada);
     }
 
+    /** Activa o desactiva la receta. Al reactivarla, vuelve a costear el producto. */
     @Transactional
-    public void eliminar(Long id) {
+    public RecetaResponseDTO cambiarEstado(Long id, boolean activo) {
         Receta receta = recetaRepository.findById(id)
-                .filter(Receta::isActivo)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Receta no encontrada con ID: " + id));
 
-        receta.setActivo(false);
-        recetaRepository.save(receta);
-        log.info("[RECETA] Desactivada receta ID {}", id);
+        receta.setActivo(activo);
+        Receta guardada = recetaRepository.save(receta);
+        if (activo) {
+            actualizarCostosProductoElaborado(guardada);
+        }
+        log.info("[RECETA] Receta ID {} {}", id, activo ? "activada" : "desactivada");
+        return toResponseDTO(guardada);
     }
 
-    private void validarDuplicadosYExistencia(List<RecetaDetalleRequestDTO> detalles) {
+    private void validarDuplicadosYExistencia(List<RecetaDetalleRequestDTO> detalles,
+                                              Set<Long> insumosPermitidosInactivos) {
         Set<Long> insumosVistos = new HashSet<>();
         for (RecetaDetalleRequestDTO d : detalles) {
+            MateriaPrima mp = materiaPrimaRepository.findById(d.materiaPrimaId())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Materia prima no encontrada con ID: " + d.materiaPrimaId()));
             if (!insumosVistos.add(d.materiaPrimaId())) {
-                throw new RecetaInvalidaException("Insumo duplicado en la receta. ID de insumo: " + d.materiaPrimaId());
+                throw new RecetaInvalidaException("El insumo " + mp.getNombre() + " está dos veces en la receta.");
             }
-            if (!materiaPrimaRepository.existsById(d.materiaPrimaId())) {
-                throw new RecursoNoEncontradoException("Materia prima no encontrada con ID: " + d.materiaPrimaId());
+            if (!mp.isActivo() && !insumosPermitidosInactivos.contains(mp.getId())) {
+                throw new RecetaInvalidaException("El insumo " + mp.getNombre()
+                        + " está desactivado. Reactívelo para usarlo en una receta.");
             }
         }
     }

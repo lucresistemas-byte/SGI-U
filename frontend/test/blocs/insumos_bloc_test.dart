@@ -49,7 +49,7 @@ void main() {
     blocTest<InsumosBloc, InsumosState>(
       'CargarInsumos emite [InsumosLoading, InsumosLoaded] exitosamente',
       build: () {
-        when(() => mockApiService.getInsumos()).thenAnswer((_) async => testInsumos);
+        when(() => mockApiService.getInsumos(incluirInactivos: any(named: 'incluirInactivos'))).thenAnswer((_) async => testInsumos);
         return insumosBloc;
       },
       act: (bloc) => bloc.add(const CargarInsumos()),
@@ -58,7 +58,7 @@ void main() {
         isA<InsumosLoaded>().having((s) => s.insumos.length, 'insumos count', 2),
       ],
       verify: (_) {
-        verify(() => mockApiService.getInsumos()).called(1);
+        verify(() => mockApiService.getInsumos(incluirInactivos: any(named: 'incluirInactivos'))).called(1);
       },
     );
 
@@ -80,7 +80,7 @@ void main() {
         when(() => mockApiService.createInsumo(any())).thenAnswer(
           (_) async => testInsumos.first,
         );
-        when(() => mockApiService.getInsumos()).thenAnswer((_) async => testInsumos);
+        when(() => mockApiService.getInsumos(incluirInactivos: any(named: 'incluirInactivos'))).thenAnswer((_) async => testInsumos);
         return insumosBloc;
       },
       act: (bloc) => bloc.add(const CrearInsumoEvent({

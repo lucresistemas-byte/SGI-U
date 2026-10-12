@@ -1,14 +1,19 @@
+# Perfil para tests contra MariaDB real. NUNCA apuntar a la base instalada
+# (puerto 3307 / sgiu_db): la URL jdbc:tc: levanta un contenedor descartable
+# de Testcontainers por cada ejecución (requiere Docker accesible).
 spring:
   datasource:
-    url: jdbc:mariadb://localhost:3307/sgiu_db
-    username: sgiu_user
-    password: sgiu_1234
-    driver-class-name: org.mariadb.jdbc.Driver
+    url: jdbc:tc:mariadb:10.11:///sgiu_it
+    username: test
+    password: test
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MariaDBDialect
-    show-sql: true
-    defer-datasource-initialization: true
+    show-sql: false
+  sql:
+    init:
+      mode: never

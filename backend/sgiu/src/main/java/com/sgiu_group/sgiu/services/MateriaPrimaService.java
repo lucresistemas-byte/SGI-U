@@ -30,8 +30,11 @@ public class MateriaPrimaService {
     private final EspProductoRepository espProductoRepository;
 
     @Transactional(readOnly = true)
-    public List<InsumoResponseDTO> listarTodos() {
-        return materiaPrimaRepository.findByActivoTrue().stream()
+    public List<InsumoResponseDTO> listarTodos(boolean incluirInactivos) {
+        List<MateriaPrima> insumos = incluirInactivos
+                ? materiaPrimaRepository.findAll()
+                : materiaPrimaRepository.findByActivoTrue();
+        return insumos.stream()
                 .map(this::toResponseDTO)
                 .toList();
     }
@@ -39,7 +42,6 @@ public class MateriaPrimaService {
     @Transactional(readOnly = true)
     public InsumoResponseDTO obtenerPorId(Long id) {
         MateriaPrima mp = materiaPrimaRepository.findById(id)
-                .filter(MateriaPrima::isActivo)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Insumo no encontrado con ID: " + id));
         return toResponseDTO(mp);
     }
@@ -68,14 +70,17 @@ public class MateriaPrimaService {
     @Transactional
     public InsumoResponseDTO actualizar(Long id, InsumoRequestDTO dto) {
         MateriaPrima mp = materiaPrimaRepository.findById(id)
-                .filter(MateriaPrima::isActivo)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Insumo no encontrado con ID: " + id));
 
         BigDecimal costoAnterior = mp.getCostoUnitario();
         mp.setNombre(dto.nombre().trim());
         mp.setCostoUnitario(dto.costoUnitario());
         if (dto.unidadMedida() != null) {
-            mp.setUnidadMedida(parseUnidad(dto.unidadMedida()));
+            UnidadMedida nueva = parseUnidad(dto.unidadMedida());
+            if (nueva != mp.getUnidadMedida()) {
+                validarCambioDeUnidad(mp, nueva);
+            }
+            mp.setUnidadMedida(nueva);
         }
         if (dto.stockMinimo() != null) {
             mp.setStockMinimo(dto.stockMinimo());
@@ -94,7 +99,6 @@ public class MateriaPrimaService {
     @Transactional
     public InsumoResponseDTO ajustarStock(Long id, AjusteStockInsumoDTO dto) {
         MateriaPrima mp = materiaPrimaRepository.findById(id)
-                .filter(MateriaPrima::isActivo)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Insumo no encontrado con ID: " + id));
 
         int nuevoStock = mp.getStockActual() + dto.cantidad();
@@ -108,6 +112,39 @@ public class MateriaPrimaService {
                 guardada.getNombre(), dto.cantidad(), dto.motivo(), guardada.getStockActual());
 
         return toResponseDTO(guardada);
+    }
+
+    /**
+     * E-10: el stock y las recetas no se convierten de unidad, así que solo se
+     * permite cambiarla sin stock y sin recetas activas que usen el insumo.
+     */
+    private void validarCambioDeUnidad(MateriaPrima mp, UnidadMedida nueva) {
+        List<String> motivos = new java.util.ArrayList<>();
+        if (mp.getStockActual() > 0) {
+            motivos.add("tiene stock (" + mp.getStockActual() + ")");
+        }
+        List<String> recetas = recetaRepository.findRecetasByMateriaPrimaId(mp.getId()).stream()
+                .map(Receta::getNombre)
+                .toList();
+        if (!recetas.isEmpty()) {
+            motivos.add("se usa en recetas activas (" + String.join(", ", recetas) + ")");
+        }
+        if (!motivos.isEmpty()) {
+            throw new RecetaInvalidaException("No se puede cambiar la unidad de " + mp.getNombre()
+                    + " (" + mp.getUnidadMedida() + " a " + nueva + ") porque el stock y las recetas "
+                    + "no se convierten: " + String.join(" y ", motivos) + ". Lleve el stock a 0 con "
+                    + "un ajuste o cree un insumo nuevo con la otra unidad.");
+        }
+    }
+
+    /** Activa o desactiva el insumo (los insumos no se eliminan). */
+    @Transactional
+    public InsumoResponseDTO cambiarEstado(Long id, boolean activo) {
+        MateriaPrima mp = materiaPrimaRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Insumo no encontrado con ID: " + id));
+        mp.setActivo(activo);
+        log.info("[INSUMO] '{}' {}", mp.getNombre(), activo ? "activado" : "desactivado");
+        return toResponseDTO(materiaPrimaRepository.save(mp));
     }
 
     @Transactional
