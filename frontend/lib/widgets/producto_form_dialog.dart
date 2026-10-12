@@ -23,6 +23,9 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   late TextEditingController _porcentajeController;
   late bool _activo;
 
+  /// Preparación base: solo aplica a productos elaborados.
+  late bool _preparacionBase;
+
   // Stock inicial (solo creación)
   late TextEditingController _stockInicialController;
   // Controles de ajuste (solo edición)
@@ -70,6 +73,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                 : prod.porcentajeGanancia!.toString())
             : '');
     _activo = _esEdicion ? prod!.activo : true;
+    _preparacionBase = _esEdicion && prod!.esPreparacionBase;
     _unidadMedida = prod?.unidadMedida ?? 'UNIDAD';
     _stockInicialController = TextEditingController(text: '0');
     _ajusteCantidadController = TextEditingController(text: '0');
@@ -220,6 +224,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
       'precioUnitario': double.parse(
           _precioController.text.trim().replaceAll(',', '.')), // aceptar coma
       'activo': _activo,
+      if (_esEdicion && widget.productoAEditar!.esElaborado) 'vendible': !_preparacionBase,
       'unidadMedida': _unidadMedida,
       'unidad_medida': _unidadMedida,
       'precioCosto': costoVal,
@@ -309,6 +314,18 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Tipo: desde acá solo se crea reventa; al editar no cambia.
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _esEdicion
+                            ? 'Tipo: ${widget.productoAEditar!.esElaborado ? 'Elaborado' : 'Reventa'}'
+                            : 'Tipo: Reventa. Los productos elaborados se crean desde Recetas.',
+                        key: const Key('tipo_producto_form'),
+                        style: const TextStyle(color: Color(0xFF475569)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     // Código
                     TextFormField(
                       controller: _codigoController,
@@ -537,6 +554,16 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                       ),
                       const SizedBox(height: 16),
                     ],
+                    if (_esEdicion && widget.productoAEditar!.esElaborado)
+                      CheckboxListTile(
+                        key: const Key('preparacion_base_check'),
+                        contentPadding: EdgeInsets.zero,
+                        value: _preparacionBase,
+                        onChanged: (v) =>
+                            setStateDialog(() => _preparacionBase = v ?? false),
+                        title: const Text('Preparación base (no se vende)'),
+                        subtitle: const Text('Ej.: ganache. No aparece en el punto de venta.'),
+                      ),
                     // Estado
                     Row(
                       children: [
