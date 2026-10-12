@@ -43,7 +43,7 @@ class RecetaEstadoIntegrationTest extends AbstractIntegrationTest {
 
     /** Torta con receta activa: 0,2 kg de harina a $1000/kg + $100 adicionales = costo 300. */
     private Receta tortaConReceta() {
-        torta = datos.crearProducto("REC-TORTA", "Torta", new BigDecimal("1000.00"), 0, 0);
+        torta = datos.crearElaborado("REC-TORTA", "Torta", new BigDecimal("1000.00"), 0, true);
         harina = materiaPrimaRepository.save(new MateriaPrima(
                 "REC-HAR", "Harina", new BigDecimal("1000.00"), UnidadMedida.KILO, 10, 0));
         Receta receta = new Receta(torta, "Torta base", null, new BigDecimal("100.00"));
@@ -159,7 +159,7 @@ class RecetaEstadoIntegrationTest extends AbstractIntegrationTest {
     @Test
     void crearConUnInsumoRepetido_devuelve400ConElNombreDelInsumo() throws Exception {
         tortaConReceta();
-        EspProducto budin = datos.crearProducto("REC-BUDIN", "Budín", new BigDecimal("900.00"), 0, 0);
+        EspProducto budin = datos.crearElaborado("REC-BUDIN", "Budín", new BigDecimal("900.00"), 0, true);
 
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"espProductoCodigo\": \"" + budin.getCodigo() + "\", \"nombre\": \"Budín\", "

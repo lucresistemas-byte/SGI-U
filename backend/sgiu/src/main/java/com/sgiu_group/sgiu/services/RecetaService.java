@@ -8,6 +8,9 @@ import com.sgiu_group.sgiu.models.dtos.RecetaDetalleResponseDTO;
 import com.sgiu_group.sgiu.models.dtos.RecetaRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.RecetaResponseDTO;
 import com.sgiu_group.sgiu.models.entities.*;
+import com.sgiu_group.sgiu.models.dtos.ProductoElaboradoNuevoDTO;
+import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
+import com.sgiu_group.sgiu.repositories.CategoriaRepository;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
 import com.sgiu_group.sgiu.repositories.MateriaPrimaRepository;
 import com.sgiu_group.sgiu.repositories.RecetaDetalleRepository;
@@ -28,6 +31,8 @@ public class RecetaService {
     private final RecetaRepository recetaRepository;
     private final RecetaDetalleRepository recetaDetalleRepository;
     private final MateriaPrimaRepository materiaPrimaRepository;
+    private final ArticuloStockRepository stockRepository;
+    private final CategoriaRepository categoriaRepository;
     private final EspProductoRepository espProductoRepository;
 
     @Transactional(readOnly = true)
@@ -56,8 +61,21 @@ public class RecetaService {
 
     @Transactional
     public RecetaResponseDTO crear(RecetaRequestDTO dto) {
+        boolean hayExistente = dto.espProductoCodigo() != null && !dto.espProductoCodigo().isBlank();
+        if (hayExistente == (dto.productoNuevo() != null)) {
+            throw new RecetaInvalidaException(
+                    "Indique un producto elaborado existente o los datos de uno nuevo (uno de los dos).");
+        }
+        if (!hayExistente) {
+            return crearConProductoNuevo(dto);
+        }
+
         EspProducto producto = espProductoRepository.findByCodigo(dto.espProductoCodigo().trim())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Producto no encontrado: " + dto.espProductoCodigo()));
+        if (!producto.getTipo().tieneReceta()) {
+            throw new RecetaInvalidaException("Solo los productos elaborados tienen receta: "
+                    + producto.getNombre() + " es de " + descripcionTipo(producto.getTipo()) + ".");
+        }
 
         Optional<Receta> existente = recetaRepository.findByProducto(producto);
         if (existente.isPresent() && existente.get().isActivo()) {
@@ -73,7 +91,71 @@ public class RecetaService {
 
         validarDuplicadosYExistencia(dto.detalles(), Set.of());
         validarCiclos(producto.getId(), dto.detalles(), new HashSet<>());
+        return guardarNueva(producto, dto);
+    }
 
+    /**
+     * La receta crea el producto elaborado (Punto 5): producto ELABORADO con
+     * stock 0 y receta, en la misma transacción. Se valida la receta antes de
+     * crear el producto; si algo falla, no queda nada creado.
+     */
+    private RecetaResponseDTO crearConProductoNuevo(RecetaRequestDTO dto) {
+        ProductoElaboradoNuevoDTO nuevo = dto.productoNuevo();
+        validarDuplicadosYExistencia(dto.detalles(), Set.of());
+
+        String codigo = nuevo.codigo() != null && !nuevo.codigo().isBlank()
+                ? nuevo.codigo().trim()
+                : siguienteCodigoElaborado();
+        if (espProductoRepository.existsByCodigo(codigo)) {
+            throw new RecetaInvalidaException("Ya existe un producto con el código " + codigo + ".");
+        }
+
+        EspProducto producto = new EspProducto(codigo, nuevo.nombre().trim(), BigDecimal.ZERO);
+        producto.setTipo(TipoArticulo.ELABORADO);
+        producto.setVendible(nuevo.vendible() == null || nuevo.vendible());
+        producto.setPorcentajeGanancia(nuevo.porcentajeGanancia() != null
+                ? nuevo.porcentajeGanancia() : BigDecimal.ZERO);
+        if (nuevo.categoriaId() != null) {
+            producto.setCategoria(categoriaRepository.findById(nuevo.categoriaId()).orElse(null));
+        }
+        producto = espProductoRepository.save(producto);
+
+        ArticuloStock stock = new ArticuloStock();
+        stock.setEspProducto(producto);
+        stock.setCantidad(0);
+        stock.setStockMinimo(0);
+        stockRepository.save(stock);
+
+        return guardarNueva(producto, dto);
+    }
+
+    /** Código ELA-0001, ELA-0002, ... siguiente al mayor existente. */
+    private String siguienteCodigoElaborado() {
+        int mayor = espProductoRepository.findByCodigoStartingWith("ELA-").stream()
+                .map(p -> p.getCodigo().substring(4))
+                .filter(n -> n.matches("\\d+"))
+                .mapToInt(Integer::parseInt)
+                .max()
+                .orElse(0);
+        String codigo;
+        do {
+            codigo = String.format("ELA-%04d", ++mayor);
+        } while (espProductoRepository.existsByCodigo(codigo));
+        return codigo;
+    }
+
+    private static String descripcionTipo(TipoArticulo tipo) {
+        return switch (tipo) {
+            case REVENTA -> "reventa";
+            case MATERIA_PRIMA -> "materia prima";
+            case INSUMO -> "insumo";
+            case REVENTA_MATERIA_PRIMA -> "reventa y materia prima";
+            case PAQUETE -> "tipo paquete";
+            case ELABORADO -> "elaborado";
+        };
+    }
+
+    private RecetaResponseDTO guardarNueva(EspProducto producto, RecetaRequestDTO dto) {
         Receta receta = new Receta(
                 producto,
                 dto.nombre().trim(),

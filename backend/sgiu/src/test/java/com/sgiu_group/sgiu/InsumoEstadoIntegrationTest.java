@@ -87,7 +87,7 @@ class InsumoEstadoIntegrationTest extends AbstractIntegrationTest {
     void crearRecetaConUnInsumoInactivo_devuelve400() throws Exception {
         MateriaPrima harina = harina();
         harina.setActivo(false);
-        datos.crearProducto("INS-TORTA", "Torta", new BigDecimal("1000.00"), 0, 0);
+        datos.crearElaborado("INS-TORTA", "Torta", new BigDecimal("1000.00"), 0, true);
 
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"espProductoCodigo\": \"INS-TORTA\", \"nombre\": \"Torta\", "
