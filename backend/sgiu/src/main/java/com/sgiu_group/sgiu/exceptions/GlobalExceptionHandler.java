@@ -85,6 +85,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
     }
 
+    @ExceptionHandler(MetodoPagoInvalidoException.class)
+    public ResponseEntity<?> handleMetodoPagoInvalido(MetodoPagoInvalidoException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(MetodoPagoDuplicadoException.class)
+    public ResponseEntity<?> handleMetodoPagoDuplicado(MetodoPagoDuplicadoException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+    }
+
     @ExceptionHandler(PedidoInvalidoException.class)
     public ResponseEntity<?> handlePedidoInvalido(PedidoInvalidoException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));

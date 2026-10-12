@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/product.dart';
+import '../models/metodo_pago.dart';
 import '../models/categoria.dart';
 import '../models/configuracion_negocio.dart';
 import '../models/insumo.dart';
@@ -554,6 +555,63 @@ class ApiService implements PosApi {
     } on DioException catch (e) {
       throw ApiException(mensajeDeError(
           e, 'No se pudo cambiar el estado de la categoría. Intente nuevamente.'));
+    }
+  }
+
+  // --- MÉTODOS DE PAGO ---
+  /// Activos, en el orden configurado (los que se ofrecen). Con
+  /// [incluirInactivos], todos (pantalla de Configuración).
+  Future<List<MetodoPago>> getMetodosPago({bool incluirInactivos = false}) async {
+    try {
+      final response = await dio.get('/api/metodos-pago',
+          queryParameters: incluirInactivos ? {'incluirInactivos': true} : null);
+      return (response.data as List)
+          .map((m) => MetodoPago.fromJson(Map<String, dynamic>.from(m as Map)))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(
+          e, 'No se pudieron cargar los métodos de pago. Intente nuevamente.'));
+    }
+  }
+
+  Future<MetodoPago> crearMetodoPago(String nombre) async {
+    try {
+      final response = await dio.post('/api/metodos-pago', data: {'nombre': nombre});
+      return MetodoPago.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo crear el método de pago. Intente nuevamente.'));
+    }
+  }
+
+  Future<MetodoPago> renombrarMetodoPago(int id, String nombre) async {
+    try {
+      final response = await dio.put('/api/metodos-pago/$id', data: {'nombre': nombre});
+      return MetodoPago.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo renombrar el método de pago. Intente nuevamente.'));
+    }
+  }
+
+  /// Los métodos de pago no se eliminan: se desactivan o reactivan.
+  Future<MetodoPago> cambiarEstadoMetodoPago(int id, {required bool activo}) async {
+    try {
+      final response = await dio.patch('/api/metodos-pago/$id/estado', data: {'activo': activo});
+      return MetodoPago.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo cambiar el estado del método de pago. Intente nuevamente.'));
+    }
+  }
+
+  /// [ids]: todos los métodos, en el orden nuevo.
+  Future<List<MetodoPago>> reordenarMetodosPago(List<int> ids) async {
+    try {
+      final response = await dio.put('/api/metodos-pago/orden', data: {'ids': ids});
+      return (response.data as List)
+          .map((m) => MetodoPago.fromJson(Map<String, dynamic>.from(m as Map)))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo reordenar. Intente nuevamente.'));
     }
   }
 
