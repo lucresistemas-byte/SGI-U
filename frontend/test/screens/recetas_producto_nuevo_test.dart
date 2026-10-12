@@ -92,18 +92,18 @@ void main() {
     });
   });
 
-  testWidgets('preparación base y código propio', (t) async {
+  testWidgets('preparación base, sin campo de código (lo genera el sistema)', (t) async {
     await abrirArmador(t);
 
+    expect(find.byKey(const Key('nuevo_producto_codigo')), findsNothing);
     await t.enterText(find.byKey(const Key('nuevo_producto_nombre')), 'Ganache');
-    await t.enterText(find.byKey(const Key('nuevo_producto_codigo')), 'GAN-1');
     await elegirCategoria(t, 'Tortas');
     await t.tap(find.byKey(const Key('nuevo_producto_preparacion_base')));
     await t.pump();
     await completarRecetaYGuardar(t);
 
     expect(payload()['productoNuevo'],
-        {'nombre': 'Ganache', 'codigo': 'GAN-1', 'categoriaId': 7, 'vendible': false});
+        {'nombre': 'Ganache', 'categoriaId': 7, 'vendible': false});
   });
 
   testWidgets('producto existente: solo elaborados activos sin receta', (t) async {

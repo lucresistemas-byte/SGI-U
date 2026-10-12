@@ -6,10 +6,9 @@ import java.math.BigDecimal;
 
 /**
  * Datos del producto elaborado que se crea junto con su receta (la receta
- * crea el elaborado). Si no se indica código, el sistema genera uno (ELA-0001).
+ * crea el elaborado). El código lo genera el sistema (ELA-0001).
  */
 public record ProductoElaboradoNuevoDTO(
-    String codigo,
     @NotBlank(message = "El nombre del producto elaborado es obligatorio")
     String nombre,
     Long categoriaId,

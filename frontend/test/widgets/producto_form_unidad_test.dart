@@ -84,7 +84,6 @@ void main() {
     await tester.pumpAndSettle();
 
     // Completamos los campos requeridos
-    await tester.enterText(find.widgetWithText(TextFormField, 'Código (SKU)'), 'HAR-01');
     await tester.enterText(find.widgetWithText(TextFormField, 'Nombre del Producto'), 'Harina Pureza');
     await tester.enterText(find.widgetWithText(TextFormField, 'Precio Unitario (\$)'), '1500');
     await tester.enterText(find.widgetWithText(TextFormField, 'Stock Inicial'), '25');
@@ -96,7 +95,7 @@ void main() {
 
     // Verificamos que el payload enviado contenga unidad_medida = KILO
     expect(fake.createdData, isNotNull);
-    expect(fake.createdData!['codigo'], 'HAR-01');
+    expect(fake.createdData!.containsKey('codigo'), isFalse);
     expect(fake.createdData!['nombre'], 'Harina Pureza');
     expect(fake.createdData!['unidad_medida'], 'KILO');
     expect(fake.createdData!['unidadMedida'], 'KILO');

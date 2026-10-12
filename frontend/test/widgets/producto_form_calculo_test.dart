@@ -95,7 +95,6 @@ void main() {
       expect(porcentajeField.controller?.text, '100');
 
       // 4. Completamos los campos requeridos y guardamos
-      await tester.enterText(find.widgetWithText(TextFormField, 'Código (SKU)'), 'CALC-01');
       await tester.enterText(find.widgetWithText(TextFormField, 'Nombre del Producto'), 'Café Especial');
       await tester.enterText(find.widgetWithText(TextFormField, 'Stock Inicial'), '10');
       await tester.pump();
@@ -105,7 +104,7 @@ void main() {
 
       // Verificamos que el payload contenga costo, margen y precio de venta
       expect(fake.createdData, isNotNull);
-      expect(fake.createdData!['codigo'], 'CALC-01');
+      expect(fake.createdData!.containsKey('codigo'), isFalse);
       expect(fake.createdData!['precioUnitario'], 200.0);
       expect(fake.createdData!['precio_costo'], 100.0);
       expect(fake.createdData!['porcentaje_ganancia'], 100.0);

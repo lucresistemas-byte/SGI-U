@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Min;
 import java.math.BigDecimal;
 
 public record ProductoRequestDTO(
+    /** Se ignora al crear: el código lo genera el sistema según el tipo. */
     String codigo,
     String nombre,
     @DecimalMin(value = "0.01", message = "El precio debe ser un valor mayor a $0.")

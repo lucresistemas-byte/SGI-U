@@ -17,7 +17,6 @@ public interface EspProductoRepository extends JpaRepository<EspProducto, Long> 
 
     boolean existsByCodigo(String codigo);
 
-    List<EspProducto> findByCodigoStartingWith(String prefijo);
 
     @Query("""
            SELECT new com.sgiu_group.sgiu.models.dtos.ProductoCatalogoDTO(

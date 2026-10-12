@@ -166,19 +166,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
         const SizedBox(height: 12),
         Row(
           children: [
-            Expanded(
-              child: TextFormField(
-                key: const Key('nuevo_producto_codigo'),
-                initialValue: state.nuevoProductoCodigo,
-                decoration: const InputDecoration(
-                  labelText: 'Código (opcional)',
-                  hintText: 'Si lo deja vacío: ELA-0001',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (v) => _bloc.add(ActualizarProductoNuevoReceta(codigo: v)),
-              ),
-            ),
-            const SizedBox(width: 12),
+            // El código (ELA-0001, ...) lo genera el sistema al guardar.
             SizedBox(
               width: 140,
               child: TextFormField(

@@ -27,6 +27,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class RecetaService {
 
+    private final CodigoService codigoService;
     private final RecetaRepository recetaRepository;
     private final RecetaDetalleRepository recetaDetalleRepository;
     private final MateriaPrimaRepository materiaPrimaRepository;
@@ -103,13 +104,7 @@ public class RecetaService {
                 .orElseThrow(() -> new RecetaInvalidaException(
                         "La categoría elegida no existe o está desactivada."));
 
-        String codigo = nuevo.codigo() != null && !nuevo.codigo().isBlank()
-                ? nuevo.codigo().trim()
-                : siguienteCodigoElaborado();
-        if (espProductoRepository.existsByCodigo(codigo)) {
-            throw new RecetaInvalidaException("Ya existe un producto con el código " + codigo + ".");
-        }
-
+        String codigo = codigoService.siguiente(TipoArticulo.ELABORADO);
         EspProducto producto = new EspProducto(codigo, nuevo.nombre().trim(), BigDecimal.ZERO);
         producto.setTipo(TipoArticulo.ELABORADO);
         producto.setVendible(nuevo.vendible() == null || nuevo.vendible());
@@ -125,21 +120,6 @@ public class RecetaService {
         stockRepository.save(stock);
 
         return guardarNueva(producto, dto);
-    }
-
-    /** Código ELA-0001, ELA-0002, ... siguiente al mayor existente. */
-    private String siguienteCodigoElaborado() {
-        int mayor = espProductoRepository.findByCodigoStartingWith("ELA-").stream()
-                .map(p -> p.getCodigo().substring(4))
-                .filter(n -> n.matches("\\d+"))
-                .mapToInt(Integer::parseInt)
-                .max()
-                .orElse(0);
-        String codigo;
-        do {
-            codigo = String.format("ELA-%04d", ++mayor);
-        } while (espProductoRepository.existsByCodigo(codigo));
-        return codigo;
     }
 
     private static String descripcionTipo(TipoArticulo tipo) {

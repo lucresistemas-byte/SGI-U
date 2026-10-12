@@ -23,6 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductoService {
 
+    private final CodigoService codigoService;
     private final EspProductoRepository productoRepository;
     private final ArticuloStockRepository stockRepository;
     private final CategoriaRepository categoriaRepository;
@@ -115,10 +116,6 @@ public class ProductoService {
             throw new IllegalArgumentException("El precio debe ser un valor mayor a $0.");
         }
 
-        if (productoRepository.existsByCodigo(dto.codigo())) {
-            throw new IllegalArgumentException("El código de producto ya existe.");
-        }
-
         UnidadMedida unidad = UnidadMedida.UNIDAD;
         if (dto.unidadMedida() != null && !dto.unidadMedida().isBlank()) {
             try {
@@ -132,8 +129,9 @@ public class ProductoService {
             categoria = categoriaRepository.findById(dto.categoriaId()).orElse(null);
         }
 
+        // El código lo genera el sistema (REV-0001, ...); el enviado se ignora.
         EspProducto nuevoProducto = new EspProducto(
-                dto.codigo(),
+                codigoService.siguiente(tipo),
                 dto.nombre(),
                 precioVenta,
                 costo,

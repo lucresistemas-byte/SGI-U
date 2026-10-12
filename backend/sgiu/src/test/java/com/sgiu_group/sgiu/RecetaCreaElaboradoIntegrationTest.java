@@ -121,23 +121,14 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void conProductoNuevo_codigoPropioYPreparacionBase() throws Exception {
+    void conProductoNuevo_codigoEnviadoSeIgnoraYPreparacionBase() throws Exception {
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
                         .content(conProductoNuevo(nuevo("\"codigo\": \"GAN-1\", \"nombre\": \"Ganache\", \"vendible\": false"), false)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.espProductoCodigo").value("GAN-1"));
+                .andExpect(jsonPath("$.espProductoCodigo").value("ELA-0001"));
 
-        assertThat(productoRepository.findByCodigo("GAN-1").orElseThrow().esPreparacionBase()).isTrue();
-    }
-
-    @Test
-    void conProductoNuevo_codigoQueYaExiste_devuelve400() throws Exception {
-        datos.crearProducto("COCA", "Coca-Cola", new BigDecimal("1500"), 5, 0);
-
-        mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
-                        .content(conProductoNuevo(nuevo("\"codigo\": \"COCA\", \"nombre\": \"Tarta\""), false)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Ya existe un producto con el código COCA."));
+        assertThat(productoRepository.findByCodigo("GAN-1")).isEmpty();
+        assertThat(productoRepository.findByCodigo("ELA-0001").orElseThrow().esPreparacionBase()).isTrue();
     }
 
     @Test

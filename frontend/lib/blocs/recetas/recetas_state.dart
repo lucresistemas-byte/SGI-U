@@ -21,7 +21,6 @@ class RecetasState extends Equatable {
   /// Al editar: false = el producto de la receta está desactivado.
   final bool productoEditadoActivo;
   final String nuevoProductoNombre;
-  final String nuevoProductoCodigo;
   final int? nuevoProductoCategoriaId;
   final double? nuevoProductoPorcentaje;
   final bool nuevoProductoPreparacionBase;
@@ -48,7 +47,6 @@ class RecetasState extends Equatable {
     this.usarProductoNuevo = false,
     this.productoEditadoActivo = true,
     this.nuevoProductoNombre = '',
-    this.nuevoProductoCodigo = '',
     this.nuevoProductoCategoriaId,
     this.nuevoProductoPorcentaje,
     this.nuevoProductoPreparacionBase = false,
@@ -110,7 +108,6 @@ class RecetasState extends Equatable {
     bool? usarProductoNuevo,
     bool? productoEditadoActivo,
     String? nuevoProductoNombre,
-    String? nuevoProductoCodigo,
     int? nuevoProductoCategoriaId,
     bool quitarNuevoProductoCategoria = false,
     double? nuevoProductoPorcentaje,
@@ -139,7 +136,6 @@ class RecetasState extends Equatable {
       usarProductoNuevo: usarProductoNuevo ?? this.usarProductoNuevo,
       productoEditadoActivo: productoEditadoActivo ?? this.productoEditadoActivo,
       nuevoProductoNombre: nuevoProductoNombre ?? this.nuevoProductoNombre,
-      nuevoProductoCodigo: nuevoProductoCodigo ?? this.nuevoProductoCodigo,
       nuevoProductoCategoriaId: quitarNuevoProductoCategoria
           ? null
           : (nuevoProductoCategoriaId ?? this.nuevoProductoCategoriaId),
@@ -170,7 +166,6 @@ class RecetasState extends Equatable {
         usarProductoNuevo,
         productoEditadoActivo,
         nuevoProductoNombre,
-        nuevoProductoCodigo,
         nuevoProductoCategoriaId,
         nuevoProductoPorcentaje,
         nuevoProductoPreparacionBase,

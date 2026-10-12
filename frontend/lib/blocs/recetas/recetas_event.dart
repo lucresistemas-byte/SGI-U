@@ -159,7 +159,6 @@ class CrearCategoriaReceta extends RecetasEvent {
 
 class ActualizarProductoNuevoReceta extends RecetasEvent {
   final String? nombre;
-  final String? codigo;
   final int? categoriaId;
   final bool quitarCategoria;
   final double? porcentajeGanancia;
@@ -167,7 +166,6 @@ class ActualizarProductoNuevoReceta extends RecetasEvent {
 
   const ActualizarProductoNuevoReceta({
     this.nombre,
-    this.codigo,
     this.categoriaId,
     this.quitarCategoria = false,
     this.porcentajeGanancia,
@@ -176,5 +174,5 @@ class ActualizarProductoNuevoReceta extends RecetasEvent {
 
   @override
   List<Object?> get props =>
-      [nombre, codigo, categoriaId, quitarCategoria, porcentajeGanancia, preparacionBase];
+      [nombre, categoriaId, quitarCategoria, porcentajeGanancia, preparacionBase];
 }

@@ -4,6 +4,7 @@ import com.sgiu_group.sgiu.models.dtos.ProductoCatalogoDTO;
 import com.sgiu_group.sgiu.models.dtos.ProductoRequestDTO;
 import com.sgiu_group.sgiu.models.entities.ArticuloStock;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
+import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,8 @@ class ProductoServiceTest {
     private EspProductoRepository productoRepository;
     @Mock
     private ArticuloStockRepository stockRepository;
+    @Mock
+    private CodigoService codigoService;
 
     @InjectMocks
     private ProductoService productoService;
@@ -53,7 +56,7 @@ class ProductoServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("El precio es obligatorio.");
 
-        verify(productoRepository, never()).existsByCodigo(any());
+        verify(codigoService, never()).siguiente(any());
     }
 
     @Test
@@ -66,24 +69,14 @@ class ProductoServiceTest {
     }
 
     @Test
-    void crearProducto_codigoDuplicado_lanzaExcepcion() {
-        when(productoRepository.existsByCodigo("P1")).thenReturn(true);
-        ProductoRequestDTO dto = new ProductoRequestDTO("P1", "Duplicado", new BigDecimal("10.00"), 1L, 0, true);
-
-        assertThatThrownBy(() -> productoService.crearProducto(dto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("El código de producto ya existe.");
-
-        verify(productoRepository, never()).save(any());
-    }
-
-    @Test
-    void crearProducto_valido_guardaProductoYStock() {
+    void crearProducto_valido_guardaProductoYStockConCodigoGenerado() {
+        when(codigoService.siguiente(TipoArticulo.REVENTA)).thenReturn("REV-0007");
         ProductoRequestDTO dto = new ProductoRequestDTO("P1", "Nuevo", new BigDecimal("15.00"), 5L, 3, false);
 
         ProductoCatalogoDTO resultado = productoService.crearProducto(dto);
 
-        assertThat(resultado.codigo()).isEqualTo("P1");
+        // El código enviado se ignora: lo genera el sistema.
+        assertThat(resultado.codigo()).isEqualTo("REV-0007");
         assertThat(resultado.nombre()).isEqualTo("Nuevo");
         assertThat(resultado.precioUnitario()).isEqualByComparingTo("15.00");
         assertThat(resultado.stockActual()).isEqualTo(5L);

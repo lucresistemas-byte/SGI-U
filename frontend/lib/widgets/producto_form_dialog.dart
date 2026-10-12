@@ -16,7 +16,6 @@ class ProductoFormDialog extends StatefulWidget {
 
 class _ProductoFormDialogState extends State<ProductoFormDialog> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _codigoController;
   late TextEditingController _nombreController;
   late TextEditingController _precioController;
   late TextEditingController _costoController;
@@ -51,8 +50,6 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   void initState() {
     super.initState();
     final prod = widget.productoAEditar;
-    _codigoController = TextEditingController(
-        text: _esEdicion ? prod!.codigo : '');
     _nombreController = TextEditingController(
         text: _esEdicion ? prod!.nombre : '');
     _precioController = TextEditingController(
@@ -85,7 +82,6 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     }
 
     // Listeners para actualizar estado del diálogo cuando cambian campos
-    _codigoController.addListener(() => setState(() {}));
     _nombreController.addListener(() => setState(() {}));
     _precioController.addListener(() => setState(() {}));
     _costoController.addListener(() => setState(() {}));
@@ -97,7 +93,6 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
 
   @override
   void dispose() {
-    _codigoController.dispose();
     _nombreController.dispose();
     _precioController.dispose();
     _costoController.dispose();
@@ -205,12 +200,10 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
 
   bool _isFormValid() {
     final nombreValido = _nombreController.text.trim().isNotEmpty;
-    final codigoValido = _codigoController.text.trim().isNotEmpty;
     final precioValido = _isPrecioValido();
     final stockInicialValido = _isStockInicialValido();
     final ajusteValido = _isAjusteValido();
     return nombreValido &&
-        codigoValido &&
         precioValido &&
         stockInicialValido &&
         _isStockMinimoValido() &&
@@ -226,9 +219,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
         : 0.0;
 
     final data = <String, dynamic>{
-      'codigo': _esEdicion
-          ? widget.productoAEditar!.codigo
-          : _codigoController.text.trim(),
+      // Al crear, el código lo genera el sistema (REV-0001, ...).
+      if (_esEdicion) 'codigo': widget.productoAEditar!.codigo,
       // Desde Productos solo se crea reventa; los elaborados nacen en Recetas.
       if (!_esEdicion) 'tipo': 'REVENTA',
       'nombre': _nombreController.text.trim(),
@@ -338,14 +330,16 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // Código
-                    TextFormField(
-                      controller: _codigoController,
-                      decoration:
-                          const InputDecoration(labelText: 'Código (SKU)'),
-                      enabled: !_esEdicion,
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'Requerido' : null,
+                    // Código: lo genera el sistema; solo se muestra al editar.
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _esEdicion
+                            ? 'Código: ${widget.productoAEditar!.codigo}'
+                            : 'El código se genera automáticamente al guardar.',
+                        key: const Key('codigo_producto_form'),
+                        style: const TextStyle(color: Color(0xFF475569)),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     // Nombre

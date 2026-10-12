@@ -75,14 +75,16 @@ void main() {
 
     expect(find.text('Tipo: Reventa. Los productos elaborados se crean desde Recetas.'), findsOneWidget);
     expect(find.byKey(const Key('preparacion_base_check')), findsNothing);
-
-    await tester.enterText(find.widgetWithText(TextFormField, 'Código (SKU)'), 'REV-9');
+    // Corrección 9: el código no se escribe, lo genera el sistema.
+    expect(find.text('El código se genera automáticamente al guardar.'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Código (SKU)'), findsNothing);
     await tester.enterText(find.widgetWithText(TextFormField, 'Nombre del Producto'), 'Agua');
     await tester.enterText(find.widgetWithText(TextFormField, 'Precio Unitario (\$)'), '900');
     await tester.pump();
     await guardar(tester);
 
     expect(api.createData!['tipo'], 'REVENTA');
+    expect(api.createData!.containsKey('codigo'), isFalse);
   });
 
   testWidgets('editar un elaborado permite marcarlo como preparación base', (tester) async {

@@ -32,17 +32,23 @@ INSERT INTO articulos_stock (id, esp_producto_id, cantidad, stock_minimo, create
 (7, 7, 10, 3, NOW(6), NOW(6));
 
 -- Materias primas e insumos (en esp_productos a partir de la etapa 3).
-INSERT INTO materias_primas (id, codigo, nombre, costo_unitario, unidad_medida, stock_actual, stock_minimo, activo, created_at, updated_at) VALUES
-(1,  'MP-0001', 'Harina 000',          1200.00, 'KILO',   25, 5,  1, NOW(6), NOW(6)),
-(2,  'MP-0002', 'Coco rallado',        9000.00, 'KILO',    5, 1,  1, NOW(6), NOW(6)),
-(3,  'MP-0003', 'Azúcar',              1300.00, 'KILO',   20, 5,  1, NOW(6), NOW(6)),
-(4,  'MP-0004', 'Huevos',               250.00, 'UNIDAD', 120, 30, 1, NOW(6), NOW(6)),
-(5,  'MP-0005', 'Chocolate cobertura', 18000.00, 'KILO',    4, 1,  1, NOW(6), NOW(6)),
-(6,  'MP-0006', 'Crema de leche',      5500.00, 'LITRO',   6, 2,  1, NOW(6), NOW(6)),
-(7,  'MP-0007', 'Manteca',             9500.00, 'KILO',    5, 1,  1, NOW(6), NOW(6)),
-(8,  'INS-0001', 'Caja para torta',     900.00, 'UNIDAD', 50, 10, 1, NOW(6), NOW(6)),
-(9,  'INS-0002', 'Cinta de regalo',     300.00, 'METRO', 100, 20, 1, NOW(6), NOW(6)),
-(10, 'INS-0003', 'Sticker Dulces Sandra', 80.00, 'UNIDAD', 200, 50, 1, NOW(6), NOW(6));
+INSERT INTO materias_primas (id, codigo, tipo, nombre, costo_unitario, unidad_medida, stock_actual, stock_minimo, activo, created_at, updated_at) VALUES
+(1,  'MP-0001', 'MATERIA_PRIMA', 'Harina 000',          1200.00, 'KILO',   25, 5,  1, NOW(6), NOW(6)),
+(2,  'MP-0002', 'MATERIA_PRIMA', 'Coco rallado',        9000.00, 'KILO',    5, 1,  1, NOW(6), NOW(6)),
+(3,  'MP-0003', 'MATERIA_PRIMA', 'Azúcar',              1300.00, 'KILO',   20, 5,  1, NOW(6), NOW(6)),
+(4,  'MP-0004', 'MATERIA_PRIMA', 'Huevos',               250.00, 'UNIDAD', 120, 30, 1, NOW(6), NOW(6)),
+(5,  'MP-0005', 'MATERIA_PRIMA', 'Chocolate cobertura', 18000.00, 'KILO',    4, 1,  1, NOW(6), NOW(6)),
+(6,  'MP-0006', 'MATERIA_PRIMA', 'Crema de leche',      5500.00, 'LITRO',   6, 2,  1, NOW(6), NOW(6)),
+(7,  'MP-0007', 'MATERIA_PRIMA', 'Manteca',             9500.00, 'KILO',    5, 1,  1, NOW(6), NOW(6)),
+(8,  'INS-0001', 'INSUMO', 'Caja para torta',     900.00, 'UNIDAD', 50, 10, 1, NOW(6), NOW(6)),
+(9,  'INS-0002', 'INSUMO', 'Cinta de regalo',     300.00, 'METRO', 100, 20, 1, NOW(6), NOW(6)),
+(10, 'INS-0003', 'INSUMO', 'Sticker Dulces Sandra', 80.00, 'UNIDAD', 200, 50, 1, NOW(6), NOW(6));
+
+-- Las secuencias siguen después de los códigos de la demo.
+UPDATE secuencias_codigo SET ultimo = 4 WHERE prefijo = 'ELA';
+UPDATE secuencias_codigo SET ultimo = 3 WHERE prefijo = 'REV';
+UPDATE secuencias_codigo SET ultimo = 7 WHERE prefijo = 'MP';
+UPDATE secuencias_codigo SET ultimo = 3 WHERE prefijo = 'INS';
 
 INSERT INTO recetas (id, esp_producto_id, nombre, descripcion, costos_adicionales, activo, created_at, updated_at) VALUES
 (1, 1, 'Tarta de coco',        'Masa sablée y relleno de coco', 900.00, 1, NOW(6), NOW(6)),

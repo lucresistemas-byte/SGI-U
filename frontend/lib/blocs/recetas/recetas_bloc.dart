@@ -31,7 +31,6 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
         emit(state.copyWith(usarProductoNuevo: event.productoNuevo)));
     on<ActualizarProductoNuevoReceta>((event, emit) => emit(state.copyWith(
           nuevoProductoNombre: event.nombre,
-          nuevoProductoCodigo: event.codigo,
           nuevoProductoCategoriaId: event.categoriaId,
           quitarNuevoProductoCategoria: event.quitarCategoria,
           nuevoProductoPorcentaje: event.porcentajeGanancia,
@@ -121,7 +120,6 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       // Por defecto, la receta crea el producto elaborado.
       usarProductoNuevo: event.defaultProductoCodigo == null,
       nuevoProductoNombre: '',
-      nuevoProductoCodigo: '',
       quitarNuevoProductoCategoria: true,
       nuevoProductoPreparacionBase: false,
     ));
@@ -306,8 +304,6 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
         if (state.creaProductoNuevo)
           'productoNuevo': {
             'nombre': state.nuevoProductoNombre.trim(),
-            if (state.nuevoProductoCodigo.trim().isNotEmpty)
-              'codigo': state.nuevoProductoCodigo.trim(),
             if (state.nuevoProductoCategoriaId != null)
               'categoriaId': state.nuevoProductoCategoriaId,
             if (state.nuevoProductoPorcentaje != null)

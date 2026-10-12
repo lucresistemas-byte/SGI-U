@@ -59,6 +59,8 @@ CREATE TABLE materias_primas (
     updated_at      DATETIME(6)   NOT NULL,
     activo          BIT(1)        NOT NULL,
     codigo          VARCHAR(50)   NOT NULL,
+    -- Elegido en el alta; define el prefijo del código (MP-, INS-, RMP-).
+    tipo            ENUM('MATERIA_PRIMA','INSUMO','REVENTA_MATERIA_PRIMA') NOT NULL DEFAULT 'MATERIA_PRIMA',
     costo_unitario  DECIMAL(10,2) NOT NULL,
     nombre          VARCHAR(100)  NOT NULL,
     stock_actual    INT           NOT NULL,
@@ -69,6 +71,17 @@ CREATE TABLE materias_primas (
     CONSTRAINT uk_materia_prima_codigo UNIQUE (codigo),
     CONSTRAINT fk_materia_prima_esp_producto FOREIGN KEY (esp_producto_id) REFERENCES esp_productos (id)
 );
+
+-- Códigos generados por el sistema: último número usado por prefijo.
+-- El alta bloquea la fila (SELECT ... FOR UPDATE) hasta el commit.
+CREATE TABLE secuencias_codigo (
+    prefijo VARCHAR(10) NOT NULL,
+    ultimo  INT         NOT NULL,
+    PRIMARY KEY (prefijo)
+);
+
+INSERT INTO secuencias_codigo (prefijo, ultimo) VALUES
+('ELA', 0), ('REV', 0), ('MP', 0), ('INS', 0), ('RMP', 0), ('PAQ', 0);
 
 CREATE TABLE recetas (
     id                 BIGINT        NOT NULL AUTO_INCREMENT,
