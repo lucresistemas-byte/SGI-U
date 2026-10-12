@@ -146,7 +146,8 @@ class LeftPanel extends StatelessWidget {
                 if (state.isLoading && state.products.isEmpty) {
                   return const CargandoDiferido();
                 }
-                final displayProducts = state.filteredProducts;
+                // El POS muestra solo lo vendible (no preparaciones base ni inactivos).
+                final displayProducts = state.filteredVendibles;
                 if (displayProducts.isEmpty) {
                   return Center(
                     child: Text(
@@ -205,10 +206,10 @@ class PosCategoryFilter extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<PosBloc, PosState>(
       builder: (context, state) {
-        if (state.availableCategories.isEmpty) {
+        if (state.availableCategoriesVendibles.isEmpty) {
           return const SizedBox.shrink();
         }
-        final categories = ['Todas', ...state.availableCategories];
+        final categories = ['Todas', ...state.availableCategoriesVendibles];
         return SizedBox(
           height: 38,
           child: ListView.separated(
@@ -282,7 +283,7 @@ class _SearchAddBarState extends State<SearchAddBar> {
           optionsBuilder: (TextEditingValue textEditingValue) {
             if (textEditingValue.text.isEmpty) return const [];
             final text = textEditingValue.text.toLowerCase();
-            return state.products
+            return state.vendibles
                 .where((product) =>
                     product.nombre.toLowerCase().contains(text) ||
                     product.codigo.toLowerCase().contains(text))
@@ -364,7 +365,7 @@ class _SearchAddBarState extends State<SearchAddBar> {
                   onSubmitted: (value) {
                     final query = value.trim();
                     if (query.isEmpty) return;
-                    final exactMatch = state.products
+                    final exactMatch = state.vendibles
                         .where((p) =>
                             p.codigo.toLowerCase() == query.toLowerCase() ||
                             p.nombre.toLowerCase() == query.toLowerCase())

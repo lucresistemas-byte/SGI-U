@@ -9,6 +9,22 @@ class Product {
   final double? precioCosto;
   final double? porcentajeGanancia;
 
+  /// Tipo de artículo (ELABORADO, REVENTA, ...): decide el comportamiento,
+  /// nunca la categoría. Ver docs/MODELO_PRODUCTOS.md.
+  final String tipo;
+
+  /// false = preparación base (un ELABORADO que no se vende).
+  final bool vendible;
+
+  static const tiposVendibles = {'ELABORADO', 'REVENTA', 'REVENTA_MATERIA_PRIMA', 'PAQUETE'};
+
+  /// Se muestra y se puede vender en el POS.
+  bool get esVendibleEnPos => activo && tiposVendibles.contains(tipo) && vendible;
+
+  bool get esElaborado => tipo == 'ELABORADO';
+
+  bool get esPreparacionBase => esElaborado && !vendible;
+
   Product({
     required this.codigo,
     required this.nombre,
@@ -19,6 +35,8 @@ class Product {
     this.unidadMedida = 'UNIDAD',
     this.precioCosto,
     this.porcentajeGanancia,
+    this.tipo = 'REVENTA',
+    this.vendible = true,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -45,6 +63,8 @@ class Product {
       unidadMedida: unidad,
       precioCosto: costo,
       porcentajeGanancia: margen,
+      tipo: json['tipo']?.toString() ?? 'REVENTA',
+      vendible: json['vendible'] ?? true,
     );
   }
 
@@ -62,6 +82,8 @@ class Product {
       if (precioCosto != null) 'precio_costo': precioCosto,
       if (porcentajeGanancia != null) 'porcentajeGanancia': porcentajeGanancia,
       if (porcentajeGanancia != null) 'porcentaje_ganancia': porcentajeGanancia,
+      'tipo': tipo,
+      'vendible': vendible,
     };
   }
 
@@ -75,6 +97,8 @@ class Product {
     String? unidadMedida,
     double? precioCosto,
     double? porcentajeGanancia,
+    String? tipo,
+    bool? vendible,
   }) {
     return Product(
       codigo: codigo ?? this.codigo,
@@ -86,6 +110,8 @@ class Product {
       unidadMedida: unidadMedida ?? this.unidadMedida,
       precioCosto: precioCosto ?? this.precioCosto,
       porcentajeGanancia: porcentajeGanancia ?? this.porcentajeGanancia,
+      tipo: tipo ?? this.tipo,
+      vendible: vendible ?? this.vendible,
     );
   }
 

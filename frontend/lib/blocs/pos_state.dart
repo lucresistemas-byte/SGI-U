@@ -95,6 +95,23 @@ class PosState extends Equatable {
     }).toList();
   }
 
+  /// Lo que el POS puede vender (activo, de tipo vendible, no preparación base).
+  /// Productos usa la lista completa; el POS, solo esta.
+  List<Product> get vendibles => products.where((p) => p.esVendibleEnPos).toList();
+
+  /// [filteredProducts] limitado a lo vendible (grilla del POS).
+  List<Product> get filteredVendibles =>
+      filteredProducts.where((p) => p.esVendibleEnPos).toList();
+
+  /// Categorías de los productos vendibles (chips del POS).
+  List<String> get availableCategoriesVendibles {
+    final categories = <String>{
+      for (final p in vendibles)
+        if (p.categoria != null && p.categoria!.trim().isNotEmpty) p.categoria!.trim(),
+    };
+    return categories.toList()..sort();
+  }
+
   /// Lista ordenada de categorías únicas disponibles entre los productos cargados
   List<String> get availableCategories {
     final Set<String> categories = {};
