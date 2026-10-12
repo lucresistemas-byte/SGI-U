@@ -494,10 +494,12 @@ class ApiService implements PosApi {
   }
 
   // --- CATEGORÍAS ---
-  /// Categorías activas (para asignar al crear un producto).
-  Future<List<Categoria>> getCategorias() async {
+  /// Categorías activas (las que se ofrecen en los formularios). Con
+  /// [incluirInactivas], todas (pantalla de Configuración).
+  Future<List<Categoria>> getCategorias({bool incluirInactivas = false}) async {
     try {
-      final response = await dio.get('/api/categorias');
+      final response = await dio.get('/api/categorias',
+          queryParameters: incluirInactivas ? {'incluirInactivas': true} : null);
       final list = response.data as List;
       return list
           .map((c) => Categoria.fromJson(Map<String, dynamic>.from(c as Map)))
@@ -505,6 +507,35 @@ class ApiService implements PosApi {
     } on DioException catch (e) {
       throw ApiException(mensajeDeError(
           e, 'No se pudieron cargar las categorías. Intente nuevamente.'));
+    }
+  }
+
+  Future<Categoria> crearCategoria(String nombre) async {
+    try {
+      final response = await dio.post('/api/categorias', data: {'nombre': nombre});
+      return Categoria.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo crear la categoría. Intente nuevamente.'));
+    }
+  }
+
+  Future<Categoria> actualizarCategoria(int id, String nombre) async {
+    try {
+      final response = await dio.put('/api/categorias/$id', data: {'nombre': nombre});
+      return Categoria.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo renombrar la categoría. Intente nuevamente.'));
+    }
+  }
+
+  /// Las categorías no se eliminan: se desactivan o reactivan.
+  Future<Categoria> cambiarEstadoCategoria(int id, {required bool activo}) async {
+    try {
+      final response = await dio.patch('/api/categorias/$id/estado', data: {'activo': activo});
+      return Categoria.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo cambiar el estado de la categoría. Intente nuevamente.'));
     }
   }
 

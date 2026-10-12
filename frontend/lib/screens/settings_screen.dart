@@ -6,6 +6,8 @@ import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/cargando_diferido.dart';
+import '../widgets/configuracion/categorias_card.dart';
+import '../widgets/configuracion/tipos_producto_card.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ApiService? apiService;
@@ -377,6 +379,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 32),
+                        const TiposProductoCard(),
+                        const SizedBox(height: 16),
+                        CategoriasCard(apiService: _apiService),
                       ],
                     ),
                   ),
