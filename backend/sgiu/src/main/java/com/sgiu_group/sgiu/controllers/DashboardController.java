@@ -23,12 +23,12 @@ public class DashboardController {
     public ResponseEntity<DashboardResponseDTO> getDashboard(
             @RequestParam LocalDate fechaDesde,
             @RequestParam LocalDate fechaHasta,
-            @RequestParam(required = false) String metodoPago,
+            @RequestParam(required = false) Long metodoPagoId,
             @RequestParam(required = false) Long productoId,
             @RequestParam(required = false) String tipoTransaccion) {
 
         DashboardResponseDTO response = dashboardService.obtenerDashboard(
-                fechaDesde, fechaHasta, metodoPago, productoId, tipoTransaccion);
+                fechaDesde, fechaHasta, metodoPagoId, productoId, tipoTransaccion);
         return ResponseEntity.ok(response);
     }
 }

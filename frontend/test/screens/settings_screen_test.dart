@@ -18,6 +18,7 @@ void main() {
 
   setUp(() {
     mockApiService = MockApiService();
+    when(() => mockApiService.getMetodosPago(incluirInactivos: true)).thenAnswer((_) async => const []);
   });
 
   Widget buildTestWidget() {

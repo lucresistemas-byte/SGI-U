@@ -90,7 +90,7 @@ void main() {
         when(() => mockApiService.abonarPedido(
               10,
               monto: 2000.0,
-              metodoPago: any(named: 'metodoPago'),
+              metodoPagoId: any(named: 'metodoPagoId'),
               nota: any(named: 'nota'),
             )).thenAnswer((_) async => pedidoAbonado2000);
         return pedidosBloc;
@@ -102,7 +102,7 @@ void main() {
       act: (bloc) => bloc.add(const RegistrarAbonoEvent(
         pedidoId: 10,
         monto: 2000.0,
-        metodoPago: 'EFECTIVO',
+        metodoPagoId: 1,
       )),
       expect: () => [
         isA<PedidosState>().having((s) => s.isSubmitting, 'isSubmitting', true),
@@ -118,7 +118,7 @@ void main() {
         verify(() => mockApiService.abonarPedido(
               10,
               monto: 2000.0,
-              metodoPago: any(named: 'metodoPago'),
+              metodoPagoId: any(named: 'metodoPagoId'),
               nota: any(named: 'nota'),
             )).called(1);
       },

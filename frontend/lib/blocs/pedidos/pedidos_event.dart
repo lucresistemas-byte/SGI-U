@@ -35,18 +35,18 @@ class CrearPedidoEvent extends PedidosEvent {
 class RegistrarAbonoEvent extends PedidosEvent {
   final int pedidoId;
   final double monto;
-  final String? metodoPago;
+  final int? metodoPagoId;
   final String? nota;
 
   const RegistrarAbonoEvent({
     required this.pedidoId,
     required this.monto,
-    this.metodoPago,
+    this.metodoPagoId,
     this.nota,
   });
 
   @override
-  List<Object?> get props => [pedidoId, monto, metodoPago, nota];
+  List<Object?> get props => [pedidoId, monto, metodoPagoId, nota];
 }
 
 class CancelarPedidoEvent extends PedidosEvent {

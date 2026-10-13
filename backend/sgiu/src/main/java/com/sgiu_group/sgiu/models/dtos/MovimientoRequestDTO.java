@@ -12,8 +12,8 @@ public record MovimientoRequestDTO(
     @NotNull(message = "El monto es obligatorio.")
     @Positive(message = "El monto debe ser mayor a cero.")
     BigDecimal monto,
-    @NotBlank(message = "El método de pago es obligatorio.")
-    String metodoPago,
+    @NotNull(message = "El método de pago es obligatorio.")
+    Long metodoPagoId,
     String categoria,
     String descripcion,
     LocalDateTime fechaHora

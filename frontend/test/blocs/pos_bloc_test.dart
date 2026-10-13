@@ -3,10 +3,13 @@ import 'package:mocktail/mocktail.dart';
 import 'package:sgi_u_frontend/blocs/pos_bloc.dart';
 import 'package:sgi_u_frontend/blocs/pos_event.dart';
 import 'package:sgi_u_frontend/blocs/pos_state.dart';
+import 'package:sgi_u_frontend/models/metodo_pago.dart';
 import 'package:sgi_u_frontend/models/product.dart';
 import 'package:sgi_u_frontend/services/api_service.dart';
 
 class MockPosApi extends Mock implements PosApi {}
+
+class _MockApiService extends Mock implements ApiService {}
 
 Map<String, dynamic> _jsonP1() => {
       'codigo': 'P1',
@@ -156,71 +159,155 @@ void main() {
     });
   });
 
-  group('PosBloc - ConfirmSale (N1)', () {
-    test('ConfirmSale sin método de pago emite error', () async {
+  group('PosBloc - cobro con pagos mixtos (D.4.1/D.4.2)', () {
+    const efectivo = MetodoPago(id: 1, nombre: 'Efectivo', fijo: true, orden: 1);
+    const tarjeta = MetodoPago(id: 3, nombre: 'Tarjeta', orden: 2);
+
+    /// Catálogo con Café a $150 y 2 en el carrito: total $300.
+    Future<(PosBloc, MockPosApi)> conCarrito() async {
       final api = MockPosApi();
       when(() => api.getProducts()).thenAnswer((_) async => [_jsonP1()]);
-      final bloc = PosBloc(apiService: api);
-
-      await _cargarCatalogo(bloc);
-      await _add1(bloc, 'P1', 1);
-
-      final err = bloc.stream.firstWhere((s) => s.errorMessage != null);
-      bloc.add(const ConfirmSale());
-      final state = await err;
-
-      expect(state.errorMessage,
-          contains('Seleccione un método de pago y agregue productos'));
-      await bloc.close();
-    });
-
-    test('ConfirmSale con venta exitosa emite éxito, vacía el carrito y '
-        'guarda el snapshot', () async {
-      final api = MockPosApi();
       when(() => api.createSale(any())).thenAnswer((_) async {});
-      when(() => api.getProducts()).thenAnswer((_) async => [_jsonP1()]);
-      final bloc = PosBloc(apiService: api);
-
+      final bloc = PosBloc(apiService: api, cargarMetodosPago: () async => const [efectivo, tarjeta]);
       await _cargarCatalogo(bloc);
       await _add1(bloc, 'P1', 2);
-      final metodo = bloc.stream
-          .firstWhere((s) => s.selectedPaymentMethod == 'EFECTIVO');
-      bloc.add(const SelectPaymentMethod('EFECTIVO'));
-      await metodo;
+      return (bloc, api);
+    }
 
-      final done = bloc.stream.firstWhere((s) => s.successMessage != null);
-      bloc.add(const ConfirmSale());
-      final state = await done;
+    Future<PosState> despues(PosBloc bloc, PosEvent evento, bool Function(PosState) listo) {
+      final f = bloc.stream.firstWhere(listo);
+      bloc.add(evento);
+      return f;
+    }
 
-      expect(state.successMessage, 'Venta registrada correctamente');
-      expect(state.cart, isEmpty);
-      expect(state.completedSale, isNotNull);
-      expect(state.completedSale!.paymentMethod, 'EFECTIVO');
-      expect(state.completedSale!.totalAmount, 300.0);
-      verify(() => api.createSale(any())).called(1);
+    Map<String, dynamic> enviado(MockPosApi api) =>
+        verify(() => api.createSale(captureAny())).captured.single as Map<String, dynamic>;
+
+    test('sin pagos no se confirma (y no llama al backend)', () async {
+      final (bloc, api) = await conCarrito();
+
+      final s = await despues(bloc, const ConfirmSale(), (s) => s.errorMessage != null);
+
+      expect(s.errorMessage, 'Los pagos no cubren el total: faltan \$300.00.');
+      expect(s.cobroCubierto, isFalse);
+      verifyNever(() => api.createSale(any()));
       await bloc.close();
     });
 
-    test('ConfirmSale con error del backend emite errorMessage', () async {
-      final api = MockPosApi();
-      when(() => api.createSale(any()))
-          .thenThrow(Exception('No se pudo registrar la venta'));
+    test('camino rápido: un toque paga todo con un método', () async {
+      final (bloc, api) = await conCarrito();
+
+      final s = await despues(bloc, const PagarRestante(1), (s) => s.pagos.isNotEmpty);
+      expect(s.cobroCubierto, isTrue);
+      expect(s.restante, 0);
+
+      final ok = await despues(bloc, const ConfirmSale(), (s) => s.successMessage != null);
+      expect(ok.successMessage, 'Venta registrada correctamente');
+      expect(ok.cart, isEmpty);
+      expect(ok.pagos, isEmpty);
+      expect(ok.completedSale!.paymentMethod, 'Efectivo');
+      expect(ok.completedSale!.totalAmount, 300.0);
+      expect(enviado(api)['pagos'], [
+        {'metodoPagoId': 1, 'monto': 300.0}
+      ]);
+      await bloc.close();
+    });
+
+    test('mixto efectivo + tarjeta: una línea por método', () async {
+      final (bloc, api) = await conCarrito();
+
+      var s = await despues(bloc, const AgregarPago(3, 100), (s) => s.pagos.length == 1);
+      expect(s.restante, 200.0);
+      expect(s.cobroCubierto, isFalse);
+      s = await despues(bloc, const PagarRestante(1), (s) => s.pagos.length == 2);
+      expect(s.cobroCubierto, isTrue);
+
+      final ok = await despues(bloc, const ConfirmSale(), (s) => s.successMessage != null);
+      expect(ok.completedSale!.paymentMethod, 'Tarjeta + Efectivo');
+      expect(ok.completedSale!.pagos.map((p) => p.monto), [100.0, 200.0]);
+      expect(enviado(api)['pagos'], [
+        {'metodoPagoId': 3, 'monto': 100.0},
+        {'metodoPagoId': 1, 'monto': 200.0},
+      ]);
+      await bloc.close();
+    });
+
+    test('efectivo de más: muestra el vuelto y envía lo entregado', () async {
+      final (bloc, api) = await conCarrito();
+
+      final s = await despues(bloc, const AgregarPago(1, 500), (s) => s.pagos.isNotEmpty);
+      expect(s.vuelto, 200.0);
+      expect(s.restante, 0);
+      expect(s.cobroCubierto, isTrue);
+
+      final ok = await despues(bloc, const ConfirmSale(), (s) => s.successMessage != null);
+      expect(ok.successMessage, 'Venta registrada correctamente. Vuelto: \$200.00');
+      expect(ok.completedSale!.vuelto, 200.0);
+      expect(enviado(api)['pagos'], [
+        {'metodoPagoId': 1, 'monto': 500.0}
+      ]);
+      await bloc.close();
+    });
+
+    test('un método que no es efectivo no puede pasarse de lo que falta', () async {
+      final (bloc, _) = await conCarrito();
+      await despues(bloc, const AgregarPago(1, 100), (s) => s.pagos.isNotEmpty);
+
+      final s = await despues(bloc, const AgregarPago(3, 250), (s) => s.errorMessage != null);
+
+      expect(s.errorMessage,
+          'Con Tarjeta no se puede pagar más de lo que falta (\$200.00). Solo el efectivo tiene vuelto.');
+      expect(s.pagos.map((p) => p.metodo.id), [1]);
+      await bloc.close();
+    });
+
+    test('el mismo método suma en su línea y se puede quitar', () async {
+      final (bloc, _) = await conCarrito();
+      await despues(bloc, const AgregarPago(1, 100), (s) => s.pagos.isNotEmpty);
+      var s = await despues(bloc, const AgregarPago(1, 50), (s) => s.totalPagado == 150);
+      expect(s.pagos, hasLength(1));
+
+      s = await despues(bloc, const QuitarPago(0), (s) => s.pagos.isEmpty);
+      expect(s.restante, 300.0);
+      await bloc.close();
+    });
+
+    test('si cambia el carrito, el cobro se arma de nuevo', () async {
+      final (bloc, _) = await conCarrito();
+      await despues(bloc, const PagarRestante(3), (s) => s.pagos.isNotEmpty);
+
+      final s = await despues(bloc, const AddToCart('P1', 1), (s) => s.cart['P1']!.cantidad == 3);
+
+      expect(s.pagos, isEmpty);
+      expect(s.cobroCubierto, isFalse);
+      await bloc.close();
+    });
+
+    test('error del backend: conserva carrito y pagos para reintentar', () async {
+      final (bloc, api) = await conCarrito();
+      when(() => api.createSale(any())).thenThrow(Exception('No se pudo registrar la venta'));
+      await despues(bloc, const PagarRestante(1), (s) => s.pagos.isNotEmpty);
+
+      final s = await despues(bloc, const ConfirmSale(), (s) => s.errorMessage != null);
+
+      expect(s.errorMessage, contains('No se pudo registrar la venta'));
+      expect(s.cart, isNotEmpty);
+      expect(s.pagos, isNotEmpty);
+      expect(s.isProcessing, isFalse);
+      await bloc.close();
+    });
+
+    test('con la API real, trae solo los métodos activos', () async {
+      final api = _MockApiService();
       when(() => api.getProducts()).thenAnswer((_) async => [_jsonP1()]);
+      when(() => api.getMetodosPago()).thenAnswer((_) async => const [efectivo]);
       final bloc = PosBloc(apiService: api);
 
-      await _cargarCatalogo(bloc);
-      await _add1(bloc, 'P1', 1);
-      final metodo = bloc.stream
-          .firstWhere((s) => s.selectedPaymentMethod == 'EFECTIVO');
-      bloc.add(const SelectPaymentMethod('EFECTIVO'));
-      await metodo;
+      final s = await _cargarCatalogo(bloc);
 
-      final err = bloc.stream.firstWhere((s) => s.errorMessage != null);
-      bloc.add(const ConfirmSale());
-      final state = await err;
-
-      expect(state.errorMessage, contains('No se pudo registrar la venta'));
-      expect(state.cart, isNotEmpty);
+      expect(s.metodosPago, [efectivo]);
+      verify(() => api.getMetodosPago()).called(1);
+      verifyNever(() => api.getMetodosPago(incluirInactivos: true));
       await bloc.close();
     });
   });

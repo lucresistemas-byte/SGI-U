@@ -44,6 +44,14 @@ class VentaServiceTest {
     private PagoVentaRepository pagoRepository;
     @Mock
     private MovFinancieroRepository movFinancieroRepository;
+    @Mock
+    private MetodoPagoService metodoPagoService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void efectivo() {
+        org.mockito.Mockito.lenient().when(metodoPagoService.efectivo())
+                .thenReturn(new com.sgiu_group.sgiu.models.entities.MetodoPago("Efectivo", true, 1));
+    }
 
     @InjectMocks
     private VentaService ventaService;
@@ -97,6 +105,7 @@ class VentaServiceTest {
             return venta;
         });
 
+        when(pagoRepository.save(any(PagoVenta.class))).thenAnswer(inv -> inv.getArgument(0));
         VentaRequestDTO request = new VentaRequestDTO(null, List.of(new LineaVentaDTO("P1", 2)));
         ventaService.procesarVenta(request);
 
@@ -115,7 +124,7 @@ class VentaServiceTest {
         ArgumentCaptor<PagoVenta> pagoCaptor = ArgumentCaptor.forClass(PagoVenta.class);
         verify(pagoRepository).save(pagoCaptor.capture());
         assertThat(pagoCaptor.getValue().getMonto()).isEqualByComparingTo("21.00");
-        assertThat(pagoCaptor.getValue().getMetodo()).isEqualTo("EFECTIVO");
+        assertThat(pagoCaptor.getValue().getMetodoPago().getNombre()).isEqualTo("Efectivo");
 
         // Se registra el movimiento financiero de tipo INGRESO
         ArgumentCaptor<MovFinanciero> movCaptor = ArgumentCaptor.forClass(MovFinanciero.class);

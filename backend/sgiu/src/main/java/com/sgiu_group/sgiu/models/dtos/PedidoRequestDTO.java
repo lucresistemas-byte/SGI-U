@@ -25,5 +25,6 @@ public record PedidoRequestDTO(
 
     LocalDateTime fechaEntrega,
 
-    String metodoPagoSenia
+    /** Método de la seña; sin indicar, Efectivo. */
+    Long metodoPagoSeniaId
 ) {}

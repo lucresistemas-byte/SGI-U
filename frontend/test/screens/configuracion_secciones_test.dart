@@ -15,6 +15,7 @@ void main() {
 
   setUp(() {
     api = _MockApi();
+    when(() => api.getMetodosPago(incluirInactivos: true)).thenAnswer((_) async => const []);
     when(() => api.getConfiguracion()).thenAnswer((_) async => const ConfiguracionNegocio(nombre: 'Demo'));
     when(() => api.getCategorias(incluirInactivas: true)).thenAnswer((_) async => const [
           Categoria(id: 1, nombre: 'Tortas'),

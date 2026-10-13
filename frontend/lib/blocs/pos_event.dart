@@ -33,11 +33,29 @@ class RemoveFromCart extends PosEvent {
   List<Object?> get props => [productCode];
 }
 
-class SelectPaymentMethod extends PosEvent {
-  final String method;
-  const SelectPaymentMethod(this.method);
+/// Agrega una línea de pago (si el método ya está, suma el monto). Solo el
+/// efectivo puede superar lo que falta (vuelto).
+class AgregarPago extends PosEvent {
+  final int metodoPagoId;
+  final double monto;
+  const AgregarPago(this.metodoPagoId, this.monto);
   @override
-  List<Object?> get props => [method];
+  List<Object?> get props => [metodoPagoId, monto];
+}
+
+/// Camino rápido: paga todo lo que falta con un método (un toque).
+class PagarRestante extends PosEvent {
+  final int metodoPagoId;
+  const PagarRestante(this.metodoPagoId);
+  @override
+  List<Object?> get props => [metodoPagoId];
+}
+
+class QuitarPago extends PosEvent {
+  final int indice;
+  const QuitarPago(this.indice);
+  @override
+  List<Object?> get props => [indice];
 }
 
 class ConfirmSale extends PosEvent {

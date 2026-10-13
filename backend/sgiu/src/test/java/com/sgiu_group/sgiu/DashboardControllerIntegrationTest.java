@@ -41,7 +41,7 @@ class DashboardControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.kpis.cantidadProductosStockBajo").value(1))
                 .andExpect(jsonPath("$.kpis.ingresosPeriodo").isNumber())
                 .andExpect(jsonPath("$.kpis.egresosPeriodo").isNumber())
-                .andExpect(jsonPath("$.graficos.ventasPorMetodoPago[0].metodoPago").value("EFECTIVO"))
+                .andExpect(jsonPath("$.graficos.ventasPorMetodoPago[0].metodoPago").value("Efectivo"))
                 .andExpect(jsonPath("$.graficos.productosConMenorStock[0].estado").value("BAJO"));
     }
 
@@ -71,9 +71,10 @@ class DashboardControllerIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/dashboard")
                         .param("fechaDesde", fechaDesde)
                         .param("fechaHasta", fechaHasta)
-                        .param("metodoPago", "CREDITO"))
+                        .param("metodoPagoId", "999999"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.codigo").value("FILTRO_INVALIDO"));
+                .andExpect(jsonPath("$.codigo").value("FILTRO_INVALIDO"))
+                .andExpect(jsonPath("$.error").value("El método de pago especificado no existe."));
     }
 
     @Test

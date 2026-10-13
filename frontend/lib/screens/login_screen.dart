@@ -4,6 +4,7 @@ import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
 import 'dart:ui' as ui;
+import '../widgets/marca_negocio.dart';
 
 const String mensajeSesionVencida = 'Tu sesión venció, vuelve a ingresar';
 
@@ -24,6 +25,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    // Logo y nombre del negocio (endpoint público).
+    MarcaNegocio.cargar();
     // Muestra el aviso cuando se llega al login con la sesión vencida (el
     // estado se emite antes de montar esta pantalla, por lo que el listener
     // de BlocConsumer no llega a dispararse). Solo la ruta visible lo muestra:
@@ -164,6 +167,8 @@ class _LoginScreenState extends State<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          const MarcaNegocio(estilo: EstiloMarca.login),
+          const SizedBox(height: 24),
           Text(
             'Bienvenido de nuevo',
             style: TextStyle(

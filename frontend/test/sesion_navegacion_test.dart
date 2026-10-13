@@ -14,6 +14,7 @@ import 'package:sgi_u_frontend/services/api_service.dart';
 import 'package:sgi_u_frontend/navigation/app_shell.dart';
 import 'package:sgi_u_frontend/navigation/seccion.dart';
 import 'package:sgi_u_frontend/navigation/transiciones.dart';
+import 'package:sgi_u_frontend/widgets/marca_negocio.dart';
 
 /// Flujo de navegación de sesión (login, logout, sesión vencida) sobre la app
 /// real (MyApp + AuthBloc + StartupDecider + AppShell + SideMenu). Solo se
@@ -44,6 +45,8 @@ void main() {
   late _MockPosApi posApi;
 
   setUp(() {
+    // Nombre y logo del negocio (login y menú): sin red.
+    MarcaNegocio.cargar = () async {};
     posApi = _MockPosApi();
     when(() => posApi.getProducts()).thenAnswer((_) async => [
           {

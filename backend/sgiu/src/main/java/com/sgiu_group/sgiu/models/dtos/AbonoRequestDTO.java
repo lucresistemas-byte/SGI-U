@@ -9,7 +9,8 @@ public record AbonoRequestDTO(
     @DecimalMin(value = "0.01", message = "El monto a abonar debe ser mayor a cero")
     BigDecimal monto,
 
-    String metodoPago,
+    /** Sin indicar, Efectivo. */
+    Long metodoPagoId,
 
     String nota
 ) {}

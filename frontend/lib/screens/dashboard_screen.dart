@@ -4,23 +4,29 @@ import 'package:intl/intl.dart';
 import '../widgets/app_scaffold.dart';
 import '../services/api_service.dart';
 import '../models/dashboard_models.dart';
+import '../models/metodo_pago.dart';
 import '../theme/app_colors.dart';
 import '../widgets/cargando_diferido.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final ApiService? apiService;
+
+  const DashboardScreen({super.key, this.apiService});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final ApiService _apiService = ApiService();
+  late final ApiService _apiService = widget.apiService ?? ApiService();
 
   // --- VARIABLES DE ESTADO ---
   DateTime _fechaDesde = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime _fechaHasta = DateTime.now();
-  String? _filtroMetodoPago;
+  int? _filtroMetodoPagoId;
+
+  /// Métodos activos de Configuración (los del filtro).
+  List<MetodoPago> _metodosPago = const [];
   
   DashboardResponse? _dashboardData;
   bool _isLoading = true;
@@ -30,7 +36,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _cargarMetodosPago();
     _cargarDatos();
+  }
+
+  Future<void> _cargarMetodosPago() async {
+    try {
+      final metodos = await _apiService.getMetodosPago();
+      if (mounted) setState(() => _metodosPago = metodos);
+    } catch (_) {
+      // Sin la lista, el filtro ofrece solo "Todos".
+    }
   }
 
   // --- LLAMADA A LA API ---
@@ -44,7 +60,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final data = await _apiService.getDashboardData(
         fechaDesde: _fechaDesde,
         fechaHasta: _fechaHasta,
-        metodoPago: _filtroMetodoPago,
+        metodoPagoId: _filtroMetodoPagoId,
       );
       setState(() {
         _dashboardData = DashboardResponse.fromJson(data);
@@ -258,15 +274,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildMetodoPagoDropdown() {
-    const opciones = <String, String>{
-      'Todos': 'Todos los métodos de pago',
-      'EFECTIVO': 'Efectivo',
-      'MERCADO_PAGO': 'Mercado Pago',
-      'TARJETA': 'Tarjeta',
-      'TRANSFERENCIA': 'Transferencia',
-    };
-
-    final seleccion = _filtroMetodoPago ?? 'Todos';
+    // Los métodos activos de Configuración; si el elegido se desactivó,
+    // vuelve a "Todos".
+    final seleccion = _metodosPago.any((m) => m.id == _filtroMetodoPagoId) ? _filtroMetodoPagoId : null;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -275,19 +285,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: DropdownButton<String>(
+      child: DropdownButton<int?>(
+        key: const Key('dashboard_filtro_metodo_pago'),
         value: seleccion,
         underline: const SizedBox.shrink(),
         isDense: true,
         icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey.shade700),
         style: const TextStyle(fontSize: 14, color: Color(0xFF333333), fontWeight: FontWeight.w500),
-        items: opciones.entries.map((e) {
-          return DropdownMenuItem(value: e.key, child: Text(e.value));
-        }).toList(),
+        items: [
+          const DropdownMenuItem<int?>(value: null, child: Text('Todos los métodos de pago')),
+          for (final m in _metodosPago) DropdownMenuItem<int?>(value: m.id, child: Text(m.nombre)),
+        ],
         onChanged: (value) {
-          setState(() {
-            _filtroMetodoPago = (value == 'Todos') ? null : value;
-          });
+          setState(() => _filtroMetodoPagoId = value);
           _cargarDatos();
         },
       ),

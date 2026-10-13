@@ -7,6 +7,7 @@ import '../blocs/pedidos/pedidos_state.dart';
 import '../models/pedido.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/metodo_pago_dropdown.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/cargando_diferido.dart';
 
@@ -69,7 +70,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
     final descripcionCtrl = TextEditingController();
     final montoTotalCtrl = TextEditingController();
     final seniaCtrl = TextEditingController(text: '0.00');
-    String metodoPagoSenia = 'EFECTIVO';
+    int? metodoPagoSeniaId = MetodoPagoDropdown.porDefecto(_bloc.state.metodosPago);
     DateTime? fechaEntregaSeleccionada;
 
     showDialog(
@@ -171,23 +172,12 @@ class _PedidosScreenState extends State<PedidosScreen> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
+                        MetodoPagoDropdown(
                           key: const Key('pedido_metodo_pago_dropdown'),
-                          initialValue: metodoPagoSenia,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Método de Pago de la Seña',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 'EFECTIVO', child: Text('Efectivo')),
-                            DropdownMenuItem(value: 'TRANSFERENCIA', child: Text('Transferencia')),
-                            DropdownMenuItem(value: 'DEBITO', child: Text('Débito')),
-                            DropdownMenuItem(value: 'CREDITO', child: Text('Crédito')),
-                          ],
-                          onChanged: (val) {
-                            if (val != null) setDialogState(() => metodoPagoSenia = val);
-                          },
+                          metodos: _bloc.state.metodosPago,
+                          valor: metodoPagoSeniaId,
+                          etiqueta: 'Método de Pago de la Seña',
+                          onChanged: (id) => setDialogState(() => metodoPagoSeniaId = id),
                         ),
                         const SizedBox(height: 12),
                         ListTile(
@@ -251,7 +241,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
                       'descripcion': descripcionCtrl.text.trim(),
                       'montoTotal': total,
                       'senia': sen,
-                      'metodoPagoSenia': metodoPagoSenia,
+                      if (metodoPagoSeniaId != null) 'metodoPagoSeniaId': metodoPagoSeniaId,
                       if (fechaEntregaSeleccionada != null)
                         'fechaEntrega': fechaEntregaSeleccionada!.toIso8601String(),
                     };
@@ -272,7 +262,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
     final formKey = GlobalKey<FormState>();
     final montoCtrl = TextEditingController(text: pedido.saldo.toStringAsFixed(2));
     final notaCtrl = TextEditingController(text: 'Abono de saldo');
-    String metodoPago = 'EFECTIVO';
+    int? metodoPagoId = MetodoPagoDropdown.porDefecto(_bloc.state.metodosPago);
 
     showDialog(
       context: context,
@@ -343,23 +333,11 @@ class _PedidosScreenState extends State<PedidosScreen> {
                         },
                       ),
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
+                      MetodoPagoDropdown(
                         key: const Key('abono_metodo_pago_dropdown'),
-                        initialValue: metodoPago,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Método de Pago',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: 'EFECTIVO', child: Text('Efectivo')),
-                          DropdownMenuItem(value: 'TRANSFERENCIA', child: Text('Transferencia')),
-                          DropdownMenuItem(value: 'DEBITO', child: Text('Débito')),
-                          DropdownMenuItem(value: 'CREDITO', child: Text('Crédito')),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) setDialogState(() => metodoPago = val);
-                        },
+                        metodos: _bloc.state.metodosPago,
+                        valor: metodoPagoId,
+                        onChanged: (id) => setDialogState(() => metodoPagoId = id),
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -391,7 +369,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
                     _bloc.add(RegistrarAbonoEvent(
                       pedidoId: pedido.id!,
                       monto: monto,
-                      metodoPago: metodoPago,
+                      metodoPagoId: metodoPagoId,
                       nota: notaCtrl.text.trim(),
                     ));
                     Navigator.of(dialogContext).pop();

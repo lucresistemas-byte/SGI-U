@@ -3,6 +3,7 @@ package com.sgiu_group.sgiu.services;
 import com.sgiu_group.sgiu.models.dtos.BalanceResponseDTO;
 import com.sgiu_group.sgiu.models.dtos.MovimientoRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.MovimientoResponseDTO;
+import com.sgiu_group.sgiu.models.entities.MetodoPago;
 import com.sgiu_group.sgiu.models.entities.MovFinanciero;
 import com.sgiu_group.sgiu.models.entities.PagoVenta;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
@@ -39,6 +40,18 @@ class MovimientoServiceTest {
     private MovFinancieroRepository repository;
     @Mock
     private LineaVentaRepository lineaVentaRepository;
+    @Mock
+    private MetodoPagoService metodoPagoService;
+
+    private static final MetodoPago EFECTIVO = new MetodoPago("Efectivo", true, 1);
+    private static final MetodoPago TRANSFERENCIA = new MetodoPago("Transferencia", false, 4);
+
+    @org.junit.jupiter.api.BeforeEach
+    void metodos() {
+        lenient().when(metodoPagoService.paraCobrar(1L)).thenReturn(EFECTIVO);
+        lenient().when(metodoPagoService.paraCobrar(3L)).thenReturn(new MetodoPago("Tarjeta", false, 3));
+        lenient().when(metodoPagoService.paraCobrar(4L)).thenReturn(TRANSFERENCIA);
+    }
 
     @InjectMocks
     private MovimientoService movimientoService;
@@ -46,7 +59,7 @@ class MovimientoServiceTest {
     @Test
     void crearMovimiento_tipoInvalido_lanzaExcepcion() {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "TRANSFERENCIA_EXTRA", new BigDecimal("100.00"), "EFECTIVO", "Varios", null, null);
+                "TRANSFERENCIA_EXTRA", new BigDecimal("100.00"), 1L, "Varios", null, null);
 
         assertThatThrownBy(() -> movimientoService.crearMovimiento(dto))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -58,7 +71,7 @@ class MovimientoServiceTest {
     @Test
     void crearMovimiento_sinFechaHora_usaFechaActual() {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "INGRESO", new BigDecimal("150.00"), "TRANSFERENCIA", "VENTA", "Nota", null);
+                "INGRESO", new BigDecimal("150.00"), 4L, "VENTA", "Nota", null);
         when(repository.save(any(MovFinanciero.class))).thenAnswer(inv -> inv.getArgument(0));
 
         MovimientoResponseDTO response = movimientoService.crearMovimiento(dto);
@@ -70,7 +83,7 @@ class MovimientoServiceTest {
 
         assertThat(response.tipo()).isEqualTo("INGRESO");
         assertThat(response.monto()).isEqualByComparingTo("150.00");
-        assertThat(response.metodoPago()).isEqualTo("TRANSFERENCIA");
+        assertThat(response.metodoPago()).isEqualTo("Transferencia");
         assertThat(response.categoria()).isEqualTo("VENTA");
         assertThat(response.descripcion()).isEqualTo("Nota");
     }
@@ -79,7 +92,7 @@ class MovimientoServiceTest {
     void crearMovimiento_conFechaHora_preservaLaFecha() {
         LocalDateTime fija = LocalDateTime.of(2026, 9, 20, 15, 30);
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "EGRESO", new BigDecimal("50.00"), "TARJETA", "COMPRA", null, fija);
+                "EGRESO", new BigDecimal("50.00"), 3L, "COMPRA", null, fija);
         when(repository.save(any(MovFinanciero.class))).thenAnswer(inv -> inv.getArgument(0));
 
         MovimientoResponseDTO response = movimientoService.crearMovimiento(dto);
@@ -91,10 +104,10 @@ class MovimientoServiceTest {
     @Test
     void listarMovimientos_ordenaPorFechaDescendente() {
         MovFinanciero uno = new MovFinanciero(
-                TipoMovimiento.INGRESO, new BigDecimal("100.00"), "EFECTIVO", null, null,
+                TipoMovimiento.INGRESO, new BigDecimal("100.00"), EFECTIVO, null, null,
                 LocalDateTime.of(2026, 9, 20, 10, 0), null);
         MovFinanciero dos = new MovFinanciero(
-                TipoMovimiento.EGRESO, new BigDecimal("30.00"), "EFECTIVO", null, null,
+                TipoMovimiento.EGRESO, new BigDecimal("30.00"), EFECTIVO, null, null,
                 LocalDateTime.of(2026, 9, 21, 10, 0), null);
         when(repository.findAllByOrderByFechaHoraDesc()).thenReturn(List.of(dos, uno));
 
@@ -164,9 +177,9 @@ class MovimientoServiceTest {
         when(venta.getId()).thenReturn(7L);
         lenient().when(venta.getLineas())
                 .thenThrow(new FetchNotFoundException("EspProducto", 999999L));
-        PagoVenta pago = new PagoVenta(venta, new BigDecimal("200.00"), "EFECTIVO");
+        PagoVenta pago = new PagoVenta(venta, new BigDecimal("200.00"), EFECTIVO);
         MovFinanciero mov = new MovFinanciero(
-                TipoMovimiento.INGRESO, new BigDecimal("200.00"), "EFECTIVO", "VENTA", "Venta 7",
+                TipoMovimiento.INGRESO, new BigDecimal("200.00"), EFECTIVO, "VENTA", "Venta 7",
                 LocalDateTime.of(2026, 9, 21, 10, 0), pago);
         when(repository.findAllByOrderByFechaHoraDesc()).thenReturn(List.of(mov));
         when(lineaVentaRepository.sumarCostoPorVenta(List.of(7L)))

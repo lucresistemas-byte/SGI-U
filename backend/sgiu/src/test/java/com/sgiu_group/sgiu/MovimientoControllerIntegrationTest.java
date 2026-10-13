@@ -37,7 +37,7 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void crear_valido_devuelve201ConDatosPersistidos() throws Exception {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "INGRESO", new BigDecimal("150.00"), "TRANSFERENCIA", "VENTA", "Pago cliente", null);
+                "INGRESO", new BigDecimal("150.00"), datos.metodo("TRANSFERENCIA").getId(), "VENTA", "Pago cliente", null);
 
         mockMvc.perform(post("/api/movimientos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -46,7 +46,7 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.tipo").value("INGRESO"))
                 .andExpect(jsonPath("$.monto").isNumber())
-                .andExpect(jsonPath("$.metodoPago").value("TRANSFERENCIA"))
+                .andExpect(jsonPath("$.metodoPago").value("Transferencia"))
                 .andExpect(jsonPath("$.categoria").value("VENTA"))
                 .andExpect(jsonPath("$.descripcion").value("Pago cliente"));
 
@@ -57,7 +57,7 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void crear_tipoInvalido_devuelve400() throws Exception {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "CRIPTO", new BigDecimal("10.00"), "EFECTIVO", "Otro", null, null);
+                "CRIPTO", new BigDecimal("10.00"), datos.metodo("EFECTIVO").getId(), "Otro", null, null);
 
         mockMvc.perform(post("/api/movimientos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -71,7 +71,7 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void crear_montoNegativo_devuelve400PorValidacion() throws Exception {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "INGRESO", new BigDecimal("-5.00"), "EFECTIVO", "Otro", null, null);
+                "INGRESO", new BigDecimal("-5.00"), datos.metodo("EFECTIVO").getId(), "Otro", null, null);
 
         mockMvc.perform(post("/api/movimientos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -83,7 +83,7 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void crear_montoNull_devuelve400PorValidacion() throws Exception {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "INGRESO", null, "EFECTIVO", "Otro", null, null);
+                "INGRESO", null, datos.metodo("EFECTIVO").getId(), "Otro", null, null);
 
         mockMvc.perform(post("/api/movimientos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -127,7 +127,7 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void crear_egresoConCategoriaDeIngreso_devuelve400ConMensajeClaro() throws Exception {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "EGRESO", new BigDecimal("10.00"), "EFECTIVO", "VENTA", null, null);
+                "EGRESO", new BigDecimal("10.00"), datos.metodo("EFECTIVO").getId(), "VENTA", null, null);
 
         mockMvc.perform(post("/api/movimientos").contentType(MediaType.APPLICATION_JSON).content(body(dto)))
                 .andExpect(status().isBadRequest())
@@ -140,7 +140,7 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void crear_ingresoConCategoriaDeEgreso_devuelve400() throws Exception {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "INGRESO", new BigDecimal("10.00"), "EFECTIVO", "COMPRA", null, null);
+                "INGRESO", new BigDecimal("10.00"), datos.metodo("EFECTIVO").getId(), "COMPRA", null, null);
 
         mockMvc.perform(post("/api/movimientos").contentType(MediaType.APPLICATION_JSON).content(body(dto)))
                 .andExpect(status().isBadRequest())
@@ -152,7 +152,7 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void crear_categoriaInexistente_devuelve400() throws Exception {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "EGRESO", new BigDecimal("10.00"), "EFECTIVO", "Retiro", null, null);
+                "EGRESO", new BigDecimal("10.00"), datos.metodo("EFECTIVO").getId(), "Retiro", null, null);
 
         mockMvc.perform(post("/api/movimientos").contentType(MediaType.APPLICATION_JSON).content(body(dto)))
                 .andExpect(status().isBadRequest())
@@ -164,7 +164,7 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void crear_sinCategoria_devuelve400() throws Exception {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "EGRESO", new BigDecimal("10.00"), "EFECTIVO", "  ", null, null);
+                "EGRESO", new BigDecimal("10.00"), datos.metodo("EFECTIVO").getId(), "  ", null, null);
 
         mockMvc.perform(post("/api/movimientos").contentType(MediaType.APPLICATION_JSON).content(body(dto)))
                 .andExpect(status().isBadRequest())
@@ -174,7 +174,7 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void crear_categoriaEnMinusculas_seGuardaComoCodigo() throws Exception {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
-                "EGRESO", new BigDecimal("10.00"), "EFECTIVO", " sueldos ", null, null);
+                "EGRESO", new BigDecimal("10.00"), datos.metodo("EFECTIVO").getId(), " sueldos ", null, null);
 
         mockMvc.perform(post("/api/movimientos").contentType(MediaType.APPLICATION_JSON).content(body(dto)))
                 .andExpect(status().isCreated())

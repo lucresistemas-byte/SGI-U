@@ -4,6 +4,8 @@ import '../blocs/finanzas/finanzas_bloc.dart';
 import '../blocs/finanzas/finanzas_event.dart';
 import '../blocs/finanzas/finanzas_state.dart';
 import '../models/categoria_movimiento.dart';
+import '../models/metodo_pago.dart';
+import 'metodo_pago_dropdown.dart';
 
 class MovimientoFormDialog extends StatefulWidget {
   const MovimientoFormDialog({super.key});
@@ -18,7 +20,8 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
   // Valores por defecto
   String _tipo = 'Ingreso';
   String _categoria = CategoriaMovimiento.ingreso.first.codigo;
-  String _metodoPago = 'Efectivo';
+  int? _metodoPagoId;
+  List<MetodoPago> _metodosPago = const [];
 
   final TextEditingController _montoController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
@@ -27,12 +30,26 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
   String? _error;
 
   final List<String> _tipos = ['Ingreso', 'Egreso'];
-  final List<String> _metodosPago = [
-    'Efectivo',
-    'Transferencia',
-    'Tarjeta',
-    'Mercado Pago'
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _cargarMetodos();
+  }
+
+  /// Solo los activos, en el orden de Configuración; por defecto Efectivo.
+  Future<void> _cargarMetodos() async {
+    try {
+      final metodos = await context.read<FinanzasBloc>().metodosPagoActivos();
+      if (!mounted) return;
+      setState(() {
+        _metodosPago = metodos;
+        _metodoPagoId ??= MetodoPagoDropdown.porDefecto(metodos);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = 'No se pudieron cargar los métodos de pago.');
+    }
+  }
 
   // Validación dinámica
   bool _isFormValid() {
@@ -41,6 +58,7 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
     final monto = double.tryParse(montoText.replaceAll(',', '.'));
     return _descripcionController.text.trim().isNotEmpty &&
         montoText.isNotEmpty &&
+        _metodoPagoId != null &&
         monto != null &&
         monto > 0;
   }
@@ -62,7 +80,7 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
     context.read<FinanzasBloc>().add(CrearMovimiento(
           tipo: _tipo.toUpperCase(),
           monto: monto,
-          metodoPago: _metodoPago,
+          metodoPagoId: _metodoPagoId!,
           categoria: _categoria,
           descripcion: _descripcionController.text.trim(),
         ));
@@ -151,17 +169,12 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
                       const SizedBox(height: 16),
 
                       // Método de pago
-                      DropdownButtonFormField<String>(
-                        initialValue: _metodoPago,
-                        decoration: const InputDecoration(
-                            labelText: 'Método de Pago',
-                            border: OutlineInputBorder()),
-                        items: _metodosPago
-                            .map((met) =>
-                                DropdownMenuItem(value: met, child: Text(met)))
-                            .toList(),
-                        onChanged: (value) =>
-                            setState(() => _metodoPago = value!),
+                      MetodoPagoDropdown(
+                        key: const Key('movimiento_metodo_pago'),
+                        metodos: _metodosPago,
+                        valor: _metodoPagoId,
+                        etiqueta: 'Método de Pago',
+                        onChanged: (id) => setState(() => _metodoPagoId = id),
                       ),
                       const SizedBox(height: 16),
 

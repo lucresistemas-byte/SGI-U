@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/product.dart';
+import '../models/metodo_pago.dart';
 import '../models/categoria.dart';
 import '../models/configuracion_negocio.dart';
 import '../models/insumo.dart';
@@ -342,7 +343,7 @@ class ApiService implements PosApi {
   Future<Map<String, dynamic>> getDashboardData({
     required DateTime fechaDesde,
     required DateTime fechaHasta,
-    String? metodoPago,
+    int? metodoPagoId,
     int? productoId,
   }) async {
     // Formateamos las fechas a yyyy-MM-dd como exige el contrato
@@ -356,8 +357,7 @@ class ApiService implements PosApi {
         'fechaDesde': desdeStr,
         'fechaHasta': hastaStr,
         // Solo mandamos estos parámetros si el usuario eligió un filtro específico
-        if (metodoPago != null && metodoPago != 'Todos')
-          'metodoPago': metodoPago.toUpperCase(),
+        if (metodoPagoId != null) 'metodoPagoId': metodoPagoId,
         if (productoId != null) 'productoId': productoId,
       });
 
@@ -395,10 +395,28 @@ class ApiService implements PosApi {
     }
   }
 
+  /// Nombre y logo del negocio (público: también sirve en el login). No
+  /// pisa el resto de la configuración ya cargada.
+  Future<void> cargarMarca() async {
+    try {
+      final response = await dio.get('/api/configuracion/marca');
+      final marca = ConfiguracionNegocio.fromJson(Map<String, dynamic>.from(response.data as Map));
+      final actual = configuracionActual;
+      configuracionActual = actual == null
+          ? marca
+          : actual.copyWith(nombre: marca.nombre, logo: marca.logo, clearLogo: marca.logo == null);
+    } catch (_) {
+      // Sin backend se muestra el nombre por defecto.
+    }
+  }
+
   Future<ConfiguracionNegocio> saveConfiguracion(ConfiguracionNegocio config) async {
     try {
+      // La pantalla envía la configuración completa: sin logo = se quitó.
+      final datos = config.toJson();
+      if (config.logo == null) datos['quitarLogo'] = true;
       final response =
-          await dio.put('/api/configuracion', data: config.toJson());
+          await dio.put('/api/configuracion', data: datos);
       if (response.statusCode == 200) {
         final saved = ConfiguracionNegocio.fromJson(
             response.data as Map<String, dynamic>);
@@ -539,6 +557,63 @@ class ApiService implements PosApi {
     }
   }
 
+  // --- MÉTODOS DE PAGO ---
+  /// Activos, en el orden configurado (los que se ofrecen). Con
+  /// [incluirInactivos], todos (pantalla de Configuración).
+  Future<List<MetodoPago>> getMetodosPago({bool incluirInactivos = false}) async {
+    try {
+      final response = await dio.get('/api/metodos-pago',
+          queryParameters: incluirInactivos ? {'incluirInactivos': true} : null);
+      return (response.data as List)
+          .map((m) => MetodoPago.fromJson(Map<String, dynamic>.from(m as Map)))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(
+          e, 'No se pudieron cargar los métodos de pago. Intente nuevamente.'));
+    }
+  }
+
+  Future<MetodoPago> crearMetodoPago(String nombre) async {
+    try {
+      final response = await dio.post('/api/metodos-pago', data: {'nombre': nombre});
+      return MetodoPago.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo crear el método de pago. Intente nuevamente.'));
+    }
+  }
+
+  Future<MetodoPago> renombrarMetodoPago(int id, String nombre) async {
+    try {
+      final response = await dio.put('/api/metodos-pago/$id', data: {'nombre': nombre});
+      return MetodoPago.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo renombrar el método de pago. Intente nuevamente.'));
+    }
+  }
+
+  /// Los métodos de pago no se eliminan: se desactivan o reactivan.
+  Future<MetodoPago> cambiarEstadoMetodoPago(int id, {required bool activo}) async {
+    try {
+      final response = await dio.patch('/api/metodos-pago/$id/estado', data: {'activo': activo});
+      return MetodoPago.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(
+          e, 'No se pudo cambiar el estado del método de pago. Intente nuevamente.'));
+    }
+  }
+
+  /// [ids]: todos los métodos, en el orden nuevo.
+  Future<List<MetodoPago>> reordenarMetodosPago(List<int> ids) async {
+    try {
+      final response = await dio.put('/api/metodos-pago/orden', data: {'ids': ids});
+      return (response.data as List)
+          .map((m) => MetodoPago.fromJson(Map<String, dynamic>.from(m as Map)))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo reordenar. Intente nuevamente.'));
+    }
+  }
+
   // --- RECETAS ---
   /// Todas las recetas (no se eliminan ni se desactivan; ver productoActivo).
   Future<List<Receta>> getRecetas() async {
@@ -650,13 +725,13 @@ class ApiService implements PosApi {
   Future<Pedido> abonarPedido(
     int id, {
     required double monto,
-    String? metodoPago,
+    int? metodoPagoId,
     String? nota,
   }) async {
     try {
       final payload = {
         'monto': monto,
-        if (metodoPago != null) 'metodoPago': metodoPago,
+        if (metodoPagoId != null) 'metodoPagoId': metodoPagoId,
         if (nota != null) 'nota': nota,
       };
       final response = await dio.post('/api/pedidos/$id/abonar', data: payload);

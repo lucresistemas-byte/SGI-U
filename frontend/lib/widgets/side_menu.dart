@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../navigation/seccion.dart';
-import '../services/api_service.dart';
+import 'marca_negocio.dart';
 
 /// Menú lateral. No navega: avisa la sección elegida a AppShell, que cambia
 /// el contenido.
@@ -59,36 +59,29 @@ class _SideMenuState extends State<SideMenu> {
               horizontal: compacto ? 12.0 : 24.0,
               vertical: 24.0,
             ),
-            child: Row(
-              mainAxisAlignment: compacto
-                  ? MainAxisAlignment.center
-                  : MainAxisAlignment.start,
-              children: [
-                InkWell(
-                  onTap: () => setState(() => _isCollapsed = !_isCollapsed),
-                  child: const Icon(Icons.menu, color: Color(0xFF455A64)),
-                ),
-                if (!compacto) ...[
-                  const SizedBox(width: 16),
-                  Expanded(
-                    // Escucha la configuración: al guardar un nombre nuevo en
-                    // Configuración, se ve acá en el momento.
-                    child: ValueListenableBuilder(
-                      valueListenable: ApiService.configuracion,
-                      builder: (context, config, _) => Text(
-                        config?.nombre.isNotEmpty == true ? config!.nombre : 'SGI-U',
-                        key: const Key('nombre_negocio_menu'),
-                        style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E293B)),
-                        overflow: TextOverflow.ellipsis,
+            // La marca escucha la configuración: un logo o nombre nuevo
+            // guardado en Configuración se ve acá en el momento.
+            child: compacto
+                ? Column(
+                    children: [
+                      InkWell(
+                        onTap: () => setState(() => _isCollapsed = !_isCollapsed),
+                        child: const Icon(Icons.menu, color: Color(0xFF455A64)),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      const MarcaNegocio(estilo: EstiloMarca.menuCompacto),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      InkWell(
+                        onTap: () => setState(() => _isCollapsed = !_isCollapsed),
+                        child: const Icon(Icons.menu, color: Color(0xFF455A64)),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(child: MarcaNegocio(estilo: EstiloMarca.menu)),
+                    ],
                   ),
-                ]
-              ],
-            ),
           ),
           const SizedBox(height: 10),
           

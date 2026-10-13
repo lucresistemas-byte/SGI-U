@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import '../models/cart_item.dart';
 import '../models/completed_sale.dart';
+import '../models/linea_pago.dart';
+import '../models/metodo_pago.dart';
 import '../models/product.dart';
 
 const Object _unset = Object();
@@ -8,7 +10,11 @@ const Object _unset = Object();
 class PosState extends Equatable {
   final List<Product> products;
   final Map<String, CartItem> cart;
-  final String? selectedPaymentMethod;
+  /// Métodos activos, en el orden de Configuración.
+  final List<MetodoPago> metodosPago;
+
+  /// Líneas del cobro (pago mixto): método + monto.
+  final List<LineaPago> pagos;
   final bool isProcessing;
   final bool isLoading;
   final String? errorMessage;
@@ -20,7 +26,8 @@ class PosState extends Equatable {
   const PosState({
     required this.products,
     required this.cart,
-    this.selectedPaymentMethod,
+    this.metodosPago = const [],
+    this.pagos = const [],
     this.isProcessing = false,
     this.isLoading = false,
     this.errorMessage,
@@ -34,7 +41,6 @@ class PosState extends Equatable {
     return const PosState(
       products: [],
       cart: {},
-      selectedPaymentMethod: null,
       isProcessing: false,
       isLoading: false,
       errorMessage: null,
@@ -48,7 +54,8 @@ class PosState extends Equatable {
   PosState copyWith({
     List<Product>? products,
     Map<String, CartItem>? cart,
-    String? selectedPaymentMethod,
+    List<MetodoPago>? metodosPago,
+    List<LineaPago>? pagos,
     bool? isProcessing,
     bool? isLoading,
     Object? errorMessage = _unset,
@@ -60,8 +67,8 @@ class PosState extends Equatable {
     return PosState(
       products: products ?? this.products,
       cart: cart ?? this.cart,
-      selectedPaymentMethod:
-          selectedPaymentMethod ?? this.selectedPaymentMethod,
+      metodosPago: metodosPago ?? this.metodosPago,
+      pagos: pagos ?? this.pagos,
       isProcessing: isProcessing ?? this.isProcessing,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: identical(errorMessage, _unset)
@@ -132,11 +139,32 @@ class PosState extends Equatable {
     return total;
   }
 
+  /// Redondeo a centavos (los montos son double).
+  static double _centavos(double v) => (v * 100).roundToDouble() / 100;
+
+  double get totalPagado => _centavos(pagos.fold(0.0, (s, p) => s + p.monto));
+
+  /// Lo que falta cobrar (0 si ya se cubrió el total).
+  double get restante {
+    final r = _centavos(totalAmount - totalPagado);
+    return r > 0 ? r : 0;
+  }
+
+  /// Vuelto: lo que el efectivo supera al total.
+  double get vuelto {
+    final v = _centavos(totalPagado - totalAmount);
+    return v > 0 ? v : 0;
+  }
+
+  /// "Confirmar cobro" se habilita solo cuando los pagos cubren el total.
+  bool get cobroCubierto => cart.isNotEmpty && totalAmount > 0 && restante == 0;
+
   @override
   List<Object?> get props => [
         products,
         cart,
-        selectedPaymentMethod,
+        metodosPago,
+        pagos,
         isProcessing,
         isLoading,
         errorMessage,

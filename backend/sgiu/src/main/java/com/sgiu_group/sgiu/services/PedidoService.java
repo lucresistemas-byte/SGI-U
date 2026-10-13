@@ -4,6 +4,7 @@ import com.sgiu_group.sgiu.exceptions.PedidoInvalidoException;
 import com.sgiu_group.sgiu.exceptions.RecursoNoEncontradoException;
 import com.sgiu_group.sgiu.models.dtos.*;
 import com.sgiu_group.sgiu.models.entities.EstadoPedido;
+import com.sgiu_group.sgiu.models.entities.MetodoPago;
 import com.sgiu_group.sgiu.models.entities.Pedido;
 import com.sgiu_group.sgiu.models.entities.PedidoAbono;
 import com.sgiu_group.sgiu.repositories.PedidoRepository;
@@ -22,6 +23,7 @@ import java.util.List;
 public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
+    private final MetodoPagoService metodoPagoService;
 
     @Transactional(readOnly = true)
     public List<PedidoResponseDTO> buscarPedidos(String q) {
@@ -86,9 +88,7 @@ public class PedidoService {
         );
 
         if (senia.compareTo(BigDecimal.ZERO) > 0) {
-            String metodo = dto.metodoPagoSenia() != null && !dto.metodoPagoSenia().isBlank()
-                    ? dto.metodoPagoSenia().trim().toUpperCase()
-                    : "EFECTIVO";
+            MetodoPago metodo = metodoDe(dto.metodoPagoSeniaId());
             PedidoAbono abonoInicial = new PedidoAbono(pedido, senia, metodo, "Seña inicial del pedido");
             pedido.addAbono(abonoInicial);
         }
@@ -119,9 +119,7 @@ public class PedidoService {
         }
 
         // Registrar abono
-        String metodo = dto.metodoPago() != null && !dto.metodoPago().isBlank()
-                ? dto.metodoPago().trim().toUpperCase()
-                : "EFECTIVO";
+        MetodoPago metodo = metodoDe(dto.metodoPagoId());
         PedidoAbono abono = new PedidoAbono(pedido, dto.monto(), metodo, dto.nota());
         pedido.addAbono(abono);
 
@@ -161,14 +159,20 @@ public class PedidoService {
         return toResponseDTO(guardado);
     }
 
+    /** Método activo indicado; sin indicar, Efectivo. */
+    private MetodoPago metodoDe(Long id) {
+        return id == null ? metodoPagoService.efectivo() : metodoPagoService.paraCobrar(id);
+    }
+
     public PedidoResponseDTO toResponseDTO(Pedido p) {
         List<PedidoAbonoDTO> abonosDTO = p.getAbonos().stream()
                 .map(a -> new PedidoAbonoDTO(
                         a.getId(),
                         a.getMonto(),
-                        a.getMetodoPago(),
+                        a.getMetodoPago().getNombre(),
                         a.getNota(),
-                        a.getCreatedAt()
+                        a.getCreatedAt(),
+                        a.getMetodoPago().getId()
                 ))
                 .toList();
 

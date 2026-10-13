@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/cargando_diferido.dart';
 import '../widgets/configuracion/categorias_card.dart';
+import '../widgets/configuracion/metodos_pago_card.dart';
 import '../widgets/configuracion/tipos_producto_card.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -383,6 +384,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const TiposProductoCard(),
                         const SizedBox(height: 16),
                         CategoriasCard(apiService: _apiService),
+                        const SizedBox(height: 24),
+                        MetodosPagoCard(apiService: _apiService),
                       ],
                     ),
                   ),

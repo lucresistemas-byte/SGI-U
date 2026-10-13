@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../models/metodo_pago.dart';
 import '../../models/pedido.dart';
 
 class PedidosState extends Equatable {
@@ -11,6 +12,9 @@ class PedidosState extends Equatable {
   final Pedido? selectedPedido;
   final String searchQuery;
 
+  /// Métodos de pago activos para la seña y los pagos.
+  final List<MetodoPago> metodosPago;
+
   const PedidosState({
     this.isLoading = false,
     this.isSubmitting = false,
@@ -20,6 +24,7 @@ class PedidosState extends Equatable {
     this.filteredPedidos = const [],
     this.selectedPedido,
     this.searchQuery = '',
+    this.metodosPago = const [],
   });
 
   factory PedidosState.initial() => const PedidosState();
@@ -34,6 +39,7 @@ class PedidosState extends Equatable {
     Pedido? selectedPedido,
     bool clearSelectedPedido = false,
     String? searchQuery,
+    List<MetodoPago>? metodosPago,
     bool clearError = false,
     bool clearSuccess = false,
   }) {
@@ -46,6 +52,7 @@ class PedidosState extends Equatable {
       filteredPedidos: filteredPedidos ?? this.filteredPedidos,
       selectedPedido: clearSelectedPedido ? null : (selectedPedido ?? this.selectedPedido),
       searchQuery: searchQuery ?? this.searchQuery,
+      metodosPago: metodosPago ?? this.metodosPago,
     );
   }
 
@@ -59,5 +66,6 @@ class PedidosState extends Equatable {
         filteredPedidos,
         selectedPedido,
         searchQuery,
+        metodosPago,
       ];
 }

@@ -18,15 +18,17 @@ public class PagoVenta extends BaseEntity {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal monto;
 
-    @Column(nullable = false, length = 30)
-    private String metodo; // efectivo, tarjeta, transferencia, etc.
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "metodo_pago_id", nullable = false,
+                foreignKey = @ForeignKey(name = "fk_pago_venta_metodo"))
+    private MetodoPago metodoPago;
 
     public PagoVenta() {}
 
-    public PagoVenta(Venta venta, BigDecimal monto, String metodo) {
+    public PagoVenta(Venta venta, BigDecimal monto, MetodoPago metodoPago) {
         this.venta = venta;
         this.monto = monto;
-        this.metodo = metodo;
+        this.metodoPago = metodoPago;
     }
 
     public Venta getVenta() {
@@ -48,14 +50,14 @@ public class PagoVenta extends BaseEntity {
         this.monto = monto;
     }
 
-    public String getMetodo() {
-        return metodo;
+    public MetodoPago getMetodoPago() {
+        return metodoPago;
     }
 
-    public void setMetodo(String metodo) {
-        if (metodo == null || metodo.isBlank()) {
+    public void setMetodoPago(MetodoPago metodoPago) {
+        if (metodoPago == null) {
             throw new IllegalArgumentException("El método de pago es obligatorio");
         }
-        this.metodo = metodo;
+        this.metodoPago = metodoPago;
     }
 }
