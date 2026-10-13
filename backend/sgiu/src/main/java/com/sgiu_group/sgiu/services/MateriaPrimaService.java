@@ -216,11 +216,10 @@ public class MateriaPrimaService {
     public void recalcularRecetasConInsumo(Long materiaPrimaId) {
         List<Receta> recetasAfectadas = recetaRepository.findRecetasByMateriaPrimaId(materiaPrimaId);
         for (Receta r : recetasAfectadas) {
-            BigDecimal nuevoCosto = r.calcularCostoTotal();
             EspProducto producto = r.getProducto();
             if (producto != null) {
-                producto.setPrecioCosto(nuevoCosto);
-                producto.recalcularPrecioDesdeCostoYMargen();
+                // Costo unitario = costo de receta / rinde; precio con el % del producto.
+                r.aplicarCostoAlProducto();
                 espProductoRepository.save(producto);
                 log.info("[RECETA RECALCULO] Producto elaborado '{}' ({}) actualizado: nuevo costo ${}, nuevo precio venta ${}",
                         producto.getNombre(), producto.getCodigo(), producto.getPrecioCosto(), producto.getPrecioUnitario());

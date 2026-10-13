@@ -46,6 +46,7 @@ void main() {
 
   Future<void> completarRecetaYGuardar(WidgetTester t) async {
     await t.enterText(find.byKey(const Key('input_nombre_receta')), 'Torta base');
+    await t.enterText(find.byKey(const Key('input_rinde')), '8');
     await t.tap(find.byKey(const Key('agregar_insumo_fila_button')));
     await t.pumpAndSettle();
     // La fila llega vacía: se elige el insumo y se escribe la cantidad.

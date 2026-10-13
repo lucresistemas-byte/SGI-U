@@ -4,6 +4,7 @@ import 'package:sgi_u_frontend/blocs/recetas/recetas_bloc.dart';
 import 'package:sgi_u_frontend/blocs/recetas/recetas_event.dart';
 import 'package:sgi_u_frontend/blocs/recetas/recetas_state.dart';
 import 'package:sgi_u_frontend/models/insumo.dart';
+import 'package:sgi_u_frontend/models/unidad_medida.dart';
 
 void main() {
   group('RecetasBloc - Cálculo de Costo en Vivo (Tarea 7.5)', () {
@@ -54,8 +55,8 @@ void main() {
       'Al agregar un insumo, el estado recalcula automáticamente el costo total (cantidad * costoUnitario)',
       build: () => recetasBloc,
       act: (bloc) => bloc.add(const AgregarFilaInsumo(
-        insumo: insumoHarina,
-        cantidad: 2.5, // 2.5 * 50.0 = 125.0
+        insumo: insumoHarina, cantidad: 2.5,
+        unidad: UnidadMedida.kilo, // 2.5 * 50.0 = 125.0
       )),
       expect: () => [
         isA<RecetasState>()
@@ -70,12 +71,12 @@ void main() {
       act: (bloc) {
         bloc.add(const CambiarCostosAdicionales(30.0)); // +30
         bloc.add(const AgregarFilaInsumo(
-          insumo: insumoHarina,
-          cantidad: 2.0, // 2 * 50 = 100
+          insumo: insumoHarina, cantidad: 2.0,
+          unidad: UnidadMedida.kilo, // 2 * 50 = 100
         ));
         bloc.add(const AgregarFilaInsumo(
-          insumo: insumoAzucar,
-          cantidad: 1.0, // 1 * 80 = 80
+          insumo: insumoAzucar, cantidad: 1.0,
+          unidad: UnidadMedida.kilo, // 1 * 80 = 80
         ));
       },
       expect: () => [
@@ -103,9 +104,18 @@ void main() {
         costoTotal: 20.0,
       ),
       act: (bloc) {
-        bloc.add(const AgregarFilaInsumo(insumo: insumoHarina, cantidad: 2.0)); // +100 -> 120
-        bloc.add(const AgregarFilaInsumo(insumo: insumoAzucar, cantidad: 1.0)); // +80  -> 200
-        bloc.add(const RemoverFilaInsumo(0)); // remueve Harina (100) -> queda 100 (80 + 20)
+        bloc.add(const AgregarFilaInsumo(
+          insumo: insumoHarina,
+          cantidad: 2.0,
+          unidad: UnidadMedida.kilo,
+        )); // +100 -> 120
+        bloc.add(const AgregarFilaInsumo(
+          insumo: insumoAzucar,
+          cantidad: 1.0,
+          unidad: UnidadMedida.kilo,
+        )); // +80  -> 200
+        bloc.add(const RemoverFilaInsumo(
+            0)); // remueve Harina (100) -> queda 100 (80 + 20)
       },
       expect: () => [
         isA<RecetasState>()
@@ -116,7 +126,8 @@ void main() {
             .having((s) => s.costoTotal, 'costoTotal', 200.0),
         isA<RecetasState>()
             .having((s) => s.detalles.length, 'detalles length', 1)
-            .having((s) => s.detalles.first.materiaPrimaId, 'materiaPrimaId restante', 2)
+            .having((s) => s.detalles.first.materiaPrimaId,
+                'materiaPrimaId restante', 2)
             .having((s) => s.costoTotal, 'costoTotal recalculado', 100.0),
       ],
     );
@@ -125,20 +136,23 @@ void main() {
       'Al modificar la cantidad de un insumo, el subtotal y el costo total se actualizan en vivo',
       build: () => recetasBloc,
       act: (bloc) {
-        bloc.add(const AgregarFilaInsumo(insumo: insumoHuevos, cantidad: 4.0)); // 4 * 25 = 100
-        bloc.add(const ActualizarCantidadFilaInsumo(index: 0, cantidad: 10.0)); // 10 * 25 = 250
+        bloc.add(const AgregarFilaInsumo(
+            insumo: insumoHuevos, cantidad: 4.0)); // 4 * 25 = 100
+        bloc.add(const ActualizarCantidadFilaInsumo(
+            index: 0, cantidad: 10.0)); // 10 * 25 = 250
       },
       expect: () => [
+        isA<RecetasState>().having((s) => s.costoTotal, 'costoTotal', 100.0),
         isA<RecetasState>()
-            .having((s) => s.costoTotal, 'costoTotal', 100.0),
-        isA<RecetasState>()
-            .having((s) => s.detalles.first.cantidad, 'cantidad actualizada', 10.0)
+            .having(
+                (s) => s.detalles.first.cantidad, 'cantidad actualizada', 10.0)
             .having((s) => s.detalles.first.subtotal, 'subtotal', 250.0)
             .having((s) => s.costoTotal, 'costoTotal', 250.0),
       ],
     );
 
-    test('isFormValid valida campos obligatorios del armador de recetas', () async {
+    test('isFormValid valida campos obligatorios del armador de recetas',
+        () async {
       var state = RecetasState.initial();
       expect(state.isFormValid, isFalse, reason: 'Vacío debe ser inválido');
 
@@ -154,9 +168,14 @@ void main() {
       expect(state.isFormValid, isFalse);
 
       const detalle = insumoHarina;
-      recetasBloc.add(const CambiarProductoReceta(codigo: 'PROD-001', nombre: 'Torta'));
+      recetasBloc.add(
+          const CambiarProductoReceta(codigo: 'PROD-001', nombre: 'Torta'));
       recetasBloc.add(const CambiarNombreReceta('Torta Especial'));
       recetasBloc.add(const AgregarFilaInsumo(insumo: detalle, cantidad: 2.0));
+      await pumpEventQueue();
+      // Sin rinde no se puede guardar (etapa 2).
+      expect(recetasBloc.state.isFormValid, isFalse);
+      recetasBloc.add(const CambiarRinde(8));
       await pumpEventQueue();
 
       expect(recetasBloc.state.selectedProductoCodigo, equals('PROD-001'));

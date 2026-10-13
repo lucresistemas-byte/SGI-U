@@ -92,7 +92,7 @@ class InsumoEstadoIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"espProductoCodigo\": \"INS-TORTA\", \"nombre\": \"Torta\", "
-                                + "\"detalles\": [{\"materiaPrimaId\": " + harina.getId()
+                                + "\"rinde\": 1, \"detalles\": [{\"materiaPrimaId\": " + harina.getId()
                                 + ", \"cantidad\": 0.2, \"unidadMedida\": \"KILO\"}]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(

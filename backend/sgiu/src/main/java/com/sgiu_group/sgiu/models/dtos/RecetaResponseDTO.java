@@ -14,5 +14,12 @@ public record RecetaResponseDTO(
     List<RecetaDetalleResponseDTO> detalles,
     boolean activo,
     /** false = el producto elaborado está desactivado (no se vende en el POS). */
-    boolean productoActivo
+    boolean productoActivo,
+    BigDecimal rinde,
+    String rindeUnidad,
+    /** Costo de una unidad rendida = costoTotal / rinde (costo del elaborado). */
+    BigDecimal costoPorUnidad,
+    BigDecimal porcentajeGanancia,
+    /** Precio del elaborado = costoPorUnidad × (1 + % ganancia). */
+    BigDecimal precioVenta
 ) {}

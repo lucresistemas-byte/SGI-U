@@ -35,6 +35,10 @@ class RecetasState extends Equatable {
   final List<RecetaDetalle> detalles;
   final double costoTotal;
 
+  /// Rinde de la receta (obligatorio, > 0) y qué rinde ("porciones").
+  final double? rinde;
+  final String rindeUnidad;
+
   const RecetasState({
     this.isLoading = false,
     this.isSaving = false,
@@ -58,6 +62,8 @@ class RecetasState extends Equatable {
     this.costosAdicionales = 0.0,
     this.detalles = const [],
     this.costoTotal = 0.0,
+    this.rinde,
+    this.rindeUnidad = 'porciones',
   });
 
   factory RecetasState.initial() => const RecetasState();
@@ -77,6 +83,24 @@ class RecetasState extends Equatable {
   /// Alguna fila sin insumo elegido o sin cantidad.
   bool get hayFilasIncompletas => detalles.any((d) => !d.completa);
 
+  /// Costo por unidad rendida (porción, alfajor...): costo total / rinde.
+  double? get costoPorUnidad => rinde != null && rinde! > 0 ? costoTotal / rinde! : null;
+
+  /// % de ganancia del producto: el del producto nuevo o el del existente.
+  double get porcentajeGanancia {
+    if (creaProductoNuevo) return nuevoProductoPorcentaje ?? 0;
+    for (final p in availableProductos) {
+      if (p.codigo == selectedProductoCodigo) return p.porcentajeGanancia ?? 0;
+    }
+    return 0;
+  }
+
+  /// Precio resultante = costo por unidad × (1 + % ganancia).
+  double? get precioResultante {
+    final c = costoPorUnidad;
+    return c == null ? null : c * (1 + porcentajeGanancia / 100);
+  }
+
   bool get creaProductoNuevo => editingRecetaId == null && usarProductoNuevo;
 
   bool get isFormValid {
@@ -87,6 +111,7 @@ class RecetasState extends Equatable {
       return false;
     }
     if (nombre.trim().isEmpty) return false;
+    if (rinde == null || rinde! <= 0) return false;
     if (detalles.isEmpty) return false;
     for (final d in detalles) {
       final hasValidId = d.materiaPrimaId > 0 ||
@@ -121,6 +146,9 @@ class RecetasState extends Equatable {
     double? costosAdicionales,
     List<RecetaDetalle>? detalles,
     double? costoTotal,
+    double? rinde,
+    bool quitarRinde = false,
+    String? rindeUnidad,
     bool clearError = false,
     bool clearSuccess = false,
   }) {
@@ -150,6 +178,8 @@ class RecetasState extends Equatable {
       costosAdicionales: costosAdicionales ?? this.costosAdicionales,
       detalles: detalles ?? this.detalles,
       costoTotal: costoTotal ?? this.costoTotal,
+      rinde: quitarRinde ? null : (rinde ?? this.rinde),
+      rindeUnidad: rindeUnidad ?? this.rindeUnidad,
     );
   }
 
@@ -177,5 +207,7 @@ class RecetasState extends Equatable {
         costosAdicionales,
         detalles,
         costoTotal,
+        rinde,
+        rindeUnidad,
       ];
 }

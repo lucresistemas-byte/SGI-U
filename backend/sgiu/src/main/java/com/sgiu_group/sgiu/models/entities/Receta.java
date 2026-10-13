@@ -31,6 +31,14 @@ public class Receta extends BaseEntity {
     @Column(name = "costos_adicionales", precision = 10, scale = 2)
     private BigDecimal costosAdicionales = BigDecimal.ZERO;
 
+    /** Cuánto rinde la receta (p. ej. 8 porciones, 24 alfajores); mayor a cero. */
+    @Column(nullable = false, precision = 10, scale = 3)
+    private BigDecimal rinde = BigDecimal.ONE;
+
+    /** Qué rinde: "porciones", "unidades"... */
+    @Column(name = "rinde_unidad", nullable = false, length = 30)
+    private String rindeUnidad = "unidades";
+
     @OneToMany(mappedBy = "receta", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<RecetaDetalle> detalles = new ArrayList<>();
 
@@ -63,5 +71,22 @@ public class Receta extends BaseEntity {
             }
         }
         return total.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /** Costo de una unidad rendida (porción, alfajor...): costo de receta / rinde. */
+    public BigDecimal calcularCostoPorUnidad() {
+        BigDecimal r = rinde != null && rinde.signum() > 0 ? rinde : BigDecimal.ONE;
+        return calcularCostoTotal().divide(r, 2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * El costo unitario del elaborado es el de una unidad rendida; el precio
+     * sale del % de ganancia del producto.
+     */
+    public void aplicarCostoAlProducto() {
+        if (producto != null) {
+            producto.setPrecioCosto(calcularCostoPorUnidad());
+            producto.recalcularPrecioDesdeCostoYMargen();
+        }
     }
 }

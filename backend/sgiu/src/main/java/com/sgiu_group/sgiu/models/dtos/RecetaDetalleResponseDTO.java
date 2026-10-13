@@ -7,8 +7,13 @@ public record RecetaDetalleResponseDTO(
     Long materiaPrimaId,
     String materiaPrimaCodigo,
     String materiaPrimaNombre,
+    /** En la unidad elegida. */
     BigDecimal cantidad,
     String unidadMedida,
+    /** Costo por la unidad elegida. */
     BigDecimal costoUnitario,
-    BigDecimal subtotal
+    BigDecimal subtotal,
+    BigDecimal cantidadBase,
+    String unidadBase,
+    String familia
 ) {}

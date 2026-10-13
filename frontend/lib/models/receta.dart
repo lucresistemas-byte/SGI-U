@@ -17,6 +17,15 @@ class Receta extends Equatable {
   /// La receta sigue visible.
   final bool productoActivo;
 
+  /// Cuánto rinde (p. ej. 8) y qué ("porciones").
+  final double rinde;
+  final String rindeUnidad;
+
+  /// Costo por unidad rendida = costoTotal / rinde.
+  final double costoPorUnidad;
+  final double porcentajeGanancia;
+  final double precioVenta;
+
   const Receta({
     this.id,
     required this.espProductoCodigo,
@@ -28,6 +37,11 @@ class Receta extends Equatable {
     this.detalles = const [],
     this.activo = true,
     this.productoActivo = true,
+    this.rinde = 1,
+    this.rindeUnidad = 'unidades',
+    this.costoPorUnidad = 0,
+    this.porcentajeGanancia = 0,
+    this.precioVenta = 0,
   }) : costoTotal = costoTotal ?? 0.0;
 
   factory Receta.fromJson(Map<String, dynamic> json) {
@@ -55,6 +69,11 @@ class Receta extends Equatable {
       detalles: detallesList,
       activo: json['activo'] == true || json['activo'] == 1 || json['activo'] == null,
       productoActivo: json['productoActivo'] != false,
+      rinde: json['rinde'] != null ? parseDouble(json['rinde']) : 1,
+      rindeUnidad: json['rindeUnidad']?.toString() ?? 'unidades',
+      costoPorUnidad: parseDouble(json['costoPorUnidad']),
+      porcentajeGanancia: parseDouble(json['porcentajeGanancia']),
+      precioVenta: parseDouble(json['precioVenta']),
     );
   }
 
@@ -103,6 +122,11 @@ class Receta extends Equatable {
       detalles: list,
       activo: activo ?? this.activo,
       productoActivo: productoActivo ?? this.productoActivo,
+      rinde: rinde,
+      rindeUnidad: rindeUnidad,
+      costoPorUnidad: costoPorUnidad,
+      porcentajeGanancia: porcentajeGanancia,
+      precioVenta: precioVenta,
     );
   }
 
@@ -117,5 +141,7 @@ class Receta extends Equatable {
         costoTotal,
         detalles,
         activo,
+        rinde,
+        rindeUnidad,
       ];
 }

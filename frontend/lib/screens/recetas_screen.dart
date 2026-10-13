@@ -4,6 +4,10 @@ import 'package:intl/intl.dart';
 import '../blocs/recetas/recetas_bloc.dart';
 import '../blocs/recetas/recetas_event.dart';
 import '../blocs/recetas/recetas_state.dart';
+import '../models/insumo.dart';
+import '../models/receta_detalle.dart';
+import '../models/unidad_medida.dart';
+import '../utils/numeros.dart';
 import '../models/receta.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
@@ -35,6 +39,8 @@ class _RecetasScreenState extends State<RecetasScreen> {
   final _nombreCtrl = TextEditingController();
   final _descripcionCtrl = TextEditingController();
   final _costosAdicCtrl = TextEditingController(text: '0.00');
+  final _rindeCtrl = TextEditingController();
+  final _rindeUnidadCtrl = TextEditingController(text: 'porciones');
 
   @override
   void initState() {
@@ -51,6 +57,8 @@ class _RecetasScreenState extends State<RecetasScreen> {
     _nombreCtrl.dispose();
     _descripcionCtrl.dispose();
     _costosAdicCtrl.dispose();
+    _rindeCtrl.dispose();
+    _rindeUnidadCtrl.dispose();
     if (widget.recetasBloc == null) {
       _bloc.close();
     }
@@ -61,6 +69,8 @@ class _RecetasScreenState extends State<RecetasScreen> {
     _nombreCtrl.clear();
     _descripcionCtrl.clear();
     _costosAdicCtrl.text = '0.00';
+    _rindeCtrl.clear();
+    _rindeUnidadCtrl.text = 'porciones';
     _bloc.add(const IniciarNuevaReceta());
     setState(() {
       _isBuilding = true;
@@ -71,6 +81,8 @@ class _RecetasScreenState extends State<RecetasScreen> {
     _nombreCtrl.text = receta.nombre;
     _descripcionCtrl.text = receta.descripcion ?? '';
     _costosAdicCtrl.text = receta.costosAdicionales.toStringAsFixed(2);
+    _rindeCtrl.text = formatDecimal(receta.rinde);
+    _rindeUnidadCtrl.text = receta.rindeUnidad;
     _bloc.add(EditarReceta(receta));
     setState(() {
       _isBuilding = true;
@@ -452,6 +464,62 @@ class _RecetasScreenState extends State<RecetasScreen> {
     );
   }
 
+  /// "porciones" → "porción"; "unidades" → "unidad"; otros, como están.
+  static String _singular(String texto) {
+    final t = texto.trim();
+    if (t.isEmpty) return 'unidad';
+    if (t.endsWith('ones')) return '${t.substring(0, t.length - 4)}ón';
+    if (t.endsWith('des')) return t.substring(0, t.length - 2);
+    if (t.endsWith('s')) return t.substring(0, t.length - 1);
+    return t;
+  }
+
+  Widget _dato(String titulo, String valor, Key key, {String? detalle}) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(titulo, style: const TextStyle(fontSize: 13, color: Color(0xFF166534), fontWeight: FontWeight.w500)),
+          const SizedBox(height: 4),
+          Text(valor, key: key, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF15803D))),
+          if (detalle != null) Text(detalle, style: const TextStyle(fontSize: 12, color: Color(0xFF15803D))),
+        ],
+      );
+
+  /// Unidad de la fila: desplegable con las unidades de la familia del insumo
+  /// (sin insumo elegido o si el insumo ya no está disponible, solo texto).
+  Widget _unidadDeFila(RecetasState state, RecetaDetalle detalle, int index) {
+    final unidad = UnidadMedida.deCodigo(detalle.unidadMedida);
+    Insumo? insumo;
+    for (final i in state.availableInsumos) {
+      if (i.id == detalle.materiaPrimaId) insumo = i;
+    }
+    if (detalle.sinInsumo || insumo == null || unidad == null) {
+      return SizedBox(
+        width: 110,
+        child: Text(unidad?.nombre ?? '—', key: Key('unidad_insumo_fila_$index'),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+      );
+    }
+    // Se recrea al cambiar insumo o unidad (initialValue se lee una sola vez).
+    return SizedBox(
+      key: ValueKey('unidad_${detalle.materiaPrimaId}_${unidad.codigo}'),
+      width: 120,
+      child: DropdownButtonFormField<UnidadMedida>(
+        key: Key('unidad_insumo_fila_$index'),
+        initialValue: unidad,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          labelText: 'Unidad',
+          border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        ),
+        items: [for (final u in insumo.familia.unidades) DropdownMenuItem(value: u, child: Text(u.nombre))],
+        onChanged: (u) {
+          if (u != null) _bloc.add(CambiarUnidadFila(index: index, unidad: u));
+        },
+      ),
+    );
+  }
+
   // --- BUILDER VIEW ---
   Widget _buildRecipeBuilder(BuildContext context, RecetasState state) {
     // El encabezado (título y "Guardar receta") queda fijo; solo se
@@ -591,11 +659,52 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                   border: OutlineInputBorder(),
                                 ),
                                 onChanged: (val) {
-                                  final adic = double.tryParse(val.replaceAll(',', '.')) ?? 0.0;
+                                  final adic = parseDecimal(val) ?? 0.0;
                                   _bloc.add(CambiarCostosAdicionales(adic));
                                 },
                               ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Rinde: el costo del elaborado es costo de receta / rinde.
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 160,
+                              child: TextFormField(
+                                key: const Key('input_rinde'),
+                                controller: _rindeCtrl,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                decoration: const InputDecoration(
+                                  labelText: 'Rinde *',
+                                  hintText: 'Ej: 8',
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (val) => _bloc.add(CambiarRinde(parseDecimal(val))),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            SizedBox(
+                              width: 220,
+                              child: TextFormField(
+                                key: const Key('input_rinde_unidad'),
+                                controller: _rindeUnidadCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'Qué rinde',
+                                  hintText: 'porciones, unidades...',
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (val) => _bloc.add(CambiarRindeUnidad(val)),
+                              ),
+                            ),
+                            if (state.rinde == null || state.rinde! <= 0)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 12, top: 14),
+                                child: Text('Indique cuánto rinde la receta (mayor a 0).',
+                                    key: Key('aviso_rinde'), style: TextStyle(color: Color(0xFFB45309))),
+                              ),
                           ],
                         ),
                       ],
@@ -752,7 +861,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                 child: TextFormField(
                                   key: Key('cantidad_insumo_fila_$index'),
                                   initialValue: detalle.cantidad > 0
-                                      ? detalle.cantidad.toString()
+                                      ? formatDecimal(detalle.cantidad)
                                       : '',
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   decoration: const InputDecoration(
@@ -761,7 +870,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                   ),
                                   onChanged: (val) {
-                                    final cant = double.tryParse(val.replaceAll(',', '.')) ?? 0.0;
+                                    final cant = parseDecimal(val) ?? 0.0;
                                     _bloc.add(ActualizarCantidadFilaInsumo(
                                       index: index,
                                       cantidad: cant,
@@ -771,19 +880,8 @@ class _RecetasScreenState extends State<RecetasScreen> {
                               ),
                               const SizedBox(width: 12),
 
-                              // Unidad
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  detalle.unidadMedida.isEmpty ? '—' : detalle.unidadMedida,
-                                  key: Key('unidad_insumo_fila_$index'),
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                ),
-                              ),
+                              // Unidad: solo las de la familia del insumo.
+                              _unidadDeFila(state, detalle, index),
                               const SizedBox(width: 16),
 
                               // Costo Unitario
@@ -792,7 +890,8 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                 children: [
                                   const Text('Costo Unit.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                                   Text(
-                                    _currencyFormat.format(detalle.costoUnitario),
+                                    '${formatPesos(detalle.costoUnitario, decimales: detalle.costoUnitario < 10 ? 4 : 2)}'
+                                    '${UnidadMedida.deCodigo(detalle.unidadMedida) != null ? ' / ${UnidadMedida.deCodigo(detalle.unidadMedida)!.abreviatura}' : ''}',
                                     key: Key('costo_unitario_insumo_fila_$index'),
                                     style: const TextStyle(fontWeight: FontWeight.w500),
                                   ),
@@ -828,7 +927,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                   ),
                 const SizedBox(height: 24),
 
-                // Total Cost Card
+                // Costos y precio, en vivo.
                 Card(
                   color: const Color(0xFFF0FDF4),
                   shape: RoundedRectangleBorder(
@@ -837,32 +936,21 @@ class _RecetasScreenState extends State<RecetasScreen> {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Wrap(
+                      spacing: 32,
+                      runSpacing: 16,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Costo de Producción por Receta',
-                              style: TextStyle(fontSize: 14, color: Color(0xFF166534), fontWeight: FontWeight.w500),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Incluye ${state.detalles.length} insumos + ${_currencyFormat.format(state.costosAdicionales)} de adicionales',
-                              style: const TextStyle(fontSize: 12, color: Color(0xFF15803D)),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          _currencyFormat.format(state.costoTotal),
-                          key: const Key('costo_total_receta'),
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF15803D),
-                          ),
-                        ),
+                        _dato('Costo total de la receta', formatPesos(state.costoTotal), const Key('costo_total_receta'),
+                            detalle: 'Incluye ${state.detalles.length} insumos + ${formatPesos(state.costosAdicionales)} de adicionales'),
+                        _dato(
+                            'Costo por ${_singular(state.rindeUnidad)}',
+                            state.costoPorUnidad == null ? '—' : formatPesos(state.costoPorUnidad!),
+                            const Key('costo_por_unidad_receta'),
+                            detalle: state.rinde == null ? 'Falta el rinde' : 'Rinde ${formatDecimal(state.rinde!)} ${state.rindeUnidad}'),
+                        _dato('% de ganancia', '${formatDecimal(state.porcentajeGanancia, decimales: 2)} %',
+                            const Key('porcentaje_ganancia_receta')),
+                        _dato('Precio de venta', state.precioResultante == null ? '—' : formatPesos(state.precioResultante!),
+                            const Key('precio_resultante_receta')),
                       ],
                     ),
                   ),
