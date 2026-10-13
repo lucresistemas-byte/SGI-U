@@ -92,6 +92,7 @@ class InsumosBloc extends Bloc<InsumosEvent, InsumosState> {
       await _apiService.ajustarStockInsumo(
         event.id,
         cantidad: event.cantidad,
+        unidad: event.unidad,
         motivo: event.motivo,
       );
       emit(const InsumoOperacionExitosa('Stock ajustado correctamente'));

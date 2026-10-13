@@ -59,10 +59,7 @@ public class Receta extends BaseEntity {
         BigDecimal total = costosAdicionales != null ? costosAdicionales : BigDecimal.ZERO;
         if (detalles != null) {
             for (RecetaDetalle d : detalles) {
-                if (d.getMateriaPrima() != null && d.getCantidad() != null) {
-                    BigDecimal subtotal = d.getMateriaPrima().getCostoUnitario().multiply(d.getCantidad());
-                    total = total.add(subtotal);
-                }
+                total = total.add(d.calcularCosto());
             }
         }
         return total.setScale(2, RoundingMode.HALF_UP);

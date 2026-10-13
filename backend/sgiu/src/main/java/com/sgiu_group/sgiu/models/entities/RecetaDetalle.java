@@ -40,10 +40,17 @@ public class RecetaDetalle extends BaseEntity {
         this.unidadMedida = unidadMedida != null ? unidadMedida : (materiaPrima != null ? materiaPrima.getUnidadMedida() : UnidadMedida.UNIDAD);
     }
 
-    public BigDecimal calcularSubtotal() {
-        if (materiaPrima != null && materiaPrima.getCostoUnitario() != null && cantidad != null) {
-            return materiaPrima.getCostoUnitario().multiply(cantidad).setScale(2, RoundingMode.HALF_UP);
+    /** Costo de la fila sin redondear: cantidad en su unidad × costo de esa unidad. */
+    public BigDecimal calcularCosto() {
+        if (materiaPrima == null || cantidad == null) {
+            return BigDecimal.ZERO;
         }
-        return BigDecimal.ZERO;
+        UnidadMedida unidad = unidadMedida != null && unidadMedida.esDe(materiaPrima.getFamilia())
+                ? unidadMedida : materiaPrima.getUnidadMedida();
+        return materiaPrima.costoPor(unidad).multiply(cantidad);
+    }
+
+    public BigDecimal calcularSubtotal() {
+        return calcularCosto().setScale(2, RoundingMode.HALF_UP);
     }
 }

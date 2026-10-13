@@ -58,7 +58,7 @@ void main() {
       // Verificar tabla y datos
       expect(find.text('Harina 0000'), findsOneWidget);
       expect(find.text('HAR-001'), findsOneWidget);
-      expect(find.text('KILO'), findsOneWidget);
+      expect(find.text('Kilo'), findsOneWidget);
 
       // Buscar insumo
       final buscarInputFinder = find.byKey(const Key('buscar_insumo_input'));
@@ -78,7 +78,7 @@ void main() {
       expect(find.byKey(const Key('insumo_codigo_input')), findsNothing);
       expect(find.byKey(const Key('insumo_tipo_dropdown')), findsOneWidget);
       expect(find.byKey(const Key('insumo_nombre_input')), findsOneWidget);
-      expect(find.byKey(const Key('insumo_costo_input')), findsOneWidget);
+      expect(find.byKey(const Key('insumo_presentacion_precio_input')), findsOneWidget);
       expect(find.byKey(const Key('guardar_insumo_button')), findsOneWidget);
 
       // Cerrar diálogo

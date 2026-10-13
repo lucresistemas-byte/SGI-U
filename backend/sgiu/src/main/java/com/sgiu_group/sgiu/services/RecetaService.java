@@ -258,7 +258,7 @@ public class RecetaService {
                         d.getMateriaPrima().getNombre(),
                         d.getCantidad(),
                         d.getUnidadMedida().name(),
-                        d.getMateriaPrima().getCostoUnitario(),
+                        d.getMateriaPrima().costoPor(d.getUnidadMedida()).setScale(4, java.math.RoundingMode.HALF_UP),
                         d.calcularSubtotal()
                 ))
                 .toList();

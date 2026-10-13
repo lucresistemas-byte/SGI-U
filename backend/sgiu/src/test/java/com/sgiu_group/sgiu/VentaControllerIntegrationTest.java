@@ -142,8 +142,9 @@ class VentaControllerIntegrationTest extends AbstractIntegrationTest {
         assertThat(stockRepository.findByEspProducto_Codigo("VTA-TORTA").orElseThrow().getCantidad())
                 .isEqualTo(4);
         // Antes: 3 -> 2 (descontaba la receta y además redondeaba 0,2 kg a 1 kg).
+        // 3 kg = 3000 g (el stock se guarda en unidad base).
         assertThat(materiaPrimaRepository.findById(harina.getId()).orElseThrow().getStockActual())
-                .isEqualTo(3);
+                .isEqualByComparingTo("3000");
     }
 
     @Test

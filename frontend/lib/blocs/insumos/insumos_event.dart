@@ -38,17 +38,20 @@ class ActualizarInsumoEvent extends InsumosEvent {
 
 class AjustarStockInsumoEvent extends InsumosEvent {
   final int id;
-  final int cantidad;
+  /// En [unidad] (cualquiera de la familia; null = la unidad para mostrar).
+  final double cantidad;
+  final String? unidad;
   final String motivo;
 
   const AjustarStockInsumoEvent({
     required this.id,
     required this.cantidad,
+    this.unidad,
     required this.motivo,
   });
 
   @override
-  List<Object?> get props => [id, cantidad, motivo];
+  List<Object?> get props => [id, cantidad, unidad, motivo];
 }
 
 /// Activa o desactiva un insumo (los insumos no se eliminan).
