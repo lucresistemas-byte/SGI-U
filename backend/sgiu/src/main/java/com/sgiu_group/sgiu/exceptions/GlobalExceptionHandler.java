@@ -85,6 +85,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
     }
 
+    /** 409 con la lista de lo que falta: el frontend pide confirmación y reenvía. */
+    @ExceptionHandler(FaltanComponentesException.class)
+    public ResponseEntity<?> handleFaltanComponentes(FaltanComponentesException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "error", e.getMessage(),
+                "codigo", "FALTAN_COMPONENTES",
+                "faltantes", e.getFaltantes()));
+    }
+
+    @ExceptionHandler(ConflictoStockException.class)
+    public ResponseEntity<?> handleConflictoStock(ConflictoStockException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage(), "codigo", "CONFLICTO_STOCK"));
+    }
+
     @ExceptionHandler(PrecioInvalidoException.class)
     public ResponseEntity<?> handlePrecioInvalido(PrecioInvalidoException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));

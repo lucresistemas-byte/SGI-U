@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import com.sgiu_group.sgiu.repositories.CategoriaRepository;
 import com.sgiu_group.sgiu.repositories.HistorialPrecioRepository;
+import com.sgiu_group.sgiu.repositories.MovimientoStockRepository;
 import com.sgiu_group.sgiu.repositories.PaqueteArmadoRepository;
 import com.sgiu_group.sgiu.repositories.RecetaRepository;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,6 +46,10 @@ class ProductoServiceTest {
     private PaqueteArmadoRepository armadoRepository;
     @Mock
     private HistorialPrecioRepository historialRepository;
+    @Mock
+    private MovimientoStockRepository movimientoRepository;
+    @Mock
+    private ProduccionService produccionService;
 
     private ProductoService productoService;
 
@@ -53,7 +58,7 @@ class ProductoServiceTest {
     void setUp() {
         CostosService costos = new CostosService(productoRepository, recetaRepository, armadoRepository, historialRepository);
         productoService = new ProductoService(codigoService, productoRepository, stockRepository, categoriaRepository,
-                costos, recetaRepository);
+                costos, recetaRepository, new StockService(stockRepository, movimientoRepository), produccionService);
     }
 
     @Test
@@ -104,7 +109,9 @@ class ProductoServiceTest {
         assertThat(resultado.activo()).isFalse();
 
         verify(productoRepository).save(any(EspProducto.class));
-        verify(stockRepository).save(any(ArticuloStock.class));
+        // La fila de stock y el movimiento "Stock inicial".
+        verify(stockRepository, org.mockito.Mockito.atLeastOnce()).save(any(ArticuloStock.class));
+        verify(movimientoRepository).save(any());
     }
 
     @Test
@@ -168,7 +175,7 @@ class ProductoServiceTest {
     void ajustarStock_inexistente_lanzaExcepcion() {
         when(productoRepository.findByCodigo("P1")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> productoService.ajustarStock("P1", 5))
+        assertThatThrownBy(() -> productoService.ajustarStock("P1", 5, "Ajuste", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("No se encontró un producto con el código: P1");
     }
@@ -183,7 +190,7 @@ class ProductoServiceTest {
         when(productoRepository.findByCodigo("P1")).thenReturn(Optional.of(producto));
         when(stockRepository.findByEspProducto(producto)).thenReturn(Optional.of(stock));
 
-        assertThatThrownBy(() -> productoService.ajustarStock("P1", -5))
+        assertThatThrownBy(() -> productoService.ajustarStock("P1", -5, "Ajuste", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("El stock no puede quedar negativo.");
 
@@ -201,7 +208,7 @@ class ProductoServiceTest {
         when(productoRepository.findByCodigo("P1")).thenReturn(Optional.of(producto));
         when(stockRepository.findByEspProducto(producto)).thenReturn(Optional.of(stock));
 
-        ProductoCatalogoDTO resultado = productoService.ajustarStock("P1", 3);
+        ProductoCatalogoDTO resultado = productoService.ajustarStock("P1", 3, "Ajuste", null);
 
         assertThat(stock.getCantidad()).isEqualByComparingTo("5");
         assertThat(resultado.stockActual()).isEqualTo(5L);
@@ -214,7 +221,7 @@ class ProductoServiceTest {
         when(productoRepository.findByCodigo("P1")).thenReturn(Optional.of(producto));
         when(stockRepository.findByEspProducto(producto)).thenReturn(Optional.empty());
 
-        ProductoCatalogoDTO resultado = productoService.ajustarStock("P1", 4);
+        ProductoCatalogoDTO resultado = productoService.ajustarStock("P1", 4, "Ajuste", null);
 
         assertThat(resultado.stockActual()).isEqualTo(4L);
         verify(stockRepository).save(any(ArticuloStock.class));

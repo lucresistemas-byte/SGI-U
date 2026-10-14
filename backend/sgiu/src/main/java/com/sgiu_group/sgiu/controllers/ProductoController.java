@@ -3,7 +3,11 @@ package com.sgiu_group.sgiu.controllers;
 import com.sgiu_group.sgiu.models.dtos.ProductoCatalogoDTO;
 import com.sgiu_group.sgiu.models.dtos.ProductoRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.StockRequestDTO;
+import com.sgiu_group.sgiu.services.ProduccionService;
 import com.sgiu_group.sgiu.services.ProductoService;
+import com.sgiu_group.sgiu.services.ReintentoStock;
+import com.sgiu_group.sgiu.models.dtos.ProduccionRequestDTO;
+import com.sgiu_group.sgiu.models.dtos.ProduccionResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,6 +24,20 @@ import java.util.Map;
 public class ProductoController {
 
     private final ProductoService productoService;
+    private final ProduccionService produccionService;
+    private final ReintentoStock reintento;
+
+    /**
+     * Producir (cargar stock de) un elaborado o un paquete: descuenta sus
+     * componentes. 409 FALTAN_COMPONENTES con la lista si algo no alcanza y no
+     * se confirmó.
+     */
+    @PostMapping("/{codigo}/produccion")
+    public ResponseEntity<ProduccionResponseDTO> producir(@PathVariable String codigo,
+                                                          @Valid @RequestBody ProduccionRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(reintento.ejecutar(() -> produccionService.producir(
+                codigo, dto.cantidad(), Boolean.TRUE.equals(dto.confirmarFaltantes()), dto.motivo())));
+    }
 
     @GetMapping
     /** Filtros opcionales: categoria, tipo (TipoArticulo) y vendible (true = lo que ve el POS). */
@@ -61,7 +79,8 @@ public class ProductoController {
             @PathVariable String codigo,
             @Valid @RequestBody StockRequestDTO request) {
         try {
-            ProductoCatalogoDTO resultado = productoService.ajustarStock(codigo, request.cantidad());
+            ProductoCatalogoDTO resultado = reintento.ejecutar(() ->
+                    productoService.ajustarStock(codigo, request.cantidad(), request.motivo(), request.tipo()));
             return ResponseEntity.ok(resultado);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(Map.of("error", e.getMessage()));

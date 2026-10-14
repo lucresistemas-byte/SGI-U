@@ -13,6 +13,7 @@ import com.sgiu_group.sgiu.models.entities.FamiliaUnidad;
 import com.sgiu_group.sgiu.models.entities.ModoPrecio;
 import com.sgiu_group.sgiu.models.entities.Receta;
 import com.sgiu_group.sgiu.models.entities.TipoArticulo;
+import com.sgiu_group.sgiu.models.entities.TipoMovimientoStock;
 import com.sgiu_group.sgiu.models.entities.UnidadMedida;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
 import com.sgiu_group.sgiu.repositories.CategoriaRepository;
@@ -53,6 +54,7 @@ public class MateriaPrimaService {
     private final CategoriaRepository categoriaRepository;
     private final CodigoService codigoService;
     private final CostosService costosService;
+    private final StockService stockService;
 
     @Transactional(readOnly = true)
     public List<MateriaPrimaResponseDTO> listarTodos(boolean incluirInactivos) {
@@ -105,9 +107,13 @@ public class MateriaPrimaService {
         articulo = productoRepository.save(articulo);
         costosService.propagar(articulo, null, "Alta de " + articulo.getNombre());
 
-        ArticuloStock stock = new ArticuloStock(articulo, cantidadEnBase(articulo, dto.stockActual(), dto.stockUnidad()));
+        ArticuloStock stock = new ArticuloStock(articulo, BigDecimal.ZERO);
         stock.setStockMinimo(cantidadEnBase(articulo, dto.stockMinimo(), dto.stockUnidad()));
         stock = stockRepository.save(stock);
+        BigDecimal inicial = cantidadEnBase(articulo, dto.stockActual(), dto.stockUnidad());
+        if (inicial.signum() > 0) {
+            stockService.mover(stock, TipoMovimientoStock.AJUSTE, inicial, "Stock inicial", null, null);
+        }
 
         log.info("[MATERIA PRIMA] Creado '{}' ({}) con costo ${} por {}", articulo.getNombre(),
                 articulo.getCodigo(), articulo.getCostoUnidadBase(), articulo.getFamilia().getUnidadBase());
@@ -153,16 +159,21 @@ public class MateriaPrimaService {
         String unidad = dto.unidad() == null || dto.unidad().isBlank()
                 ? articulo.getUnidadMedida().name() : dto.unidad();
         BigDecimal ajusteBase = cantidadEnBase(articulo, dto.cantidad(), unidad);
+        if (ajusteBase.signum() == 0) {
+            throw new RecetaInvalidaException("Indique una cantidad distinta de 0.");
+        }
+        TipoMovimientoStock tipo = StockService.tipoDeAjuste(dto.tipo(), ajusteBase.signum());
         BigDecimal nuevoStock = stock.getCantidad().add(ajusteBase);
         UnidadMedida base = articulo.getFamilia().getUnidadBase();
-        if (nuevoStock.signum() < 0) {
+        // Una resta no puede dejarlo en negativo (una compra sí puede no alcanzar
+        // a cubrir un negativo de una producción con faltantes).
+        if (ajusteBase.signum() < 0 && nuevoStock.signum() < 0) {
             throw new RecetaInvalidaException("El stock resultante no puede ser negativo (actual: "
                     + articulo.getUnidadMedida().texto(stock.getCantidad()) + ", ajuste: "
                     + articulo.getUnidadMedida().texto(ajusteBase) + ").");
         }
 
-        stock.setCantidad(nuevoStock);
-        stock = stockRepository.save(stock);
+        stockService.mover(stock, tipo, ajusteBase, dto.motivo(), null, null);
         log.info("[MATERIA PRIMA] Ajuste de stock para '{}': {}. Motivo: {}. Stock actual: {}",
                 articulo.getNombre(), base.texto(ajusteBase), dto.motivo(),
                 articulo.getUnidadMedida().texto(stock.getCantidad()));

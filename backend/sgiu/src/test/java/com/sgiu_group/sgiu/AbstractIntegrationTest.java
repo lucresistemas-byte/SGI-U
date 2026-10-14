@@ -35,6 +35,8 @@ public abstract class AbstractIntegrationTest {
         List<String> tablas = List.of(
                 "pedidos_abonos",
                 "pedidos",
+                "movimientos_stock",
+                "producciones",
                 "historial_precios",
                 "paquetes_armado",
                 "recetas_detalles",

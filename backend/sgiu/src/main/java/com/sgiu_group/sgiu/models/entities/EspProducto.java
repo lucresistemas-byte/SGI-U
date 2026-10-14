@@ -147,15 +147,19 @@ public class EspProducto extends BaseEntity {
                 ? null : presentacionUnidad.aBase(presentacionCantidad);
     }
 
-    /** Unidades enteras que se pueden vender con un stock dado (en unidad base). */
+    /**
+     * Unidades enteras que se pueden vender con un stock dado (en unidad
+     * base). Un stock negativo (producción con faltantes) se muestra negativo.
+     */
     public long unidadesDeVentaEn(BigDecimal stockBase) {
-        if (stockBase == null || stockBase.signum() <= 0) {
+        if (stockBase == null || stockBase.signum() == 0) {
             return 0;
         }
+        RoundingMode modo = stockBase.signum() > 0 ? RoundingMode.FLOOR : RoundingMode.DOWN;
         if (!esReventaMateriaPrima()) {
-            return stockBase.setScale(0, RoundingMode.FLOOR).longValue();
+            return stockBase.setScale(0, modo).longValue();
         }
-        return stockBase.divide(ventaUnidadContenido, 0, RoundingMode.FLOOR).longValue();
+        return stockBase.divide(ventaUnidadContenido, 0, modo).longValue();
     }
 
     /** Lo que queda suelto (en unidad base) después de las unidades de venta enteras. */

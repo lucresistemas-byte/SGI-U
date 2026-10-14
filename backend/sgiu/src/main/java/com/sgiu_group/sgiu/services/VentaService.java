@@ -35,6 +35,7 @@ public class VentaService {
     private final MovFinancieroRepository movFinancieroRepository;
     private final MetodoPagoService metodoPagoService;
     private final HistorialPrecioRepository historialPrecioRepository;
+    private final StockService stockService;
 
     /** Cuánto dura congelado el precio de un carrito después de un cambio de precio. */
     private static final long HORAS_PRECIO_CONGELADO = 24;
@@ -45,13 +46,15 @@ public class VentaService {
                         PagoVentaRepository pagoRepository,
                         MovFinancieroRepository movFinancieroRepository,
                         MetodoPagoService metodoPagoService,
-                        HistorialPrecioRepository historialPrecioRepository) {
+                        HistorialPrecioRepository historialPrecioRepository,
+                        StockService stockService) {
         this.ventaRepository = ventaRepository;
         this.stockRepository = stockRepository;
         this.pagoRepository = pagoRepository;
         this.movFinancieroRepository = movFinancieroRepository;
         this.metodoPagoService = metodoPagoService;
         this.historialPrecioRepository = historialPrecioRepository;
+        this.stockService = stockService;
     }
 
     /**
@@ -96,13 +99,9 @@ public class VentaService {
         // total, no se modifica nada.
         Cobro cobro = armarCobro(request, totalAcumulado);
 
-        // Fase 2: descuento de stock de productos y armado de líneas de venta
+        // Fase 2: armado de líneas de venta
         for (LineaVentaDTO dto : request.lineas()) {
             ArticuloStock stock = stockPorCodigo.get(dto.codigoProducto());
-
-            // Descuento de inventario (en unidad base: 1 caja = 100 g)
-            stock.setCantidad(stock.getCantidad().subtract(stock.getEspProducto().stockParaVender(dto.cantidad())));
-            stockRepository.save(stock);
 
             // Creamos la línea de venta
             LineaVenta linea = new LineaVenta(venta, stock.getEspProducto(), dto.cantidad());
@@ -112,6 +111,15 @@ public class VentaService {
 
         venta.setTotal(totalAcumulado);
         Venta ventaGuardada = ventaRepository.save(venta);
+
+        // Descuento de inventario (en unidad base: 1 caja = 100 g), con un
+        // movimiento VENTA por línea en el historial de stock.
+        for (LineaVentaDTO dto : request.lineas()) {
+            ArticuloStock stock = stockPorCodigo.get(dto.codigoProducto());
+            EspProducto producto = stock.getEspProducto();
+            stockService.mover(stock, TipoMovimientoStock.VENTA, producto.stockParaVender(dto.cantidad()).negate(),
+                    "Venta #" + ventaGuardada.getId(), null, ventaGuardada);
+        }
 
         // Una fila de pago y un movimiento por línea, así el balance y el
         // dashboard se pueden desglosar por método.

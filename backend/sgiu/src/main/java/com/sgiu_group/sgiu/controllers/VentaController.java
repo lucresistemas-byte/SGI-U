@@ -2,6 +2,7 @@ package com.sgiu_group.sgiu.controllers;
 
 import com.sgiu_group.sgiu.models.dtos.VentaRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.VentaResponseDTO;
+import com.sgiu_group.sgiu.services.ReintentoStock;
 import com.sgiu_group.sgiu.services.VentaService;
 import jakarta.validation.Valid; 
 import org.springframework.http.HttpStatus;
@@ -17,11 +18,14 @@ public class VentaController {
     @Autowired
     private VentaService ventaService;
 
+    @Autowired
+    private ReintentoStock reintento;
+
     /** Los errores (producto inexistente, stock insuficiente, validación) los
      *  responde GlobalExceptionHandler en JSON: {"error": "..."}. */
     @PostMapping
     public ResponseEntity<VentaResponseDTO> crearVenta(@Valid @RequestBody VentaRequestDTO request) {
         // 201 con el total, el vuelto y lo cobrado por método.
-        return ResponseEntity.status(HttpStatus.CREATED).body(ventaService.procesarVenta(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(reintento.ejecutar(() -> ventaService.procesarVenta(request)));
     }
 }

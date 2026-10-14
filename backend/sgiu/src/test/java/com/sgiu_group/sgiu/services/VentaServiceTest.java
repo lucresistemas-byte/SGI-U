@@ -46,9 +46,13 @@ class VentaServiceTest {
     private MovFinancieroRepository movFinancieroRepository;
     @Mock
     private MetodoPagoService metodoPagoService;
+    @Mock
+    private com.sgiu_group.sgiu.repositories.MovimientoStockRepository movimientoRepository;
 
     @org.junit.jupiter.api.BeforeEach
     void efectivo() {
+        // El stock lo mueve StockService (real, sobre los repositorios simulados).
+        ReflectionTestUtils.setField(ventaService, "stockService", new StockService(stockRepository, movimientoRepository));
         org.mockito.Mockito.lenient().when(metodoPagoService.efectivo())
                 .thenReturn(new com.sgiu_group.sgiu.models.entities.MetodoPago("Efectivo", true, 1));
     }
