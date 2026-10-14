@@ -494,11 +494,12 @@ class ApiService implements PosApi {
     }
   }
 
-  Future<Insumo> ajustarStockInsumo(int id, {required int cantidad, required String motivo}) async {
+  Future<Insumo> ajustarStockInsumo(int id,
+      {required double cantidad, String? unidad, required String motivo}) async {
     try {
       final response = await dio.post(
         '/api/insumos/$id/ajuste-stock',
-        data: {'cantidad': cantidad, 'motivo': motivo},
+        data: {'cantidad': cantidad, if (unidad != null) 'unidad': unidad, 'motivo': motivo},
       );
       if (response.statusCode == 200) {
         return Insumo.fromJson(response.data as Map<String, dynamic>);

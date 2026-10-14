@@ -183,6 +183,7 @@ void main() {
           selectedProductoCodigo: 'PROD-001',
           selectedProductoNombre: 'Torta de Cumpleaños',
           nombre: 'Receta Especial Torta',
+          rinde: 1,
         );
         when(() => mockRecetasBloc.state).thenReturn(validState);
         stateController.add(validState);

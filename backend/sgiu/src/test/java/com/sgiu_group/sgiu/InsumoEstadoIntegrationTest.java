@@ -63,7 +63,8 @@ class InsumoEstadoIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/insumos/" + harina.getId())).andExpect(status().isOk());
         mockMvc.perform(put("/api/insumos/" + harina.getId()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"codigo\": \"INS-HAR\", \"nombre\": \"Harina 0000\", "
-                                + "\"costoUnitario\": 1100, \"unidadMedida\": \"KILO\"}"))
+                                + "\"unidadMedida\": \"KILO\", \"presentacionCantidad\": 1, "
+                                + "\"presentacionUnidad\": \"KILO\", \"presentacionPrecio\": 1100}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nombre").value("Harina 0000"));
 
@@ -91,7 +92,7 @@ class InsumoEstadoIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"espProductoCodigo\": \"INS-TORTA\", \"nombre\": \"Torta\", "
-                                + "\"detalles\": [{\"materiaPrimaId\": " + harina.getId()
+                                + "\"rinde\": 1, \"detalles\": [{\"materiaPrimaId\": " + harina.getId()
                                 + ", \"cantidad\": 0.2, \"unidadMedida\": \"KILO\"}]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(

@@ -141,6 +141,7 @@ public class RecetaService {
                 dto.costosAdicionales() != null ? dto.costosAdicionales() : BigDecimal.ZERO
         );
 
+        aplicarRinde(receta, dto);
         poblarDetalles(receta, dto.detalles());
 
         Receta guardada = recetaRepository.save(receta);
@@ -169,6 +170,7 @@ public class RecetaService {
         receta.setDescripcion(dto.descripcion());
         receta.setCostosAdicionales(dto.costosAdicionales() != null ? dto.costosAdicionales() : BigDecimal.ZERO);
 
+        aplicarRinde(receta, dto);
         receta.getDetalles().clear();
         poblarDetalles(receta, dto.detalles());
 
@@ -192,6 +194,8 @@ public class RecetaService {
             if (!insumosVistos.add(d.materiaPrimaId())) {
                 throw new RecetaInvalidaException("El insumo " + mp.getNombre() + " está dos veces en la receta.");
             }
+            // La unidad se valida antes de crear nada (también el producto nuevo).
+            unidadDeLaFila(mp, d.unidadMedida());
             if (!mp.isActivo() && !insumosPermitidosInactivos.contains(mp.getId())) {
                 throw new RecetaInvalidaException("El insumo " + mp.getNombre()
                         + " está desactivado. Reactívelo para usarlo en una receta.");
@@ -222,30 +226,49 @@ public class RecetaService {
         }
     }
 
+    /**
+     * Cada fila se guarda con su cantidad y unidad y con la cantidad en
+     * unidad base. La unidad tiene que ser de la familia del insumo; sin
+     * unidad, la base (la más chica).
+     */
     private void poblarDetalles(Receta receta, List<RecetaDetalleRequestDTO> detallesDTO) {
         for (RecetaDetalleRequestDTO d : detallesDTO) {
             MateriaPrima mp = materiaPrimaRepository.findById(d.materiaPrimaId())
                     .orElseThrow(() -> new RecursoNoEncontradoException("Materia prima no encontrada: " + d.materiaPrimaId()));
-
-            UnidadMedida unidad = mp.getUnidadMedida();
-            if (d.unidadMedida() != null && !d.unidadMedida().isBlank()) {
-                try {
-                    unidad = UnidadMedida.valueOf(d.unidadMedida().trim().toUpperCase());
-                } catch (IllegalArgumentException ignored) {}
-            }
-
-            RecetaDetalle detalle = new RecetaDetalle(receta, mp, d.cantidad(), unidad);
+            RecetaDetalle detalle = new RecetaDetalle(receta, mp, d.cantidad(), unidadDeLaFila(mp, d.unidadMedida()));
             receta.addDetalle(detalle);
         }
     }
 
+    private static UnidadMedida unidadDeLaFila(MateriaPrima mp, String unidadStr) {
+        if (unidadStr == null || unidadStr.isBlank()) {
+            return mp.getFamilia().getUnidadBase();
+        }
+        UnidadMedida unidad;
+        try {
+            unidad = UnidadMedida.valueOf(unidadStr.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new RecetaInvalidaException("Unidad de medida no válida: " + unidadStr);
+        }
+        if (!unidad.esDe(mp.getFamilia())) {
+            throw new RecetaInvalidaException("La unidad " + unidad.name().toLowerCase() + " no corresponde a "
+                    + mp.getNombre() + ", que se mide en " + mp.getFamilia().getDescripcion() + " ("
+                    + String.join(", ", UnidadMedida.de(mp.getFamilia()).stream()
+                            .map(u -> u.name().toLowerCase()).toList()) + ").");
+        }
+        return unidad;
+    }
+
+    private static void aplicarRinde(Receta receta, RecetaRequestDTO dto) {
+        receta.setRinde(dto.rinde());
+        receta.setRindeUnidad(dto.rindeUnidad() != null && !dto.rindeUnidad().isBlank()
+                ? dto.rindeUnidad().trim() : "unidades");
+    }
+
     private void actualizarCostosProductoElaborado(Receta receta) {
-        BigDecimal nuevoCosto = receta.calcularCostoTotal();
-        EspProducto producto = receta.getProducto();
-        if (producto != null) {
-            producto.setPrecioCosto(nuevoCosto);
-            producto.recalcularPrecioDesdeCostoYMargen();
-            espProductoRepository.save(producto);
+        receta.aplicarCostoAlProducto();
+        if (receta.getProducto() != null) {
+            espProductoRepository.save(receta.getProducto());
         }
     }
 
@@ -258,22 +281,31 @@ public class RecetaService {
                         d.getMateriaPrima().getNombre(),
                         d.getCantidad(),
                         d.getUnidadMedida().name(),
-                        d.getMateriaPrima().getCostoUnitario(),
-                        d.calcularSubtotal()
+                        d.getMateriaPrima().costoPor(d.getUnidadMedida()).setScale(4, java.math.RoundingMode.HALF_UP),
+                        d.calcularSubtotal(),
+                        d.getCantidadBase(),
+                        d.getMateriaPrima().getFamilia().getUnidadBase().name(),
+                        d.getMateriaPrima().getFamilia().name()
                 ))
                 .toList();
 
+        EspProducto producto = r.getProducto();
         return new RecetaResponseDTO(
                 r.getId(),
-                r.getProducto().getCodigo(),
-                r.getProducto().getNombre(),
+                producto.getCodigo(),
+                producto.getNombre(),
                 r.getNombre(),
                 r.getDescripcion(),
                 r.getCostosAdicionales(),
                 r.calcularCostoTotal(),
                 detallesDTO,
                 r.isActivo(),
-                r.getProducto().isActivo()
+                producto.isActivo(),
+                r.getRinde(),
+                r.getRindeUnidad(),
+                r.calcularCostoPorUnidad(),
+                producto.getPorcentajeGanancia(),
+                producto.getPrecioUnitario()
         );
     }
 }

@@ -162,6 +162,7 @@ void main() {
       seed: () => RecetasState.initial().copyWith(
         selectedProductoCodigo: 'DUL-001',
         nombre: 'Flan',
+        rinde: 1,
         detalles: const [
           RecetaDetalle(materiaPrimaId: 1, materiaPrimaNombre: 'Arroz', cantidad: 1, unidadMedida: 'KILO'),
           RecetaDetalle(materiaPrimaId: 1, materiaPrimaNombre: 'Arroz', cantidad: 2, unidadMedida: 'KILO'),
@@ -181,6 +182,7 @@ void main() {
       seed: () => RecetasState.initial().copyWith(
         selectedProductoCodigo: 'DUL-001',
         nombre: 'Flan',
+        rinde: 1,
         detalles: const [
           RecetaDetalle(materiaPrimaId: 1, materiaPrimaNombre: 'Arroz', cantidad: 1, unidadMedida: 'KILO'),
           RecetaDetalle(materiaPrimaId: 0, cantidad: 0, unidadMedida: ''),

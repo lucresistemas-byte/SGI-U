@@ -38,7 +38,8 @@ void main() {
 
     expect(find.text('El código se genera automáticamente al guardar.'), findsOneWidget);
     await t.enterText(find.byKey(const Key('insumo_nombre_input')), 'Caja para torta');
-    await t.enterText(find.byKey(const Key('insumo_costo_input')), '900');
+    await t.enterText(find.byKey(const Key('insumo_presentacion_cantidad_input')), '1');
+    await t.enterText(find.byKey(const Key('insumo_presentacion_precio_input')), '900');
 
     // Sin tipo no se guarda.
     await t.tap(find.byKey(const Key('guardar_insumo_button')));

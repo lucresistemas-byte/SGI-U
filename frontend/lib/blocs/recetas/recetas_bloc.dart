@@ -1,7 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/categoria.dart';
+import '../../models/insumo.dart';
 import '../../models/product.dart';
 import '../../models/receta_detalle.dart';
+import '../../models/unidad_medida.dart';
 import '../../services/api_service.dart';
 import 'recetas_event.dart';
 import 'recetas_state.dart';
@@ -27,6 +29,10 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
         ])));
     on<RemoverFilaInsumo>(_onRemoverFilaInsumo);
     on<CambiarInsumoFila>(_onCambiarInsumoFila);
+    on<CambiarUnidadFila>(_onCambiarUnidadFila);
+    on<CambiarRinde>((event, emit) =>
+        emit(event.rinde == null ? state.copyWith(quitarRinde: true) : state.copyWith(rinde: event.rinde)));
+    on<CambiarRindeUnidad>((event, emit) => emit(state.copyWith(rindeUnidad: event.rindeUnidad)));
     on<CambiarModoProductoReceta>((event, emit) =>
         emit(state.copyWith(usarProductoNuevo: event.productoNuevo)));
     on<ActualizarProductoNuevoReceta>((event, emit) => emit(state.copyWith(
@@ -64,6 +70,43 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
 
   List<RecetaDetalle> _conClaves(List<RecetaDetalle> detalles) =>
       [for (final d in detalles) d.claveUi == null ? d.copyWith(claveUi: _nuevaClave()) : d];
+
+  /// Fila con el costo de la unidad elegida (de la familia del insumo).
+  RecetaDetalle _fila(Insumo insumo, double cantidad, UnidadMedida unidad, int? claveUi) {
+    final costo = insumo.costoPor(unidad);
+    return RecetaDetalle(
+      materiaPrimaId: insumo.id ?? 0,
+      materiaPrimaCodigo: insumo.codigo,
+      materiaPrimaNombre: insumo.nombre,
+      cantidad: cantidad,
+      unidadMedida: unidad.codigo,
+      costoUnitario: costo,
+      subtotal: cantidad * costo,
+      claveUi: claveUi,
+    );
+  }
+
+  Insumo? _insumo(int id) {
+    for (final i in state.availableInsumos) {
+      if (i.id == id) return i;
+    }
+    return null;
+  }
+
+  void _emitirDetalles(Emitter<RecetasState> emit, List<RecetaDetalle> detalles) => emit(state.copyWith(
+        detalles: detalles,
+        costoTotal: _calcularCostoTotal(detalles, state.costosAdicionales),
+      ));
+
+  void _onCambiarUnidadFila(CambiarUnidadFila event, Emitter<RecetasState> emit) {
+    if (event.index < 0 || event.index >= state.detalles.length) return;
+    final actual = state.detalles[event.index];
+    final insumo = _insumo(actual.materiaPrimaId);
+    if (insumo == null || event.unidad.familia != insumo.familia) return;
+    final nuevos = List<RecetaDetalle>.from(state.detalles);
+    nuevos[event.index] = _fila(insumo, actual.cantidad, event.unidad, actual.claveUi);
+    _emitirDetalles(emit, nuevos);
+  }
 
   double _calcularCostoTotal(List<RecetaDetalle> detalles, double adicionales) {
     final sum = detalles.fold<double>(0.0, (acc, item) => acc + item.subtotal);
@@ -115,6 +158,8 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       costosAdicionales: 0.0,
       detalles: const [],
       costoTotal: 0.0,
+      quitarRinde: true,
+      rindeUnidad: 'porciones',
       clearError: true,
       clearSuccess: true,
       // Por defecto, la receta crea el producto elaborado.
@@ -136,6 +181,8 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       costosAdicionales: event.receta.costosAdicionales,
       detalles: _conClaves(event.receta.detalles),
       costoTotal: event.receta.costoTotal,
+      rinde: event.receta.rinde,
+      rindeUnidad: event.receta.rindeUnidad,
       clearError: true,
       clearSuccess: true,
     ));
@@ -170,16 +217,9 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
 
   void _onAgregarFilaInsumo(
       AgregarFilaInsumo event, Emitter<RecetasState> emit) {
-    final nuevoDetalle = RecetaDetalle(
-      materiaPrimaId: event.insumo.id ?? 0,
-      materiaPrimaCodigo: event.insumo.codigo,
-      materiaPrimaNombre: event.insumo.nombre,
-      cantidad: event.cantidad,
-      unidadMedida: event.insumo.unidadMedida,
-      costoUnitario: event.insumo.costoUnitario,
-      subtotal: event.cantidad * event.insumo.costoUnitario,
-      claveUi: _nuevaClave(),
-    );
+    // Por defecto la unidad base (la más chica) de la familia del insumo.
+    final nuevoDetalle = _fila(
+        event.insumo, event.cantidad, event.unidad ?? event.insumo.familia.base, _nuevaClave());
 
     final nuevosDetalles = List<RecetaDetalle>.from(state.detalles)..add(nuevoDetalle);
     final total = _calcularCostoTotal(nuevosDetalles, state.costosAdicionales);
@@ -198,16 +238,12 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
     // Antes se borraba la fila y se agregaba la nueva al final: las filas se
     // reordenaban y lo que se veía dejaba de coincidir con lo que se enviaba.
     final nuevosDetalles = List<RecetaDetalle>.from(state.detalles);
-    nuevosDetalles[event.index] = RecetaDetalle(
-      materiaPrimaId: insumo.id ?? 0,
-      materiaPrimaCodigo: insumo.codigo,
-      materiaPrimaNombre: insumo.nombre,
-      cantidad: actual.cantidad,
-      unidadMedida: insumo.unidadMedida,
-      costoUnitario: insumo.costoUnitario,
-      subtotal: actual.cantidad * insumo.costoUnitario,
-      claveUi: actual.claveUi,
-    );
+    // Misma familia: se conserva la unidad; si no, la base del insumo nuevo.
+    final unidadActual = UnidadMedida.deCodigo(actual.unidadMedida);
+    final unidad = unidadActual != null && unidadActual.familia == insumo.familia
+        ? unidadActual
+        : insumo.familia.base;
+    nuevosDetalles[event.index] = _fila(insumo, actual.cantidad, unidad, actual.claveUi);
     emit(state.copyWith(
       detalles: nuevosDetalles,
       costoTotal: _calcularCostoTotal(nuevosDetalles, state.costosAdicionales),
@@ -315,6 +351,8 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
         'nombre': state.nombre,
         if (state.descripcion.isNotEmpty) 'descripcion': state.descripcion,
         'costosAdicionales': state.costosAdicionales,
+        'rinde': state.rinde,
+        'rindeUnidad': state.rindeUnidad.trim().isEmpty ? 'unidades' : state.rindeUnidad.trim(),
         'detalles': state.detalles.map((d) => {
           'materiaPrimaId': d.materiaPrimaId,
           'cantidad': d.cantidad,

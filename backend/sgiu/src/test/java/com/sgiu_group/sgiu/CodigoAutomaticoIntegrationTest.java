@@ -26,8 +26,9 @@ class CodigoAutomaticoIntegrationTest extends AbstractIntegrationTest {
 
     private String insumo(String tipo, String nombre) {
         return "{" + (tipo != null ? "\"tipo\": \"" + tipo + "\", " : "")
-                + "\"codigo\": \"MIO-1\", \"nombre\": \"" + nombre + "\", \"costoUnitario\": 100, "
-                + "\"unidadMedida\": \"KILO\", \"stockActual\": 1, \"stockMinimo\": 0}";
+                + "\"codigo\": \"MIO-1\", \"nombre\": \"" + nombre + "\", \"unidadMedida\": \"KILO\", "
+                + "\"presentacionCantidad\": 1, \"presentacionUnidad\": \"KILO\", \"presentacionPrecio\": 100, "
+                + "\"stockActual\": 1, \"stockMinimo\": 0}";
     }
 
     @Test

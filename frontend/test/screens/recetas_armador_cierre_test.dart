@@ -26,6 +26,7 @@ void main() {
     availableInsumos: const [Insumo(id: 1, codigo: 'MP-001', nombre: 'Arroz', costoUnitario: 35, unidadMedida: 'KILO')],
     selectedProductoCodigo: 'DUL-001',
     nombre: 'Flan base',
+    rinde: 1,
     detalles: const [
       RecetaDetalle(materiaPrimaId: 1, materiaPrimaNombre: 'Arroz', cantidad: 1, unidadMedida: 'KILO'),
     ],

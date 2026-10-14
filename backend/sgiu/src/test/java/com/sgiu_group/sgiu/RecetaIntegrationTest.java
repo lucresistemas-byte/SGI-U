@@ -58,7 +58,7 @@ class RecetaIntegrationTest extends AbstractIntegrationTest {
 
     private String recetaJson(String nombre, String cantidadHarina, String adicionales) {
         return "{\"espProductoCodigo\": \"REC-TORTA\", \"nombre\": \"" + nombre + "\", "
-                + "\"costosAdicionales\": " + adicionales + ", \"detalles\": [{\"materiaPrimaId\": "
+                + "\"costosAdicionales\": " + adicionales + ", \"rinde\": 1, \"detalles\": [{\"materiaPrimaId\": "
                 + harina.getId() + ", \"cantidad\": " + cantidadHarina + ", \"unidadMedida\": \"KILO\"}]}";
     }
 
@@ -136,7 +136,7 @@ class RecetaIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"espProductoCodigo\": \"" + budin.getCodigo() + "\", \"nombre\": \"Budín\", "
-                                + "\"detalles\": [{\"materiaPrimaId\": " + harina.getId() + ", \"cantidad\": 0.2}, "
+                                + "\"rinde\": 1, \"detalles\": [{\"materiaPrimaId\": " + harina.getId() + ", \"cantidad\": 0.2}, "
                                 + "{\"materiaPrimaId\": " + harina.getId() + ", \"cantidad\": 0.1}]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("El insumo Harina está dos veces en la receta."));

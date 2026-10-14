@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../blocs/insumos/insumos_bloc.dart';
 import '../blocs/insumos/insumos_event.dart';
 import '../blocs/insumos/insumos_state.dart';
 import '../models/insumo.dart';
+import '../models/unidad_medida.dart';
+import '../utils/numeros.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/cargando_diferido.dart';
+import '../widgets/materia_prima_form_dialog.dart';
 
 class InsumosScreen extends StatefulWidget {
   final InsumosBloc? insumosBloc;
@@ -48,218 +50,32 @@ class _InsumosScreenState extends State<InsumosScreen> {
     super.dispose();
   }
 
-  void _mostrarDialogoInsumo({Insumo? insumoExistente}) {
-    final formKey = GlobalKey<FormState>();
-    // El código lo genera el sistema según el tipo (MP-, INS-, RMP-); el
-    // tipo se elige solo al crear.
-    String? tipoSeleccionado;
-    final nombreCtrl = TextEditingController(text: insumoExistente?.nombre ?? '');
-    final costoCtrl = TextEditingController(
-      text: insumoExistente != null
-          ? insumoExistente.costoUnitario.toStringAsFixed(2)
-          : '',
-    );
-    final stockCtrl = TextEditingController(
-      text: insumoExistente != null ? insumoExistente.stockActual.toString() : '0',
-    );
-    final stockMinimoCtrl = TextEditingController(
-      text: insumoExistente?.stockMinimo != null
-          ? insumoExistente!.stockMinimo.toString()
-          : '',
-    );
-    String unidadSeleccionada = insumoExistente?.unidadMedida ?? 'UNIDAD';
-
-    showDialog(
+  Future<void> _mostrarDialogoInsumo({Insumo? insumoExistente}) async {
+    final data = await showDialog<Map<String, dynamic>>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Text(
-                insumoExistente == null ? 'Nuevo Insumo' : 'Editar Insumo',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              content: SizedBox(
-                width: 450,
-                child: SingleChildScrollView(
-                  child: Form(
-                    key: formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (insumoExistente == null)
-                          DropdownButtonFormField<String>(
-                            key: const Key('insumo_tipo_dropdown'),
-                            initialValue: tipoSeleccionado,
-                            hint: const Text('Elegir tipo'),
-                            decoration: const InputDecoration(
-                              labelText: 'Tipo *',
-                              helperText: 'El código se genera automáticamente al guardar.',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: [
-                              for (final t in Insumo.tipos.entries)
-                                DropdownMenuItem(value: t.key, child: Text(t.value)),
-                            ],
-                            validator: (v) => v == null ? 'Elija el tipo' : null,
-                            onChanged: (v) => setDialogState(() => tipoSeleccionado = v),
-                          )
-                        else
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Código: ${insumoExistente.codigo} · Tipo: ${insumoExistente.descripcionTipo}',
-                              key: const Key('insumo_codigo_tipo_fijo'),
-                              style: const TextStyle(color: Color(0xFF475569)),
-                            ),
-                          ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          key: const Key('insumo_nombre_input'),
-                          controller: nombreCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Nombre *',
-                            hintText: 'Ej: Harina 000',
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (v) =>
-                              (v == null || v.trim().isEmpty) ? 'Requerido' : null,
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: TextFormField(
-                                key: const Key('insumo_costo_input'),
-                                controller: costoCtrl,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                decoration: const InputDecoration(
-                                  labelText: 'Costo Unitario *',
-                                  prefixText: r'$ ',
-                                  border: OutlineInputBorder(),
-                                ),
-                                validator: (v) {
-                                  if (v == null || v.trim().isEmpty) return 'Requerido';
-                                  final num = double.tryParse(v.replaceAll(',', '.'));
-                                  if (num == null || num < 0) return 'Inválido';
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 2,
-                              child: DropdownButtonFormField<String>(
-                                key: const Key('insumo_unidad_dropdown'),
-                                initialValue: unidadSeleccionada,
-                                decoration: const InputDecoration(
-                                  labelText: 'Unidad',
-                                  border: OutlineInputBorder(),
-                                ),
-                                items: const [
-                                  DropdownMenuItem(value: 'UNIDAD', child: Text('UNIDAD')),
-                                  DropdownMenuItem(value: 'KILO', child: Text('KILO')),
-                                  DropdownMenuItem(value: 'GRAMO', child: Text('GRAMO')),
-                                  DropdownMenuItem(value: 'LITRO', child: Text('LITRO')),
-                                  DropdownMenuItem(value: 'METRO', child: Text('METRO')),
-                                  DropdownMenuItem(value: 'CAJA', child: Text('CAJA')),
-                                ],
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    setDialogState(() => unidadSeleccionada = val);
-                                  }
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                key: const Key('insumo_stock_input'),
-                                controller: stockCtrl,
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                decoration: const InputDecoration(
-                                  labelText: 'Stock Actual',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: TextFormField(
-                                key: const Key('insumo_stock_minimo_input'),
-                                controller: stockMinimoCtrl,
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                decoration: const InputDecoration(
-                                  labelText: 'Stock Mínimo',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  key: const Key('guardar_insumo_button'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.verdePrincipal,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () {
-                    if (!formKey.currentState!.validate()) return;
-                    final data = {
-                      if (insumoExistente == null) 'tipo': tipoSeleccionado,
-                      'nombre': nombreCtrl.text.trim(),
-                      'costoUnitario': double.tryParse(costoCtrl.text.replaceAll(',', '.')) ?? 0.0,
-                      'unidadMedida': unidadSeleccionada,
-                      'stockActual': int.tryParse(stockCtrl.text.trim()) ?? 0,
-                      if (stockMinimoCtrl.text.isNotEmpty)
-                        'stockMinimo': int.tryParse(stockMinimoCtrl.text.trim()),
-                    };
-
-                    if (insumoExistente == null) {
-                      _bloc.add(CrearInsumoEvent(data));
-                    } else {
-                      _bloc.add(ActualizarInsumoEvent(insumoExistente.id!, data));
-                    }
-                    Navigator.of(dialogContext).pop();
-                  },
-                  child: const Text('Guardar'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (_) => MateriaPrimaFormDialog(existente: insumoExistente),
     );
+    if (data == null) return;
+    if (insumoExistente == null) {
+      _bloc.add(CrearInsumoEvent(data));
+    } else {
+      _bloc.add(ActualizarInsumoEvent(insumoExistente.id!, data));
+    }
   }
 
+  /// Ajuste en cualquier unidad de la familia (p. ej. "2,5 kg" → 2500 g).
   void _mostrarDialogoAjusteStock(Insumo insumo) {
     final formKey = GlobalKey<FormState>();
     final cantidadCtrl = TextEditingController();
     final motivoCtrl = TextEditingController(text: 'Ajuste manual de stock');
+    var unidad = insumo.unidad;
 
     showDialog(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(
             'Ajustar Stock: ${insumo.nombre}',
@@ -274,24 +90,46 @@ class _InsumosScreenState extends State<InsumosScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Stock actual: ${insumo.stockActual} ${insumo.unidadMedida}',
+                    'Stock actual: ${textoEn(insumo.stockActual, insumo.unidad)}',
+                    key: const Key('ajuste_stock_actual'),
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
-                    key: const Key('ajuste_cantidad_input'),
-                    controller: cantidadCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(signed: true),
-                    decoration: const InputDecoration(
-                      labelText: 'Cantidad (+ para sumar, - para restar) *',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Requerido';
-                      final cant = int.tryParse(v.trim());
-                      if (cant == null || cant == 0) return 'Ingrese una cantidad válida distinta de 0';
-                      return null;
-                    },
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: TextFormField(
+                          key: const Key('ajuste_cantidad_input'),
+                          controller: cantidadCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
+                          decoration: const InputDecoration(
+                            labelText: 'Cantidad (+ suma, - resta) *',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (v) {
+                            final cant = parseDecimal(v);
+                            if (cant == null || cant == 0) return 'Ingrese una cantidad distinta de 0';
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButtonFormField<UnidadMedida>(
+                          key: const Key('ajuste_unidad_dropdown'),
+                          initialValue: unidad,
+                          decoration: const InputDecoration(labelText: 'Unidad', border: OutlineInputBorder()),
+                          items: [
+                            for (final u in insumo.familia.unidades) DropdownMenuItem(value: u, child: Text(u.nombre)),
+                          ],
+                          onChanged: (u) {
+                            if (u != null) setDialogState(() => unidad = u);
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -321,18 +159,18 @@ class _InsumosScreenState extends State<InsumosScreen> {
               ),
               onPressed: () {
                 if (!formKey.currentState!.validate()) return;
-                final cant = int.parse(cantidadCtrl.text.trim());
-                final motivo = motivoCtrl.text.trim();
                 _bloc.add(AjustarStockInsumoEvent(
                   id: insumo.id!,
-                  cantidad: cant,
-                  motivo: motivo,
+                  cantidad: parseDecimal(cantidadCtrl.text)!,
+                  unidad: unidad.codigo,
+                  motivo: motivoCtrl.text.trim(),
                 ));
                 Navigator.of(dialogContext).pop();
               },
               child: const Text('Confirmar Ajuste'),
             ),
           ],
+        ),
         );
       },
     );
@@ -546,7 +384,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
             columns: const [
               DataColumn(label: Text('Código', style: TextStyle(fontWeight: FontWeight.bold))),
               DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Costo Unitario', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Costo', style: TextStyle(fontWeight: FontWeight.bold))),
               DataColumn(label: Text('Unidad', style: TextStyle(fontWeight: FontWeight.bold))),
               DataColumn(label: Text('Stock Actual', style: TextStyle(fontWeight: FontWeight.bold))),
               DataColumn(label: Text('Stock Mínimo', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -577,7 +415,8 @@ class _InsumosScreenState extends State<InsumosScreen> {
                       ],
                     ],
                   )),
-                  DataCell(Text(_currencyFormat.format(insumo.costoUnitario), style: atenuado)),
+                  DataCell(Text('${_currencyFormat.format(insumo.costoUnitario)} / ${insumo.unidad.abreviatura}',
+                      key: Key('costo_insumo_${insumo.codigo}'), style: atenuado)),
                   DataCell(
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -586,7 +425,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        insumo.unidadMedida,
+                        insumo.unidad.nombre,
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -596,7 +435,8 @@ class _InsumosScreenState extends State<InsumosScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          '${insumo.stockActual}',
+                          textoEn(insumo.stockActual, insumo.unidad),
+                          key: Key('stock_insumo_${insumo.codigo}'),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: esBajoStock ? Colors.redAccent : Colors.black87,
@@ -612,7 +452,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
                       ],
                     ),
                   ),
-                  DataCell(Text(insumo.stockMinimo != null ? '${insumo.stockMinimo}' : '-')),
+                  DataCell(Text(insumo.stockMinimo != null ? textoEn(insumo.stockMinimo!, insumo.unidad) : '-')),
                   DataCell(
                     Row(
                       mainAxisSize: MainAxisSize.min,

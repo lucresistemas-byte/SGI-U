@@ -61,7 +61,7 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
 
     private String conProductoNuevo(String productoNuevo, boolean repetido) {
         return "{\"nombre\": \"Tarta base\", \"costosAdicionales\": 100, \"productoNuevo\": " + productoNuevo
-                + ", \"detalles\": " + detalles(repetido) + "}";
+                + ", \"rinde\": 1, \"detalles\": " + detalles(repetido) + "}";
     }
 
     @Test
@@ -148,7 +148,7 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
         datos.crearProducto("COCA", "Coca-Cola", new BigDecimal("1500"), 5, 0);
 
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"espProductoCodigo\": \"COCA\", \"nombre\": \"X\", \"detalles\": " + detalles(false) + "}"))
+                        .content("{\"espProductoCodigo\": \"COCA\", \"nombre\": \"X\", \"rinde\": 1, \"detalles\": " + detalles(false) + "}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(
                         "Solo los productos elaborados tienen receta: Coca-Cola es de reventa."));
@@ -161,11 +161,11 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"espProductoCodigo\": \"TARTA\", \"productoNuevo\": {\"nombre\": \"Otra\"}, "
-                                + "\"nombre\": \"X\", \"detalles\": " + detalles(false) + "}"))
+                                + "\"nombre\": \"X\", \"rinde\": 1, \"detalles\": " + detalles(false) + "}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(mensaje));
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nombre\": \"X\", \"detalles\": " + detalles(false) + "}"))
+                        .content("{\"nombre\": \"X\", \"rinde\": 1, \"detalles\": " + detalles(false) + "}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(mensaje));
     }
@@ -175,7 +175,7 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
         datos.crearElaborado("TARTA", "Tarta", new BigDecimal("100"), 0, true);
 
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"espProductoCodigo\": \"TARTA\", \"nombre\": \"Tarta base\", \"detalles\": "
+                        .content("{\"espProductoCodigo\": \"TARTA\", \"nombre\": \"Tarta base\", \"rinde\": 1, \"detalles\": "
                                 + detalles(false) + "}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.espProductoCodigo").value("TARTA"));
