@@ -32,7 +32,13 @@ public record MateriaPrimaResponseDTO(
     BigDecimal stockSuelto,
     BigDecimal costoUnidadVenta,
     BigDecimal porcentajeGanancia,
+    /** Redondeado hacia arriba a $100. */
     BigDecimal precioVenta,
-    boolean precioManual,
-    Long categoriaId
+    /** MARGEN o MANUAL (precio fijado a mano, nunca por debajo del %). */
+    String modoPrecio,
+    /** precioVenta − costoUnidadVenta. */
+    BigDecimal gananciaPesos,
+    Long categoriaId,
+    /** Precios que cambiaron al guardar (resumen "Se actualizaron N precios"). */
+    java.util.List<CambioPrecioDTO> cambiosDePrecio
 ) {}

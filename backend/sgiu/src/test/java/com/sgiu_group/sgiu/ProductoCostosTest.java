@@ -31,7 +31,7 @@ public class ProductoCostosTest extends AbstractIntegrationTest {
     @Test
     @WithMockUser
     void calculoReciprocoCostoYPorcentajeCalculaPrecioVenta() throws Exception {
-        // Costo 100 + % 25 -> Precio 125
+        // Costo 100 + % 25 -> 125, hacia arriba a $100 -> 200
         String json = """
                 {
                     "codigo": "P-RECIP-1",
@@ -46,7 +46,9 @@ public class ProductoCostosTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.precioUnitario").value(125.00))
+                .andExpect(jsonPath("$.precioUnitario").value(200.00))
+                .andExpect(jsonPath("$.modoPrecio").value("MARGEN"))
+                .andExpect(jsonPath("$.gananciaPesos").value(100.00))
                 .andExpect(jsonPath("$.precioCosto").value(100.00))
                 .andExpect(jsonPath("$.porcentajeGanancia").value(25.00));
     }
@@ -54,7 +56,7 @@ public class ProductoCostosTest extends AbstractIntegrationTest {
     @Test
     @WithMockUser
     void calculoReciprocoCostoYVentaDerivaPorcentaje() throws Exception {
-        // Costo 100 + Venta 125 -> % 25
+        // Costo 100 + precio a mano 125 -> $200 (a $100); el mínimo pasa a ser el % que deja: 100
         String json = """
                 {
                     "codigo": "P-RECIP-2",
@@ -69,8 +71,9 @@ public class ProductoCostosTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.precioUnitario").value(125.00))
-                .andExpect(jsonPath("$.porcentajeGanancia").value(25.00));
+                .andExpect(jsonPath("$.precioUnitario").value(200.00))
+                .andExpect(jsonPath("$.modoPrecio").value("MANUAL"))
+                .andExpect(jsonPath("$.porcentajeGanancia").value(100.00));
     }
 
     @Test

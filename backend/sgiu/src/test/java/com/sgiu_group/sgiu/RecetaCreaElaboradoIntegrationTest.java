@@ -57,7 +57,7 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
 
     private String conProductoNuevo(String productoNuevo, boolean repetido) {
         return "{\"nombre\": \"Tarta base\", \"costosAdicionales\": 100, \"productoNuevo\": " + productoNuevo
-                + ", \"rinde\": 1, \"detalles\": " + detalles(repetido) + "}";
+                + ", \"rinde\": 1, \"rindeUnidadMedida\": \"KILO\", \"detalles\": " + detalles(repetido) + "}";
     }
 
     @Test

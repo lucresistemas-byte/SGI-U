@@ -18,6 +18,7 @@ import com.sgiu_group.sgiu.repositories.MetodoPagoRepository;
 import com.sgiu_group.sgiu.repositories.MovFinancieroRepository;
 import com.sgiu_group.sgiu.repositories.PagoVentaRepository;
 import com.sgiu_group.sgiu.repositories.VentaRepository;
+import com.sgiu_group.sgiu.services.CostosService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -39,6 +40,7 @@ public class TestDataFactory {
     private final EspUsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final MetodoPagoRepository metodoPagoRepository;
+    private final CostosService costosService;
 
     public TestDataFactory(EspProductoRepository productoRepository,
                            ArticuloStockRepository stockRepository,
@@ -47,7 +49,8 @@ public class TestDataFactory {
                            MovFinancieroRepository movFinancieroRepository,
                            EspUsuarioRepository usuarioRepository,
                            PasswordEncoder passwordEncoder,
-                           MetodoPagoRepository metodoPagoRepository) {
+                           MetodoPagoRepository metodoPagoRepository,
+                           CostosService costosService) {
         this.productoRepository = productoRepository;
         this.stockRepository = stockRepository;
         this.ventaRepository = ventaRepository;
@@ -56,6 +59,7 @@ public class TestDataFactory {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.metodoPagoRepository = metodoPagoRepository;
+        this.costosService = costosService;
     }
 
     /** Método de pago por nombre ("EFECTIVO", "MERCADO_PAGO" o "Mercado Pago"). */
@@ -128,7 +132,7 @@ public class TestDataFactory {
         articulo.setVentaUnidadNombre(ventaUnidad);
         articulo.setVentaUnidadContenido(BigDecimal.valueOf(contenidoGramos).setScale(3));
         articulo.setPorcentajeGanancia(porcentaje);
-        articulo.aplicarCostoDeVenta();
+        costosService.recalcular(articulo);
         productoRepository.save(articulo);
         // Con 3 decimales, como en la base.
         stockRepository.save(new ArticuloStock(articulo, BigDecimal.valueOf(stockGramos).setScale(3)));

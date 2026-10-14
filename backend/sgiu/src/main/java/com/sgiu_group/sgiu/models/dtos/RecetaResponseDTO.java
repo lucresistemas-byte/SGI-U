@@ -20,6 +20,16 @@ public record RecetaResponseDTO(
     /** Costo de una unidad rendida = costoTotal / rinde (costo del elaborado). */
     BigDecimal costoPorUnidad,
     BigDecimal porcentajeGanancia,
-    /** Precio del elaborado = costoPorUnidad × (1 + % ganancia). */
-    BigDecimal precioVenta
+    /** Precio del elaborado según su modo, redondeado hacia arriba a $100. */
+    BigDecimal precioVenta,
+    /** precioVenta − costoPorUnidad. */
+    BigDecimal gananciaPorUnidad,
+    String modoPrecio,
+    /** true = preparación base (no se vende; rinde en peso o volumen). */
+    boolean preparacionBase,
+    String rindeUnidadMedida,
+    /** Preparación base: costo por unidad base del rinde (4 decimales). */
+    BigDecimal costoUnidadBase,
+    /** Precios que cambiaron al guardar (resumen "Se actualizaron N precios"). */
+    List<CambioPrecioDTO> cambiosDePrecio
 ) {}

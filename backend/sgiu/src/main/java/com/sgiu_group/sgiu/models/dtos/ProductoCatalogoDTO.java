@@ -23,8 +23,14 @@ public record ProductoCatalogoDTO(
      * stock mínimo vienen en esa unidad (cajas enteras).
      */
     String unidadVenta,
-    /** true = el precio se fijó a mano y no sigue al costo. */
-    Boolean precioManual
+    /** MARGEN, MANUAL o COSTO_MAS_FIJO (paquetes). */
+    String modoPrecio,
+    /** Ganancia por unidad en pesos: precio − costo unitario (null en preparaciones base). */
+    BigDecimal gananciaPesos,
+    /** Paquetes: monto fijo que se suma al costo del armado. */
+    BigDecimal montoFijo,
+    /** Precios que cambiaron al guardar (resumen "Se actualizaron N precios"). */
+    java.util.List<CambioPrecioDTO> cambiosDePrecio
 ) {
     /** Producto de reventa vendible (compatibilidad de tests y fixtures). */
     public ProductoCatalogoDTO(
@@ -40,7 +46,8 @@ public record ProductoCatalogoDTO(
             Boolean activo
     ) {
         this(codigo, nombre, precioUnitario, precioCosto, porcentajeGanancia, unidadMedida,
-                categoria, stockActual, stockMinimo, activo, TipoArticulo.REVENTA, true, null, false);
+                categoria, stockActual, stockMinimo, activo, TipoArticulo.REVENTA, true, null, "MARGEN", null, null,
+                java.util.List.of());
     }
 
     public ProductoCatalogoDTO(

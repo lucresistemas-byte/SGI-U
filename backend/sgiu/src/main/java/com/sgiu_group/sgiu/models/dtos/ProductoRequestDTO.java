@@ -23,7 +23,12 @@ public record ProductoRequestDTO(
     /** Obligatorio al crear (ver TipoArticulo); no se puede cambiar al editar. */
     String tipo,
     /** false = preparación base (solo ELABORADO). */
-    Boolean vendible
+    Boolean vendible,
+    /**
+     * MARGEN (precio = costo × (1 + %)) o MANUAL (precioUnitario, que tiene
+     * que dejar el %). Sin modo: un precio distinto del actual es MANUAL.
+     */
+    String modoPrecio
 ) {
     public ProductoRequestDTO(
             String codigo,
@@ -45,6 +50,7 @@ public record ProductoRequestDTO(
             stockMinimo,
             activo,
             "REVENTA",
+            null,
             null
         );
     }
@@ -73,6 +79,7 @@ public record ProductoRequestDTO(
             stockMinimo,
             activo,
             "REVENTA",
+            null,
             null
         );
     }

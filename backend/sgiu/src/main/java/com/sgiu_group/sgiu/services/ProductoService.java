@@ -1,22 +1,24 @@
 package com.sgiu_group.sgiu.services;
 
+import com.sgiu_group.sgiu.models.dtos.CambioPrecioDTO;
 import com.sgiu_group.sgiu.models.dtos.ProductoCatalogoDTO;
 import com.sgiu_group.sgiu.models.dtos.ProductoRequestDTO;
 import com.sgiu_group.sgiu.models.entities.ArticuloStock;
 import com.sgiu_group.sgiu.models.entities.Categoria;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
+import com.sgiu_group.sgiu.models.entities.ModoPrecio;
 import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.exceptions.ProductoInvalidoException;
 import com.sgiu_group.sgiu.models.entities.UnidadMedida;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
 import com.sgiu_group.sgiu.repositories.CategoriaRepository;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
+import com.sgiu_group.sgiu.repositories.RecetaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -27,6 +29,8 @@ public class ProductoService {
     private final EspProductoRepository productoRepository;
     private final ArticuloStockRepository stockRepository;
     private final CategoriaRepository categoriaRepository;
+    private final CostosService costosService;
+    private final RecetaRepository recetaRepository;
 
     @Transactional(readOnly = true)
     public List<ProductoCatalogoDTO> getCatalogo(String categoria) {
@@ -44,7 +48,7 @@ public class ProductoService {
         String filtroCategoria = (categoria != null && !categoria.isBlank()) ? categoria.trim() : null;
         List<ProductoCatalogoDTO> catalogo = productoRepository
                 .catalogoConStock(TipoArticulo.vendibles(), filtroCategoria).stream()
-                .map(fila -> aDTO((EspProducto) fila[0], (ArticuloStock) fila[1]))
+                .map(fila -> aDTO((EspProducto) fila[0], (ArticuloStock) fila[1], List.of()))
                 .toList();
         TipoArticulo filtroTipo = (tipo != null && !tipo.isBlank()) ? parseTipo(tipo) : null;
         return catalogo.stream()
@@ -78,6 +82,9 @@ public class ProductoService {
             throw new ProductoInvalidoException("Los artículos de tipo " + t.name()
                     + " se crean desde Materia Prima.");
         }
+        if (t == TipoArticulo.PAQUETE) {
+            throw new ProductoInvalidoException("Los paquetes se crean desde Recetas y paquetes.");
+        }
         if (t != TipoArticulo.REVENTA) {
             throw new ProductoInvalidoException("El tipo " + t.name() + " todavía no está disponible.");
         }
@@ -103,25 +110,15 @@ public class ProductoService {
 
         BigDecimal porcentaje = dto.porcentajeGanancia();
         BigDecimal precioVenta = dto.precioUnitario();
-
-        // Cálculo recíproco según spec 4.2
-        if (costo.compareTo(BigDecimal.ZERO) > 0 && porcentaje != null && precioVenta == null) {
-            BigDecimal factor = BigDecimal.ONE.add(porcentaje.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
-            precioVenta = costo.multiply(factor).setScale(2, RoundingMode.HALF_UP);
-        } else if (costo.compareTo(BigDecimal.ZERO) > 0 && precioVenta != null && porcentaje == null) {
-            porcentaje = precioVenta.subtract(costo)
-                    .divide(costo, 4, RoundingMode.HALF_UP)
-                    .multiply(new BigDecimal("100"))
-                    .setScale(2, RoundingMode.HALF_UP);
-        }
-
-        if (precioVenta == null) {
+        if (precioVenta == null && (porcentaje == null || costo.signum() == 0)) {
             throw new IllegalArgumentException("El precio es obligatorio.");
         }
-
-        if (precioVenta.compareTo(BigDecimal.ZERO) <= 0) {
+        if (precioVenta != null && precioVenta.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El precio debe ser un valor mayor a $0.");
         }
+        // Con precio, es el de Sandra (MANUAL) salvo que se pida MARGEN; sin
+        // precio, sale del %. Lo calcula CostosService.
+        boolean manual = esManual(dto.modoPrecio(), precioVenta != null);
 
         UnidadMedida unidad = UnidadMedida.UNIDAD;
         if (dto.unidadMedida() != null && !dto.unidadMedida().isBlank()) {
@@ -140,7 +137,7 @@ public class ProductoService {
         EspProducto nuevoProducto = new EspProducto(
                 codigoService.siguiente(tipo),
                 dto.nombre(),
-                precioVenta,
+                BigDecimal.ZERO,
                 costo,
                 porcentaje,
                 unidad,
@@ -148,6 +145,16 @@ public class ProductoService {
         );
 
         nuevoProducto.setTipo(tipo);
+        if (manual && porcentaje == null) {
+            // Sin %, el mínimo es el % que deja el precio de Sandra.
+            nuevoProducto.setPorcentajeGanancia(costosService.porcentajeQueDeja(precioVenta, costo));
+        }
+        costosService.recalcular(nuevoProducto);
+        if (manual) {
+            costosService.aplicarPrecioManual(nuevoProducto, precioVenta);
+        } else if (nuevoProducto.getPrecioUnitario().signum() <= 0) {
+            throw new IllegalArgumentException("El precio debe ser un valor mayor a $0.");
+        }
         if (dto.activo() != null) {
             nuevoProducto.setActivo(dto.activo());
         }
@@ -158,13 +165,30 @@ public class ProductoService {
         nuevoStock.setStockMinimo(BigDecimal.valueOf(dto.stockMinimo() != null ? dto.stockMinimo() : 0));
         stockRepository.save(nuevoStock);
 
-        return aDTO(nuevoProducto, nuevoStock);
+        return aDTO(nuevoProducto, nuevoStock, List.of());
+    }
+
+    /** MANUAL si se pidió así o, sin modo, si [porDefecto]. */
+    private static boolean esManual(String modo, boolean porDefecto) {
+        if (modo == null || modo.isBlank()) {
+            return porDefecto;
+        }
+        try {
+            ModoPrecio m = ModoPrecio.valueOf(modo.trim().toUpperCase());
+            if (m == ModoPrecio.COSTO_MAS_FIJO) {
+                throw new ProductoInvalidoException("El modo costo + monto fijo es solo para paquetes.");
+            }
+            return m == ModoPrecio.MANUAL;
+        } catch (IllegalArgumentException e) {
+            throw new ProductoInvalidoException("Modo de precio no válido: " + modo + ". Use MARGEN o MANUAL.");
+        }
     }
 
     @Transactional
     public ProductoCatalogoDTO actualizarProducto(String codigo, ProductoRequestDTO dto) {
         EspProducto productoExistente = productoRepository.findByCodigo(codigo)
                 .orElseThrow(() -> new IllegalArgumentException("No se encontró un producto con el código: " + codigo));
+        CostosService.Foto antes = costosService.foto(productoExistente);
 
         if (dto.tipo() != null && !dto.tipo().isBlank()
                 && parseTipo(dto.tipo()) != productoExistente.getTipo()) {
@@ -174,6 +198,15 @@ public class ProductoService {
             if (!dto.vendible() && productoExistente.getTipo() != TipoArticulo.ELABORADO) {
                 throw new ProductoInvalidoException("Solo un producto elaborado puede ser preparación base.");
             }
+            if (dto.vendible() && productoExistente.esPreparacionBase()) {
+                List<String> recetas = recetaRepository.findRecetasByArticuloId(productoExistente.getId()).stream()
+                        .map(r -> r.getNombre()).toList();
+                if (!recetas.isEmpty()) {
+                    throw new ProductoInvalidoException(productoExistente.getNombre()
+                            + " se usa como preparación base en recetas activas (" + String.join(", ", recetas)
+                            + "): quítela de esas recetas antes de venderla.");
+                }
+            }
             productoExistente.setVendible(dto.vendible());
         }
 
@@ -181,35 +214,10 @@ public class ProductoService {
             productoExistente.setNombre(dto.nombre());
         }
 
-        if (dto.precioCosto() != null) {
-            if (dto.precioCosto().compareTo(BigDecimal.ZERO) < 0) {
-                throw new IllegalArgumentException("El precio de costo no puede ser negativo.");
-            }
-            productoExistente.setPrecioCosto(dto.precioCosto());
-        }
-
-        if (dto.porcentajeGanancia() != null) {
-            productoExistente.setPorcentajeGanancia(dto.porcentajeGanancia());
-            if (dto.precioUnitario() == null && productoExistente.getPrecioCosto().compareTo(BigDecimal.ZERO) > 0) {
-                productoExistente.recalcularPrecioDesdeCostoYMargen();
-            }
-        }
-
-        // Reventa + materia prima: el costo sale de Materia Prima. Un precio
-        // distinto del actual queda fijado a mano (no sigue al costo).
-        boolean mismoPrecio = dto.precioUnitario() != null && productoExistente.getPrecioUnitario() != null
-                && dto.precioUnitario().compareTo(productoExistente.getPrecioUnitario()) == 0;
-        if (dto.precioUnitario() != null && !(productoExistente.esReventaMateriaPrima() && mismoPrecio)) {
-            if (dto.precioUnitario().compareTo(new BigDecimal("0.01")) < 0) {
-                throw new IllegalArgumentException("El precio debe ser un valor mayor a $0.");
-            }
-            productoExistente.setPrecioUnitario(dto.precioUnitario());
-            if (productoExistente.esReventaMateriaPrima()) {
-                productoExistente.setPrecioManual(true);
-            }
-            if (dto.porcentajeGanancia() == null) {
-                productoExistente.recalcularMargenDesdePrecios();
-            }
+        // Precios: el paquete se edita en Recetas y paquetes; el costo de
+        // elaborados y reventa + materia prima lo calcula CostosService.
+        if (productoExistente.getTipo() != TipoArticulo.PAQUETE) {
+            aplicarPrecio(productoExistente, dto);
         }
 
         if (dto.unidadMedida() != null && !dto.unidadMedida().isBlank()) {
@@ -230,6 +238,8 @@ public class ProductoService {
         }
 
         productoRepository.save(productoExistente);
+        List<CambioPrecioDTO> cambios = costosService.propagar(productoExistente, antes,
+                "Cambio en " + productoExistente.getNombre() + " (" + productoExistente.getCodigo() + ")");
 
         ArticuloStock stock = stockRepository.findByEspProducto(productoExistente)
                 .orElseGet(() -> new ArticuloStock(productoExistente, BigDecimal.ZERO));
@@ -240,7 +250,35 @@ public class ProductoService {
             stockRepository.save(stock);
         }
 
-        return aDTO(productoExistente, stock);
+        return aDTO(productoExistente, stock, cambios);
+    }
+
+    /**
+     * Costo (solo reventa: lo carga Sandra), % de ganancia y modo. Un precio
+     * distinto del actual (o con modo MANUAL) queda fijado a mano, siempre que
+     * deje el %; con modo MARGEN el precio vuelve a seguir al costo.
+     */
+    private void aplicarPrecio(EspProducto p, ProductoRequestDTO dto) {
+        if (dto.precioCosto() != null && p.getTipo() == TipoArticulo.REVENTA) {
+            if (dto.precioCosto().compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("El precio de costo no puede ser negativo.");
+            }
+            p.setPrecioCosto(dto.precioCosto());
+        }
+        if (dto.porcentajeGanancia() != null) {
+            p.setPorcentajeGanancia(dto.porcentajeGanancia());
+        }
+        if (dto.precioUnitario() != null && dto.precioUnitario().compareTo(new BigDecimal("0.01")) < 0) {
+            throw new IllegalArgumentException("El precio debe ser un valor mayor a $0.");
+        }
+        boolean otroPrecio = dto.precioUnitario() != null
+                && (p.getPrecioUnitario() == null || dto.precioUnitario().compareTo(p.getPrecioUnitario()) != 0);
+        if (dto.modoPrecio() != null && !esManual(dto.modoPrecio(), false)) {
+            p.setModoPrecio(ModoPrecio.MARGEN);
+        } else if (dto.precioUnitario() != null && (otroPrecio || esManual(dto.modoPrecio(), false))) {
+            costosService.recalcular(p);
+            costosService.aplicarPrecioManual(p, dto.precioUnitario());
+        }
     }
 
     /**
@@ -264,11 +302,11 @@ public class ProductoService {
         stock.setCantidad(nuevoStock);
         stockRepository.save(stock);
 
-        return aDTO(producto, stock);
+        return aDTO(producto, stock, List.of());
     }
 
     /** Stock y stock mínimo en unidades de venta enteras (cajas para la reventa + materia prima). */
-    private static ProductoCatalogoDTO aDTO(EspProducto p, ArticuloStock stock) {
+    private static ProductoCatalogoDTO aDTO(EspProducto p, ArticuloStock stock, List<CambioPrecioDTO> cambios) {
         BigDecimal cantidad = stock != null ? stock.getCantidad() : BigDecimal.ZERO;
         BigDecimal minimo = stock != null ? stock.getStockMinimo() : BigDecimal.ZERO;
         return new ProductoCatalogoDTO(
@@ -285,7 +323,10 @@ public class ProductoService {
                 p.getTipo(),
                 p.isVendible(),
                 p.esReventaMateriaPrima() ? p.getVentaUnidadNombre() : null,
-                p.isPrecioManual()
+                p.getModoPrecio().name(),
+                p.esPreparacionBase() ? null : CostosService.ganancia(p.getPrecioUnitario(), p.getPrecioCosto()),
+                p.getMontoFijo(),
+                cambios
         );
     }
 }

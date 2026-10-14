@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,9 +34,17 @@ public class Receta extends BaseEntity {
     @Column(nullable = false, precision = 10, scale = 3)
     private BigDecimal rinde = BigDecimal.ONE;
 
-    /** Qué rinde: "porciones", "unidades"... */
+    /** Qué rinde: "porciones", "unidades"... (en las preparaciones base, la abreviatura: "g"). */
     @Column(name = "rinde_unidad", nullable = false, length = 30)
     private String rindeUnidad = "unidades";
+
+    /**
+     * Preparación base: unidad del rinde, de peso o volumen ("rinde 800 g").
+     * null en los elaborados que se venden (rinden unidades o porciones).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "rinde_unidad_medida", length = 20)
+    private UnidadMedida rindeUnidadMedida;
 
     @OneToMany(mappedBy = "receta", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<RecetaDetalle> detalles = new ArrayList<>();
@@ -61,32 +68,5 @@ public class Receta extends BaseEntity {
     public void removeDetalle(RecetaDetalle detalle) {
         detalles.remove(detalle);
         detalle.setReceta(null);
-    }
-
-    public BigDecimal calcularCostoTotal() {
-        BigDecimal total = costosAdicionales != null ? costosAdicionales : BigDecimal.ZERO;
-        if (detalles != null) {
-            for (RecetaDetalle d : detalles) {
-                total = total.add(d.calcularCosto());
-            }
-        }
-        return total.setScale(2, RoundingMode.HALF_UP);
-    }
-
-    /** Costo de una unidad rendida (porción, alfajor...): costo de receta / rinde. */
-    public BigDecimal calcularCostoPorUnidad() {
-        BigDecimal r = rinde != null && rinde.signum() > 0 ? rinde : BigDecimal.ONE;
-        return calcularCostoTotal().divide(r, 2, RoundingMode.HALF_UP);
-    }
-
-    /**
-     * El costo unitario del elaborado es el de una unidad rendida; el precio
-     * sale del % de ganancia del producto.
-     */
-    public void aplicarCostoAlProducto() {
-        if (producto != null) {
-            producto.setPrecioCosto(calcularCostoPorUnidad());
-            producto.recalcularPrecioDesdeCostoYMargen();
-        }
     }
 }
