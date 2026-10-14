@@ -67,6 +67,22 @@ public class MateriaPrimaService {
                 .toList();
     }
 
+    /** Componentes de receta activos: los de Materia Prima y las preparaciones base con rinde en peso o volumen. */
+    @Transactional(readOnly = true)
+    public List<MateriaPrimaResponseDTO> listarComponentesDeReceta() {
+        List<EspProducto> articulos = new ArrayList<>(
+                productoRepository.findByTipoInAndActivoTrue(TipoArticulo.deMateriaPrima()));
+        productoRepository.findByTipoInAndActivoTrue(java.util.Set.of(TipoArticulo.ELABORADO)).stream()
+                .filter(p -> p.esPreparacionBase() && p.getFamilia() != null)
+                .forEach(articulos::add);
+        Map<Long, ArticuloStock> stocks = stockRepository.findByEspProductoIn(articulos).stream()
+                .collect(Collectors.toMap(s -> s.getEspProducto().getId(), Function.identity()));
+        return articulos.stream()
+                .sorted(Comparator.comparing(EspProducto::getNombre, String.CASE_INSENSITIVE_ORDER))
+                .map(a -> toResponseDTO(a, stocks.get(a.getId())))
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public MateriaPrimaResponseDTO obtenerPorId(Long id) {
         EspProducto articulo = buscar(id);

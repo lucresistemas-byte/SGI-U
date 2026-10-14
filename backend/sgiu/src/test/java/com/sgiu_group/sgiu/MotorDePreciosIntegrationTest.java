@@ -192,6 +192,19 @@ class MotorDePreciosIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void componentesDeReceta_incluyenLasPreparacionesBase() throws Exception {
+        tortaConGanache();
+
+        mockMvc.perform(get("/api/recetas/componentes"))
+                .andExpect(jsonPath("$[?(@.codigo == 'ELA-GAN')].tipo").value("ELABORADO"))
+                .andExpect(jsonPath("$[?(@.codigo == 'ELA-GAN')].familia").value("PESO"))
+                .andExpect(jsonPath("$[?(@.codigo == 'ELA-GAN')].costoUnidadBase").value(11.75))
+                .andExpect(jsonPath("$[?(@.codigo == 'MP-CH')].tipo").value("MATERIA_PRIMA"))
+                // La torta se vende: no es componente.
+                .andExpect(jsonPath("$[?(@.codigo == 'ELA-TOR')]").isEmpty());
+    }
+
+    @Test
     void preparacionBase_sinRindeEnPesoOVolumen_seRechaza() throws Exception {
         EspProducto harina = datos.crearMateriaPrima("MP-HA", "Harina", new BigDecimal("1200"), UnidadMedida.KILO, 1, 0);
         datos.crearElaborado("ELA-MAS", "Masa base", BigDecimal.ZERO, 0, false);
