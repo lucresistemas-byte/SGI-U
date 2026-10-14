@@ -434,7 +434,7 @@ class ApiService implements PosApi {
   /// Con [incluirInactivos] trae también los insumos desactivados.
   Future<List<Insumo>> getInsumos({bool incluirInactivos = false}) async {
     try {
-      final response = await dio.get('/api/insumos',
+      final response = await dio.get('/api/materias-primas',
           queryParameters:
               incluirInactivos ? {'incluirInactivos': true} : null);
       if (response.statusCode == 200) {
@@ -451,7 +451,7 @@ class ApiService implements PosApi {
 
   Future<Insumo> createInsumo(Map<String, dynamic> data) async {
     try {
-      final response = await dio.post('/api/insumos', data: data);
+      final response = await dio.post('/api/materias-primas', data: data);
       if (response.statusCode == 201) {
         return Insumo.fromJson(response.data as Map<String, dynamic>);
       } else {
@@ -465,7 +465,7 @@ class ApiService implements PosApi {
 
   Future<Insumo> updateInsumo(int id, Map<String, dynamic> data) async {
     try {
-      final response = await dio.put('/api/insumos/$id', data: data);
+      final response = await dio.put('/api/materias-primas/$id', data: data);
       if (response.statusCode == 200) {
         return Insumo.fromJson(response.data as Map<String, dynamic>);
       } else {
@@ -481,7 +481,7 @@ class ApiService implements PosApi {
   Future<Insumo> cambiarEstadoInsumo(int id, {required bool activo}) async {
     try {
       final response =
-          await dio.patch('/api/insumos/$id/estado', data: {'activo': activo});
+          await dio.patch('/api/materias-primas/$id/estado', data: {'activo': activo});
       if (response.statusCode == 200) {
         return Insumo.fromJson(response.data as Map<String, dynamic>);
       } else {
@@ -498,7 +498,7 @@ class ApiService implements PosApi {
       {required double cantidad, String? unidad, required String motivo}) async {
     try {
       final response = await dio.post(
-        '/api/insumos/$id/ajuste-stock',
+        '/api/materias-primas/$id/ajuste-stock',
         data: {'cantidad': cantidad, if (unidad != null) 'unidad': unidad, 'motivo': motivo},
       );
       if (response.statusCode == 200) {

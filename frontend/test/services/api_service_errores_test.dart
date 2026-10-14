@@ -48,7 +48,7 @@ void main() {
 
   test('Insumos: alta con 400 muestra el mensaje del backend (antes buscaba "message")',
       () async {
-    adapter.onPost('/api/insumos',
+    adapter.onPost('/api/materias-primas',
         (s) => s.reply(400, {'error': 'Ya existe un insumo con el código: HAR'}),
         data: Matchers.any);
 
@@ -57,7 +57,7 @@ void main() {
   });
 
   test('Insumos: listado sin conexión', () async {
-    adapter.onGet('/api/insumos', (s) => s.throws(0, sinConexion));
+    adapter.onGet('/api/materias-primas', (s) => s.throws(0, sinConexion));
 
     expect(await mensajeDe(() => api.getInsumos()),
         'No se pudo conectar con el servidor. Verifique que esté encendido.');

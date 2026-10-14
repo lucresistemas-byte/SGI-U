@@ -51,7 +51,7 @@ void main() {
     await t.pumpAndSettle();
   }
 
-  List<String?> nombres(RecetasBloc b) => b.state.detalles.map((d) => d.materiaPrimaNombre).toList();
+  List<String?> nombres(RecetasBloc b) => b.state.detalles.map((d) => d.articuloNombre).toList();
 
   List<String> opcionesDeLaFila(WidgetTester t, int fila) => t
       .widget<DropdownButton<int>>(find.descendant(
@@ -164,8 +164,8 @@ void main() {
         nombre: 'Flan',
         rinde: 1,
         detalles: const [
-          RecetaDetalle(materiaPrimaId: 1, materiaPrimaNombre: 'Arroz', cantidad: 1, unidadMedida: 'KILO'),
-          RecetaDetalle(materiaPrimaId: 1, materiaPrimaNombre: 'Arroz', cantidad: 2, unidadMedida: 'KILO'),
+          RecetaDetalle(articuloId: 1, articuloNombre: 'Arroz', cantidad: 1, unidadMedida: 'KILO'),
+          RecetaDetalle(articuloId: 1, articuloNombre: 'Arroz', cantidad: 2, unidadMedida: 'KILO'),
         ],
       ),
       act: (b) => b.add(const GuardarReceta()),
@@ -184,8 +184,8 @@ void main() {
         nombre: 'Flan',
         rinde: 1,
         detalles: const [
-          RecetaDetalle(materiaPrimaId: 1, materiaPrimaNombre: 'Arroz', cantidad: 1, unidadMedida: 'KILO'),
-          RecetaDetalle(materiaPrimaId: 0, cantidad: 0, unidadMedida: ''),
+          RecetaDetalle(articuloId: 1, articuloNombre: 'Arroz', cantidad: 1, unidadMedida: 'KILO'),
+          RecetaDetalle(articuloId: 0, cantidad: 0, unidadMedida: ''),
         ],
       ),
       act: (b) => b.add(const GuardarReceta()),

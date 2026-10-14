@@ -119,10 +119,10 @@ void main() {
     test('recetasActivasQueUsan devuelve las recetas que tienen el insumo', () async {
       when(() => api.getRecetas()).thenAnswer((_) async => const [
             Receta(id: 1, espProductoCodigo: 'T', nombre: 'Torta base', detalles: [
-              RecetaDetalle(materiaPrimaId: 4, cantidad: 0.2, unidadMedida: 'KILO'),
+              RecetaDetalle(articuloId: 4, cantidad: 0.2, unidadMedida: 'KILO'),
             ]),
             Receta(id: 2, espProductoCodigo: 'F', nombre: 'Flan', detalles: [
-              RecetaDetalle(materiaPrimaId: 6, cantidad: 3, unidadMedida: 'UNIDAD'),
+              RecetaDetalle(articuloId: 6, cantidad: 3, unidadMedida: 'UNIDAD'),
             ]),
           ]);
 
@@ -144,7 +144,7 @@ void main() {
         nombre: 'Torta',
         detalles: const [
           RecetaDetalle(
-              materiaPrimaId: 6, materiaPrimaNombre: 'Huevo', cantidad: 3, unidadMedida: 'UNIDAD'),
+              articuloId: 6, articuloNombre: 'Huevo', cantidad: 3, unidadMedida: 'UNIDAD'),
         ],
       ),
     );

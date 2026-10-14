@@ -119,9 +119,9 @@ void main() {
         final stateWith1Row = initialState.copyWith(
           detalles: const [
             RecetaDetalle(
-              materiaPrimaId: 1,
-              materiaPrimaCodigo: 'INS-001',
-              materiaPrimaNombre: 'Harina 000',
+              articuloId: 1,
+              articuloCodigo: 'INS-001',
+              articuloNombre: 'Harina 000',
               cantidad: 1.0,
               unidadMedida: 'KILO',
               costoUnitario: 100.0,
@@ -150,18 +150,18 @@ void main() {
         final stateWith2Rows = stateWith1Row.copyWith(
           detalles: const [
             RecetaDetalle(
-              materiaPrimaId: 1,
-              materiaPrimaCodigo: 'INS-001',
-              materiaPrimaNombre: 'Harina 000',
+              articuloId: 1,
+              articuloCodigo: 'INS-001',
+              articuloNombre: 'Harina 000',
               cantidad: 1.0,
               unidadMedida: 'KILO',
               costoUnitario: 100.0,
               subtotal: 100.0,
             ),
             RecetaDetalle(
-              materiaPrimaId: 2,
-              materiaPrimaCodigo: 'INS-002',
-              materiaPrimaNombre: 'Dulce de Leche',
+              articuloId: 2,
+              articuloCodigo: 'INS-002',
+              articuloNombre: 'Dulce de Leche',
               cantidad: 2.0,
               unidadMedida: 'KILO',
               costoUnitario: 300.0,
@@ -196,9 +196,9 @@ void main() {
         final invalidRowState = validState.copyWith(
           detalles: const [
             RecetaDetalle(
-              materiaPrimaId: 1,
-              materiaPrimaCodigo: 'INS-001',
-              materiaPrimaNombre: 'Harina 000',
+              articuloId: 1,
+              articuloCodigo: 'INS-001',
+              articuloNombre: 'Harina 000',
               cantidad: 0.0, // Inválido: cantidad 0
               unidadMedida: 'KILO',
               costoUnitario: 100.0,

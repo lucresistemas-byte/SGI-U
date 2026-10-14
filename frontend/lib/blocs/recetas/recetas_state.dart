@@ -114,8 +114,8 @@ class RecetasState extends Equatable {
     if (rinde == null || rinde! <= 0) return false;
     if (detalles.isEmpty) return false;
     for (final d in detalles) {
-      final hasValidId = d.materiaPrimaId > 0 ||
-          (d.materiaPrimaCodigo != null && d.materiaPrimaCodigo!.trim().isNotEmpty);
+      final hasValidId = d.articuloId > 0 ||
+          (d.articuloCodigo != null && d.articuloCodigo!.trim().isNotEmpty);
       if (!hasValidId || d.cantidad <= 0) return false;
     }
     return true;

@@ -91,7 +91,7 @@ void main() {
     expect(payload['rinde'], 8);
     expect(payload['rindeUnidad'], 'porciones');
     expect(payload['detalles'], [
-      {'materiaPrimaId': 3, 'cantidad': 0.5, 'unidadMedida': 'METRO'}
+      {'articuloId': 3, 'cantidad': 0.5, 'unidadMedida': 'METRO'}
     ]);
     await b.close();
   });

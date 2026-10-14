@@ -126,8 +126,8 @@ void main() {
             .having((s) => s.costoTotal, 'costoTotal', 200.0),
         isA<RecetasState>()
             .having((s) => s.detalles.length, 'detalles length', 1)
-            .having((s) => s.detalles.first.materiaPrimaId,
-                'materiaPrimaId restante', 2)
+            .having((s) => s.detalles.first.articuloId,
+                'articuloId restante', 2)
             .having((s) => s.costoTotal, 'costoTotal recalculado', 100.0),
       ],
     );
