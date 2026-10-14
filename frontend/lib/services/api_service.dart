@@ -8,6 +8,9 @@ import '../models/configuracion_negocio.dart';
 import '../models/insumo.dart';
 import '../models/receta.dart';
 import '../models/pedido.dart';
+import '../models/cambio_precio.dart';
+import '../models/historial_precio.dart';
+import '../models/paquete.dart';
 import 'package:intl/intl.dart';
 
 /// Contrato de operaciones POS/productos usado por PosBloc.
@@ -239,6 +242,7 @@ class ApiService implements PosApi {
     try {
       final response = await dio.post('/api/productos/crear', data: productData);
       if (response.statusCode == 201) {
+        avisarCambiosDePrecio(response.data);
         return Product.fromJson(response.data);
       } else {
         throw const ApiException('No se pudo crear el producto. Intente nuevamente.');
@@ -308,6 +312,7 @@ class ApiService implements PosApi {
       final response =
           await dio.put('/api/productos/editar/$codigo', data: productData);
       if (response.statusCode == 200) {
+        avisarCambiosDePrecio(response.data);
         return Product.fromJson(response.data);
       } else {
         throw const ApiException('No se pudo actualizar el producto. Intente nuevamente.');
@@ -330,6 +335,7 @@ class ApiService implements PosApi {
         'motivo': motivo,
       });
       if (response.statusCode == 200) {
+        avisarCambiosDePrecio(response.data);
         return Product.fromJson(response.data);
       } else {
         throw const ApiException('No se pudo ajustar el stock. Intente nuevamente.');
@@ -430,6 +436,76 @@ class ApiService implements PosApi {
     }
   }
 
+  // --- MOTOR DE PRECIOS ---
+  /// Precios que cambiaron con el último guardado (resumen "Se actualizaron N
+  /// precios"). AppShell lo escucha y muestra el diálogo.
+  static final ValueNotifier<List<CambioPrecio>> cambiosDePrecio = ValueNotifier(const []);
+
+  /// Publica los cambios de precio que trae la respuesta de un guardado.
+  static void avisarCambiosDePrecio(dynamic data) {
+    final cambios = CambioPrecio.deRespuesta(data);
+    if (cambios.isNotEmpty) cambiosDePrecio.value = cambios;
+  }
+
+  /// Historial de precios: por defecto los últimos 30 días; [codigo] filtra por producto.
+  Future<List<HistorialPrecio>> getHistorialPrecios({DateTime? desde, DateTime? hasta, String? codigo}) async {
+    final formato = DateFormat('yyyy-MM-dd');
+    try {
+      final response = await dio.get('/api/precios/historial', queryParameters: {
+        if (desde != null) 'desde': formato.format(desde),
+        if (hasta != null) 'hasta': formato.format(hasta),
+        if (codigo != null && codigo.isNotEmpty) 'codigo': codigo,
+      });
+      return (response.data as List)
+          .map((h) => HistorialPrecio.fromJson(Map<String, dynamic>.from(h as Map)))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo cargar el historial de precios. Intente nuevamente.'));
+    }
+  }
+
+  // --- PAQUETES ---
+  Future<List<Paquete>> getPaquetes() async {
+    try {
+      final response = await dio.get('/api/paquetes');
+      return (response.data as List).map((p) => Paquete.fromJson(Map<String, dynamic>.from(p as Map))).toList();
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudieron cargar los paquetes. Intente nuevamente.'));
+    }
+  }
+
+  /// Crea ([id] null) o actualiza un paquete.
+  Future<Paquete> guardarPaquete(Map<String, dynamic> data, {int? id}) async {
+    try {
+      final response =
+          id == null ? await dio.post('/api/paquetes', data: data) : await dio.put('/api/paquetes/$id', data: data);
+      avisarCambiosDePrecio(response.data);
+      return Paquete.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo guardar el paquete. Intente nuevamente.'));
+    }
+  }
+
+  Future<Paquete> cambiarEstadoPaquete(int id, {required bool activo}) async {
+    try {
+      final response = await dio.patch('/api/paquetes/$id/estado', data: {'activo': activo});
+      return Paquete.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo cambiar el estado del paquete. Intente nuevamente.'));
+    }
+  }
+
+  /// Lo que se puede usar en una receta: materias primas, insumos, reventa +
+  /// materia prima y preparaciones base (activos).
+  Future<List<Insumo>> getComponentesReceta() async {
+    try {
+      final response = await dio.get('/api/recetas/componentes');
+      return (response.data as List).map((i) => Insumo.fromJson(Map<String, dynamic>.from(i as Map))).toList();
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudieron cargar los ingredientes. Intente nuevamente.'));
+    }
+  }
+
   // --- INSUMOS (MATERIA PRIMA) ---
   /// Con [incluirInactivos] trae también los insumos desactivados.
   Future<List<Insumo>> getInsumos({bool incluirInactivos = false}) async {
@@ -453,6 +529,7 @@ class ApiService implements PosApi {
     try {
       final response = await dio.post('/api/materias-primas', data: data);
       if (response.statusCode == 201) {
+        avisarCambiosDePrecio(response.data);
         return Insumo.fromJson(response.data as Map<String, dynamic>);
       } else {
         throw const ApiException('No se pudo crear el insumo. Intente nuevamente.');
@@ -467,6 +544,7 @@ class ApiService implements PosApi {
     try {
       final response = await dio.put('/api/materias-primas/$id', data: data);
       if (response.statusCode == 200) {
+        avisarCambiosDePrecio(response.data);
         return Insumo.fromJson(response.data as Map<String, dynamic>);
       } else {
         throw const ApiException('No se pudo actualizar el insumo. Intente nuevamente.');
@@ -483,6 +561,7 @@ class ApiService implements PosApi {
       final response =
           await dio.patch('/api/materias-primas/$id/estado', data: {'activo': activo});
       if (response.statusCode == 200) {
+        avisarCambiosDePrecio(response.data);
         return Insumo.fromJson(response.data as Map<String, dynamic>);
       } else {
         throw const ApiException(
@@ -502,6 +581,7 @@ class ApiService implements PosApi {
         data: {'cantidad': cantidad, if (unidad != null) 'unidad': unidad, 'motivo': motivo},
       );
       if (response.statusCode == 200) {
+        avisarCambiosDePrecio(response.data);
         return Insumo.fromJson(response.data as Map<String, dynamic>);
       } else {
         throw const ApiException('No se pudo ajustar el stock del insumo. Intente nuevamente.');
@@ -636,6 +716,7 @@ class ApiService implements PosApi {
     try {
       final response = await dio.get('/api/recetas/producto/$codigo');
       if (response.statusCode == 200) {
+        avisarCambiosDePrecio(response.data);
         return Receta.fromJson(response.data as Map<String, dynamic>);
       }
       return null;
@@ -650,6 +731,7 @@ class ApiService implements PosApi {
     try {
       final response = await dio.post('/api/recetas', data: data);
       if (response.statusCode == 201) {
+        avisarCambiosDePrecio(response.data);
         return Receta.fromJson(response.data as Map<String, dynamic>);
       } else {
         throw const ApiException('No se pudo crear la receta. Intente nuevamente.');
@@ -664,6 +746,7 @@ class ApiService implements PosApi {
     try {
       final response = await dio.put('/api/recetas/$id', data: data);
       if (response.statusCode == 200) {
+        avisarCambiosDePrecio(response.data);
         return Receta.fromJson(response.data as Map<String, dynamic>);
       } else {
         throw const ApiException('No se pudo actualizar la receta. Intente nuevamente.');

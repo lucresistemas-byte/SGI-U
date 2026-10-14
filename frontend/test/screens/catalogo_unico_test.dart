@@ -103,7 +103,7 @@ void main() {
   testWidgets('el armador de recetas ofrece la caja como componente, en gramos', (t) async {
     pantallaGrande(t);
     final api = _MockApi();
-    when(() => api.getInsumos()).thenAnswer((_) async => [caja]);
+    when(() => api.getComponentesReceta()).thenAnswer((_) async => [caja]);
     when(() => api.getProducts()).thenAnswer((_) async => []);
     when(() => api.getCategorias()).thenAnswer((_) async => const [Categoria(id: 7, nombre: 'Tortas')]);
     when(() => api.getRecetas()).thenAnswer((_) async => const <Receta>[]);

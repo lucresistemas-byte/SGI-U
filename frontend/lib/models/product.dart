@@ -23,8 +23,25 @@ class Product {
   /// viene en esa unidad (cajas enteras).
   final String? unidadVenta;
 
-  /// true = el precio se fijó a mano y no sigue al costo.
-  final bool precioManual;
+  /// MARGEN (costo × (1 + %)), MANUAL (precio de Sandra, nunca por debajo
+  /// del %) o COSTO_MAS_FIJO (paquetes).
+  final String modoPrecio;
+
+  /// Ganancia por unidad en pesos: precio − costo (null en preparaciones base).
+  final double? gananciaPesos;
+
+  /// Paquetes: monto fijo que se suma al costo del armado.
+  final double? montoFijo;
+
+  bool get precioManual => modoPrecio == 'MANUAL';
+
+  bool get esPaquete => tipo == 'PAQUETE';
+
+  /// % de ganancia real (precio sobre costo); null sin costo.
+  double? get porcentajeReal {
+    final c = precioCosto ?? 0;
+    return c > 0 ? (precioUnitario - c) / c * 100 : null;
+  }
 
   bool get esReventaMateriaPrima => tipo == 'REVENTA_MATERIA_PRIMA';
 
@@ -54,7 +71,9 @@ class Product {
     this.tipo = 'REVENTA',
     this.vendible = true,
     this.unidadVenta,
-    this.precioManual = false,
+    this.modoPrecio = 'MARGEN',
+    this.gananciaPesos,
+    this.montoFijo,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -85,7 +104,9 @@ class Product {
       tipo: json['tipo']?.toString() ?? 'REVENTA',
       vendible: json['vendible'] ?? true,
       unidadVenta: json['unidadVenta']?.toString(),
-      precioManual: json['precioManual'] == true,
+      modoPrecio: json['modoPrecio']?.toString() ?? 'MARGEN',
+      gananciaPesos: (json['gananciaPesos'] as num?)?.toDouble(),
+      montoFijo: (json['montoFijo'] as num?)?.toDouble(),
     );
   }
 
@@ -107,7 +128,9 @@ class Product {
       'tipo': tipo,
       'vendible': vendible,
       if (unidadVenta != null) 'unidadVenta': unidadVenta,
-      'precioManual': precioManual,
+      'modoPrecio': modoPrecio,
+      if (gananciaPesos != null) 'gananciaPesos': gananciaPesos,
+      if (montoFijo != null) 'montoFijo': montoFijo,
     };
   }
 
@@ -125,7 +148,9 @@ class Product {
     String? tipo,
     bool? vendible,
     String? unidadVenta,
-    bool? precioManual,
+    String? modoPrecio,
+    double? gananciaPesos,
+    double? montoFijo,
   }) {
     return Product(
       codigo: codigo ?? this.codigo,
@@ -141,7 +166,9 @@ class Product {
       tipo: tipo ?? this.tipo,
       vendible: vendible ?? this.vendible,
       unidadVenta: unidadVenta ?? this.unidadVenta,
-      precioManual: precioManual ?? this.precioManual,
+      modoPrecio: modoPrecio ?? this.modoPrecio,
+      gananciaPesos: gananciaPesos ?? this.gananciaPesos,
+      montoFijo: montoFijo ?? this.montoFijo,
     );
   }
 

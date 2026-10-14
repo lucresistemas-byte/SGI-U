@@ -19,7 +19,7 @@ void main() {
   setUp(() {
     api = _MockApi();
     registerFallbackValue(<String, dynamic>{});
-    when(() => api.getInsumos()).thenAnswer((_) async => [harina]);
+    when(() => api.getComponentesReceta()).thenAnswer((_) async => [harina]);
     when(() => api.getProducts()).thenAnswer((_) async => []);
     when(() => api.getCategorias()).thenAnswer((_) async => const [Categoria(id: 7, nombre: 'Tortas')]);
     when(() => api.getRecetas()).thenAnswer((_) async => const <Receta>[]);
@@ -65,7 +65,8 @@ void main() {
     await t.pumpAndSettle();
     expect(texto(t, 'costo_por_unidad_receta'), '\$ 30,00');
     expect(texto(t, 'porcentaje_ganancia_receta'), '100 %');
-    expect(texto(t, 'precio_resultante_receta'), '\$ 60,00');
+    expect(texto(t, 'precio_resultante_receta'), '\$ 100,00'); // $ 60 → hacia arriba a $ 100
+    expect(texto(t, 'ganancia_resultante_receta'), '\$ 70,00');
     expect(find.text('Costo por porción'), findsOneWidget);
 
     // Cambiar a kilo con la misma cantidad multiplica el costo.

@@ -42,3 +42,14 @@ String textoAmigable(double cantidadBase, FamiliaUnidad familia) {
   final grande = familia.unidades.last;
   return cantidadBase.abs() >= grande.factor ? textoEn(cantidadBase, grande) : textoEn(cantidadBase, familia.base);
 }
+
+/// Precio de venta: hacia arriba al próximo múltiplo de $100 ($3.601 → $3.700),
+/// igual que el backend (CostosService).
+double redondearA100(double precio) {
+  if (precio <= 0) return 0;
+  // Se tolera el error de coma flotante (3600,0000001 no pasa a 3700).
+  return ((precio - 1e-6) / 100).ceilToDouble() * 100;
+}
+
+/// Precio mínimo que deja el % de ganancia: costo × (1 + %), a $100.
+double precioMinimo(double costo, double porcentaje) => redondearA100(costo * (1 + porcentaje / 100));

@@ -201,6 +201,15 @@ class CambiarRinde extends RecetasEvent {
   List<Object?> get props => [rinde];
 }
 
+/// Preparación base: unidad del rinde (GRAMO, KILO, MILILITRO o LITRO).
+class CambiarRindeUnidadMedida extends RecetasEvent {
+  final String unidad;
+  const CambiarRindeUnidadMedida(this.unidad);
+
+  @override
+  List<Object?> get props => [unidad];
+}
+
 class CambiarRindeUnidad extends RecetasEvent {
   final String rindeUnidad;
   const CambiarRindeUnidad(this.rindeUnidad);

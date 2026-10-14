@@ -70,7 +70,7 @@ void main() {
           // 200 g × 1,2 + 150 ml × 1,5 + 0,5 m × 200 = 240 + 225 + 100.
           .having((s) => s.costoTotal, 'total', closeTo(565, 1e-9))
           .having((s) => s.costoPorUnidad, 'por porción', closeTo(70.625, 1e-9))
-          .having((s) => s.precioResultante, 'precio', closeTo(141.25, 1e-9)),
+          .having((s) => s.precioResultante, 'precio', closeTo(200, 1e-9)),
     ],
   );
 

@@ -474,6 +474,25 @@ class _RecetasScreenState extends State<RecetasScreen> {
     return t;
   }
 
+  /// Preparación base: no tiene precio; muestra su costo por unidad del
+  /// rinde (el que usan las recetas que la llevan).
+  List<Widget> _resumenPreparacionBase(RecetasState state) {
+    final unidad = UnidadMedida.deCodigo(state.rindeUnidadMedida) ?? UnidadMedida.gramo;
+    final rinde = state.rinde;
+    if (rinde == null || rinde <= 0) {
+      return [_dato('Costo por ${unidad.abreviatura}', '—', const Key('costo_por_unidad_receta'), detalle: 'Falta el rinde')];
+    }
+    final porBase = state.costoTotal / unidad.aBase(rinde);
+    final grande = unidad.familia!.unidades.last;
+    return [
+      _dato('Costo por ${grande.abreviatura}', formatPesos(porBase * grande.factor), const Key('costo_por_unidad_receta'),
+          detalle: 'Rinde ${formatDecimal(rinde)} ${unidad.abreviatura} · ${formatPesos(porBase, decimales: 4)} por '
+              '${unidad.familia!.base.abreviatura}'),
+      _dato('Preparación base', 'No se vende', const Key('precio_resultante_receta'),
+          detalle: 'Se usa como ingrediente de otras recetas'),
+    ];
+  }
+
   Widget _dato(String titulo, String valor, Key key, {String? detalle}) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -686,6 +705,28 @@ class _RecetasScreenState extends State<RecetasScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
+                            // Preparación base: rinde en peso o volumen ("800 g"),
+                            // así se usa como ingrediente de otras recetas.
+                            if (state.esPreparacionBase)
+                              SizedBox(
+                                width: 220,
+                                child: DropdownButtonFormField<String>(
+                                  key: ValueKey('input_rinde_unidad_medida_${state.rindeUnidadMedida}'),
+                                  initialValue: state.rindeUnidadMedida,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Unidad del rinde *',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: [
+                                    for (final u in [UnidadMedida.gramo, UnidadMedida.kilo, UnidadMedida.mililitro, UnidadMedida.litro])
+                                      DropdownMenuItem(value: u.codigo, child: Text(u.nombre)),
+                                  ],
+                                  onChanged: (u) {
+                                    if (u != null) _bloc.add(CambiarRindeUnidadMedida(u));
+                                  },
+                                ),
+                              )
+                            else
                             SizedBox(
                               width: 220,
                               child: TextFormField(
@@ -942,6 +983,9 @@ class _RecetasScreenState extends State<RecetasScreen> {
                       children: [
                         _dato('Costo total de la receta', formatPesos(state.costoTotal), const Key('costo_total_receta'),
                             detalle: 'Incluye ${state.detalles.length} insumos + ${formatPesos(state.costosAdicionales)} de adicionales'),
+                        if (state.esPreparacionBase)
+                          ..._resumenPreparacionBase(state)
+                        else ...[
                         _dato(
                             'Costo por ${_singular(state.rindeUnidad)}',
                             state.costoPorUnidad == null ? '—' : formatPesos(state.costoPorUnidad!),
@@ -950,7 +994,13 @@ class _RecetasScreenState extends State<RecetasScreen> {
                         _dato('% de ganancia', '${formatDecimal(state.porcentajeGanancia, decimales: 2)} %',
                             const Key('porcentaje_ganancia_receta')),
                         _dato('Precio de venta', state.precioResultante == null ? '—' : formatPesos(state.precioResultante!),
-                            const Key('precio_resultante_receta')),
+                            const Key('precio_resultante_receta'),
+                            detalle: 'Redondeado hacia arriba a \$100'
+                                '${state.productoElegido?.precioManual == true && !state.creaProductoNuevo ? ' · precio a mano' : ''}'),
+                        _dato('Ganancia por ${_singular(state.rindeUnidad)}',
+                            state.gananciaResultante == null ? '—' : formatPesos(state.gananciaResultante!),
+                            const Key('ganancia_resultante_receta')),
+                        ],
                       ],
                     ),
                   ),

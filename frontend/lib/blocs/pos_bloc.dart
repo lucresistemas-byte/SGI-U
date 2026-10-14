@@ -226,6 +226,8 @@ class PosBloc extends Bloc<PosEvent, PosState> {
         return {
           'codigoProducto': entry.key,
           'cantidad': entry.value.cantidad,
+          // Precio congelado al agregar al carrito: si después cambió, se respeta.
+          'precioUnitario': entry.value.precioUnitario,
         };
       }).toList();
 

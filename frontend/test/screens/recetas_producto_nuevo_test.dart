@@ -19,7 +19,7 @@ void main() {
   setUp(() {
     api = _MockApi();
     registerFallbackValue(<String, dynamic>{});
-    when(() => api.getInsumos()).thenAnswer((_) async => [harina]);
+    when(() => api.getComponentesReceta()).thenAnswer((_) async => [harina]);
     when(() => api.getProducts()).thenAnswer((_) async => [
           {'codigo': 'ELA-1', 'nombre': 'Tarta de coco', 'precioUnitario': 10800, 'stockActual': 1, 'tipo': 'ELABORADO'},
           {'codigo': 'ELA-2', 'nombre': 'Budín', 'precioUnitario': 5000, 'stockActual': 0, 'tipo': 'ELABORADO'},

@@ -33,6 +33,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
     on<CambiarRinde>((event, emit) =>
         emit(event.rinde == null ? state.copyWith(quitarRinde: true) : state.copyWith(rinde: event.rinde)));
     on<CambiarRindeUnidad>((event, emit) => emit(state.copyWith(rindeUnidad: event.rindeUnidad)));
+    on<CambiarRindeUnidadMedida>((event, emit) => emit(state.copyWith(rindeUnidadMedida: event.unidad)));
     on<CambiarModoProductoReceta>((event, emit) =>
         emit(state.copyWith(usarProductoNuevo: event.productoNuevo)));
     on<ActualizarProductoNuevoReceta>((event, emit) => emit(state.copyWith(
@@ -127,7 +128,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
   Future<void> _onCargarDatosAuxiliaresReceta(
       CargarDatosAuxiliaresReceta event, Emitter<RecetasState> emit) async {
     try {
-      final insumos = await _apiService.getInsumos();
+      final insumos = await _apiService.getComponentesReceta();
       final rawProducts = await _apiService.getProducts();
       final products = rawProducts
           .map((p) => Product.fromJson(Map<String, dynamic>.from(p as Map)))
@@ -160,6 +161,8 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       costoTotal: 0.0,
       quitarRinde: true,
       rindeUnidad: 'porciones',
+      rindeUnidadMedida: 'GRAMO',
+      editaPreparacionBase: false,
       clearError: true,
       clearSuccess: true,
       // Por defecto, la receta crea el producto elaborado.
@@ -183,6 +186,8 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
       costoTotal: event.receta.costoTotal,
       rinde: event.receta.rinde,
       rindeUnidad: event.receta.rindeUnidad,
+      rindeUnidadMedida: event.receta.rindeUnidadMedida ?? 'GRAMO',
+      editaPreparacionBase: event.receta.preparacionBase,
       clearError: true,
       clearSuccess: true,
     ));
@@ -353,6 +358,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
         'costosAdicionales': state.costosAdicionales,
         'rinde': state.rinde,
         'rindeUnidad': state.rindeUnidad.trim().isEmpty ? 'unidades' : state.rindeUnidad.trim(),
+        if (state.esPreparacionBase) 'rindeUnidadMedida': state.rindeUnidadMedida,
         'detalles': state.detalles.map((d) => {
           'articuloId': d.articuloId,
           'cantidad': d.cantidad,

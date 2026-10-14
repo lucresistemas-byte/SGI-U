@@ -68,6 +68,8 @@ void main() {
     expect(find.text('UNIDAD'), findsOneWidget);
 
     // Abrimos el dropdown
+    await tester.ensureVisible(dropdownFinder);
+    await tester.pumpAndSettle();
     await tester.tap(dropdownFinder);
     await tester.pumpAndSettle();
 
@@ -131,6 +133,8 @@ void main() {
 
     // Cambiamos a LITRO
     final dropdownFinder = find.byKey(const ValueKey('producto_form_unidad_medida_dropdown'));
+    await tester.ensureVisible(dropdownFinder);
+    await tester.pumpAndSettle();
     await tester.tap(dropdownFinder);
     await tester.pumpAndSettle();
 
