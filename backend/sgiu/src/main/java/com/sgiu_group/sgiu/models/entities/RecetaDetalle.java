@@ -22,9 +22,10 @@ public class RecetaDetalle extends BaseEntity {
     @JsonIgnore
     private Receta receta;
 
+    /** Materia prima, insumo o reventa + materia prima del catálogo. */
     @ManyToOne(optional = false, fetch = FetchType.EAGER)
-    @JoinColumn(name = "materia_prima_id", nullable = false, foreignKey = @ForeignKey(name = "fk_receta_detalle_materia_prima"))
-    private MateriaPrima materiaPrima;
+    @JoinColumn(name = "articulo_id", nullable = false, foreignKey = @ForeignKey(name = "fk_receta_detalle_articulo"))
+    private EspProducto articulo;
 
     /** Cantidad en la unidad elegida en el armador. */
     @Column(nullable = false, precision = 14, scale = 3)
@@ -38,21 +39,21 @@ public class RecetaDetalle extends BaseEntity {
     @Column(name = "cantidad_base", nullable = false, precision = 14, scale = 3)
     private BigDecimal cantidadBase = BigDecimal.ZERO;
 
-    public RecetaDetalle(Receta receta, MateriaPrima materiaPrima, BigDecimal cantidad, UnidadMedida unidadMedida) {
+    public RecetaDetalle(Receta receta, EspProducto articulo, BigDecimal cantidad, UnidadMedida unidadMedida) {
         this.receta = receta;
-        this.materiaPrima = materiaPrima;
+        this.articulo = articulo;
         this.cantidad = cantidad;
-        this.unidadMedida = unidadMedida != null ? unidadMedida : (materiaPrima != null ? materiaPrima.getUnidadMedida() : UnidadMedida.UNIDAD);
+        this.unidadMedida = unidadMedida != null ? unidadMedida : (articulo != null ? articulo.getUnidadMedida() : UnidadMedida.UNIDAD);
         this.cantidadBase = cantidad != null && this.unidadMedida.getFamilia() != null
                 ? this.unidadMedida.aBase(cantidad) : (cantidad != null ? cantidad : BigDecimal.ZERO);
     }
 
     /** Costo de la fila sin redondear: cantidad en unidad base × costo por unidad base. */
     public BigDecimal calcularCosto() {
-        if (materiaPrima == null || cantidadBase == null) {
+        if (articulo == null || articulo.getCostoUnidadBase() == null || cantidadBase == null) {
             return BigDecimal.ZERO;
         }
-        return materiaPrima.getCostoUnidadBase().multiply(cantidadBase);
+        return articulo.getCostoUnidadBase().multiply(cantidadBase);
     }
 
     public BigDecimal calcularSubtotal() {

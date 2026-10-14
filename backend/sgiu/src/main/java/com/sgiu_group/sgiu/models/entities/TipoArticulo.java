@@ -1,5 +1,9 @@
 package com.sgiu_group.sgiu.models.entities;
 
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Set;
+
 /**
  * Tipo de artículo del catálogo. Todo comportamiento (qué se vende en el POS,
  * qué tiene receta) depende del tipo, nunca de la categoría: las categorías
@@ -11,11 +15,11 @@ public enum TipoArticulo {
     ELABORADO("ELA"),
     /** Se compra y se vende tal cual. No se usa en recetas. */
     REVENTA("REV"),
-    /** Solo se usa en recetas (etapa 3). */
+    /** Solo se usa en recetas. */
     MATERIA_PRIMA("MP"),
-    /** Cajas, cintas, stickers: recetas y armados de paquetes (etapa 3). */
+    /** Cajas, cintas, stickers: recetas y armados de paquetes. */
     INSUMO("INS"),
-    /** Se vende tal cual y también se usa en recetas (etapa 3). */
+    /** Se vende por unidades enteras (p. ej. una caja de 100 g) y también se usa en recetas. */
     REVENTA_MATERIA_PRIMA("RMP"),
     /** Paquete armado con insumos, una línea en el ticket (etapa 4). */
     PAQUETE("PAQ");
@@ -31,7 +35,7 @@ public enum TipoArticulo {
         return prefijo;
     }
 
-    /** Tipos que se cargan en Materia Prima (tabla materias_primas hasta la etapa 3). */
+    /** Tipos que se cargan en Materia Prima y se pueden usar en recetas. */
     public boolean esDeMateriaPrima() {
         return this == MATERIA_PRIMA || this == INSUMO || this == REVENTA_MATERIA_PRIMA;
     }
@@ -44,5 +48,23 @@ public enum TipoArticulo {
     /** Si los artículos de este tipo tienen receta de producción. */
     public boolean tieneReceta() {
         return this == ELABORADO;
+    }
+
+    /** Los que se venden en el POS y se listan en Productos. */
+    public static Set<TipoArticulo> vendibles() {
+        return filtrar(true);
+    }
+
+    /** Los que se listan en Materia Prima y se usan en recetas. */
+    public static Set<TipoArticulo> deMateriaPrima() {
+        return filtrar(false);
+    }
+
+    private static Set<TipoArticulo> filtrar(boolean vendibles) {
+        EnumSet<TipoArticulo> tipos = EnumSet.noneOf(TipoArticulo.class);
+        Arrays.stream(values())
+                .filter(t -> vendibles ? t.seVende() : t.esDeMateriaPrima())
+                .forEach(tipos::add);
+        return tipos;
     }
 }

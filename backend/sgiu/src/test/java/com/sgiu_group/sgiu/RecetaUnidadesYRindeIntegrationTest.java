@@ -1,10 +1,8 @@
 package com.sgiu_group.sgiu;
 
 import com.sgiu_group.sgiu.models.entities.EspProducto;
-import com.sgiu_group.sgiu.models.entities.MateriaPrima;
 import com.sgiu_group.sgiu.models.entities.UnidadMedida;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
-import com.sgiu_group.sgiu.repositories.MateriaPrimaRepository;
 import com.sgiu_group.sgiu.repositories.RecetaRepository;
 import com.sgiu_group.sgiu.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,31 +30,29 @@ class RecetaUnidadesYRindeIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private TestDataFactory datos;
     @Autowired
-    private MateriaPrimaRepository materiaPrimaRepository;
-    @Autowired
     private EspProductoRepository productoRepository;
     @Autowired
     private RecetaRepository recetaRepository;
 
-    private MateriaPrima harina;
-    private MateriaPrima leche;
-    private MateriaPrima cinta;
+    private EspProducto harina;
+    private EspProducto leche;
+    private EspProducto cinta;
     private EspProducto torta;
 
     @BeforeEach
     void datos() {
         // Harina comprada por kilo ($1200 el kg = $1,2 el g), leche por litro
         // ($1500 el l = $1,5 el ml), cinta por metro ($200 el m = $2 el cm).
-        harina = materiaPrimaRepository.save(new MateriaPrima("RUR-HAR", "Harina", new BigDecimal("1200"), UnidadMedida.KILO, 10, 0));
-        leche = materiaPrimaRepository.save(new MateriaPrima("RUR-LEC", "Leche", new BigDecimal("1500"), UnidadMedida.LITRO, 5, 0));
-        cinta = materiaPrimaRepository.save(new MateriaPrima("RUR-CIN", "Cinta", new BigDecimal("200"), UnidadMedida.METRO, 10, 0));
+        harina = datos.crearMateriaPrima("RUR-HAR", "Harina", new BigDecimal("1200"), UnidadMedida.KILO, 10, 0);
+        leche = datos.crearMateriaPrima("RUR-LEC", "Leche", new BigDecimal("1500"), UnidadMedida.LITRO, 5, 0);
+        cinta = datos.crearMateriaPrima("RUR-CIN", "Cinta", new BigDecimal("200"), UnidadMedida.METRO, 10, 0);
         torta = datos.crearElaborado("RUR-TORTA", "Porción de torta", new BigDecimal("100"), 0, true);
         torta.setPorcentajeGanancia(new BigDecimal("100"));
         productoRepository.save(torta);
     }
 
-    private static String fila(MateriaPrima mp, String cantidad, String unidad) {
-        return "{\"materiaPrimaId\": " + mp.getId() + ", \"cantidad\": " + cantidad
+    private static String fila(EspProducto mp, String cantidad, String unidad) {
+        return "{\"articuloId\": " + mp.getId() + ", \"cantidad\": " + cantidad
                 + (unidad != null ? ", \"unidadMedida\": \"" + unidad + "\"" : "") + "}";
     }
 
@@ -135,7 +131,7 @@ class RecetaUnidadesYRindeIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isCreated());
 
         // La harina sube: bolsa de 25 kg a $40.000 ($1,6 el g): 200 g = $320.
-        mockMvc.perform(put("/api/insumos/" + harina.getId()).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(put("/api/materias-primas/" + harina.getId()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nombre\": \"Harina\", \"unidadMedida\": \"KILO\", \"presentacionDescripcion\": \"Bolsa 25 kg\", "
                                 + "\"presentacionCantidad\": 25, \"presentacionUnidad\": \"KILO\", \"presentacionPrecio\": 40000}"))
                 .andExpect(status().isOk())

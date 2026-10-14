@@ -6,19 +6,19 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 /**
- * Alta/edición de materia prima. El costo sale de la presentación de compra
- * (p. ej. "Bolsa 25 kg": 25 KILO a $30.000). Las cantidades de stock se
- * escriben en {@code stockUnidad} (cualquier unidad de la familia; por
- * defecto, la unidad para mostrar) y se guardan en unidad base.
+ * Alta/edición de un artículo de Materia Prima (materia prima, insumo o
+ * reventa + materia prima). El costo sale de la presentación de compra (p. ej.
+ * "Bolsa 25 kg": 25 KILO a $30.000). Las cantidades de stock se escriben en
+ * {@code stockUnidad} y se guardan en unidad base.
  */
-public record InsumoRequestDTO(
+public record MateriaPrimaRequestDTO(
     /**
      * Solo al crear: MATERIA_PRIMA (por defecto), INSUMO o REVENTA_MATERIA_PRIMA.
      * El código lo genera el sistema según el tipo (MP-, INS-, RMP-).
      */
     String tipo,
 
-    @NotBlank(message = "El nombre de insumo es obligatorio")
+    @NotBlank(message = "El nombre es obligatorio")
     String nombre,
 
     /** Unidad para mostrar; define la familia (peso, volumen, longitud o unidades). */
@@ -45,6 +45,30 @@ public record InsumoRequestDTO(
     @DecimalMin(value = "0.0", message = "El stock mínimo no puede ser negativo")
     BigDecimal stockMinimo,
 
-    /** Unidad de stockActual y stockMinimo (por defecto, unidadMedida). */
-    String stockUnidad
+    /**
+     * Unidad de stockActual y stockMinimo: una de la familia, PRESENTACION o
+     * UNIDAD_VENTA (por defecto, unidadMedida).
+     */
+    String stockUnidad,
+
+    // --- Solo reventa + materia prima ---
+
+    /** Cómo se vende ("Caja"). Por defecto, la descripción de la presentación. */
+    String ventaUnidadNombre,
+
+    /** Contenido de la unidad de venta. Sin contenido, se vende la presentación de compra. */
+    @DecimalMin(value = "0.001", message = "El contenido de la unidad de venta debe ser mayor a cero")
+    BigDecimal ventaUnidadCantidad,
+
+    /** Unidad del contenido (de la familia). */
+    String ventaUnidadUnidad,
+
+    @DecimalMin(value = "0.0", message = "El porcentaje de ganancia no puede ser negativo")
+    BigDecimal porcentajeGanancia,
+
+    /** Precio fijado a mano. Vacío = costo de la unidad de venta × (1 + % de ganancia). */
+    @DecimalMin(value = "0.01", message = "El precio de venta debe ser mayor a $0.")
+    BigDecimal precioVenta,
+
+    Long categoriaId
 ) {}

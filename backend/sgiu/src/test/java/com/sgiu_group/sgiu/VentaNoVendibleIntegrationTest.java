@@ -40,7 +40,7 @@ class VentaNoVendibleIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.error").value("Ganache es una preparación base y no se vende."));
 
         assertThat(ventaRepository.count()).isZero();
-        assertThat(stockRepository.findByEspProducto_Codigo("GAN").orElseThrow().getCantidad()).isEqualTo(3);
+        assertThat(stockRepository.findByEspProducto_Codigo("GAN").orElseThrow().getCantidad()).isEqualByComparingTo("3");
     }
 
     @Test

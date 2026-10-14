@@ -55,6 +55,47 @@ public class EspProducto extends BaseEntity {
     @Column(nullable = false)
     private boolean vendible = true;
 
+    /** true = el precio de venta se fijó a mano y no sigue al costo. */
+    @Column(name = "precio_manual", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("false")
+    private boolean precioManual = false;
+
+    // --- Materia prima, insumo y reventa + materia prima ---
+    // El stock (articulos_stock) y el costo se guardan en la unidad base de la
+    // familia (gramo, mililitro, centímetro o unidad); unidadMedida es la
+    // unidad en que se muestra.
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private FamiliaUnidad familia;
+
+    /** Costo por unidad base, con 4 decimales (p. ej. $1,2000 por gramo). */
+    @Column(name = "costo_unidad_base", precision = 14, scale = 4)
+    private BigDecimal costoUnidadBase;
+
+    // Presentación de compra (p. ej. "Bolsa 25 kg": 25 KILO a $30.000), de la
+    // que sale el costo por unidad base.
+    @Column(name = "presentacion_descripcion", length = 100)
+    private String presentacionDescripcion;
+
+    @Column(name = "presentacion_cantidad", precision = 14, scale = 3)
+    private BigDecimal presentacionCantidad;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "presentacion_unidad", length = 20)
+    private UnidadMedida presentacionUnidad;
+
+    @Column(name = "presentacion_precio", precision = 12, scale = 2)
+    private BigDecimal presentacionPrecio;
+
+    /** Reventa + materia prima: cómo se vende ("Caja"). */
+    @Column(name = "venta_unidad_nombre", length = 50)
+    private String ventaUnidadNombre;
+
+    /** Reventa + materia prima: contenido de la unidad de venta en unidad base (100 g). */
+    @Column(name = "venta_unidad_contenido", precision = 14, scale = 3)
+    private BigDecimal ventaUnidadContenido;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -111,7 +152,146 @@ public class EspProducto extends BaseEntity {
         }
     }
 
+    // --- MATERIA PRIMA ---
+
+    public boolean esReventaMateriaPrima() {
+        return tipo == TipoArticulo.REVENTA_MATERIA_PRIMA;
+    }
+
+    /** Costo de una unidad de la familia (p. ej. el kilo), sin redondear. */
+    public BigDecimal costoPor(UnidadMedida unidad) {
+        return costoUnidadBase == null ? BigDecimal.ZERO : costoUnidadBase.multiply(unidad.getFactor());
+    }
+
+    /** Cantidad de la presentación de compra en unidad base (un bulto de 12 cajas de 100 g = 1200 g). */
+    public BigDecimal presentacionEnBase() {
+        return presentacionCantidad == null || presentacionUnidad == null
+                ? null : presentacionUnidad.aBase(presentacionCantidad);
+    }
+
+    /** Costo de la unidad de venta: costo por unidad base × contenido. */
+    public BigDecimal costoPorUnidadDeVenta() {
+        if (costoUnidadBase == null || ventaUnidadContenido == null) {
+            return BigDecimal.ZERO;
+        }
+        return costoUnidadBase.multiply(ventaUnidadContenido).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Reventa + materia prima: el costo es el de la unidad de venta. El precio
+     * sale del % de ganancia, salvo que se haya fijado a mano: entonces se
+     * conserva y se recalcula el %.
+     */
+    public void aplicarCostoDeVenta() {
+        if (!esReventaMateriaPrima()) {
+            return;
+        }
+        this.precioCosto = costoPorUnidadDeVenta();
+        if (precioManual) {
+            recalcularMargenDesdePrecios();
+        } else {
+            recalcularPrecioDesdeCostoYMargen();
+        }
+    }
+
+    /** Unidades enteras que se pueden vender con un stock dado (en unidad base). */
+    public long unidadesDeVentaEn(BigDecimal stockBase) {
+        if (stockBase == null || stockBase.signum() <= 0) {
+            return 0;
+        }
+        if (!esReventaMateriaPrima()) {
+            return stockBase.setScale(0, RoundingMode.FLOOR).longValue();
+        }
+        return stockBase.divide(ventaUnidadContenido, 0, RoundingMode.FLOOR).longValue();
+    }
+
+    /** Lo que queda suelto (en unidad base) después de las unidades de venta enteras. */
+    public BigDecimal sueltoEn(BigDecimal stockBase) {
+        if (!esReventaMateriaPrima() || stockBase == null || stockBase.signum() <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return stockBase.remainder(ventaUnidadContenido);
+    }
+
+    /** Stock que descuenta vender [unidades]: 1 caja = 100 g; otros tipos, 1 = 1. */
+    public BigDecimal stockParaVender(long unidades) {
+        BigDecimal cantidad = BigDecimal.valueOf(unidades);
+        return esReventaMateriaPrima() ? cantidad.multiply(ventaUnidadContenido) : cantidad;
+    }
+
     // --- GETTERS Y SETTERS ---
+
+    public boolean isPrecioManual() {
+        return precioManual;
+    }
+
+    public void setPrecioManual(boolean precioManual) {
+        this.precioManual = precioManual;
+    }
+
+    public FamiliaUnidad getFamilia() {
+        return familia;
+    }
+
+    public void setFamilia(FamiliaUnidad familia) {
+        this.familia = familia;
+    }
+
+    public BigDecimal getCostoUnidadBase() {
+        return costoUnidadBase;
+    }
+
+    public void setCostoUnidadBase(BigDecimal costoUnidadBase) {
+        this.costoUnidadBase = costoUnidadBase;
+    }
+
+    public String getPresentacionDescripcion() {
+        return presentacionDescripcion;
+    }
+
+    public void setPresentacionDescripcion(String presentacionDescripcion) {
+        this.presentacionDescripcion = presentacionDescripcion;
+    }
+
+    public BigDecimal getPresentacionCantidad() {
+        return presentacionCantidad;
+    }
+
+    public void setPresentacionCantidad(BigDecimal presentacionCantidad) {
+        this.presentacionCantidad = presentacionCantidad;
+    }
+
+    public UnidadMedida getPresentacionUnidad() {
+        return presentacionUnidad;
+    }
+
+    public void setPresentacionUnidad(UnidadMedida presentacionUnidad) {
+        this.presentacionUnidad = presentacionUnidad;
+    }
+
+    public BigDecimal getPresentacionPrecio() {
+        return presentacionPrecio;
+    }
+
+    public void setPresentacionPrecio(BigDecimal presentacionPrecio) {
+        this.presentacionPrecio = presentacionPrecio;
+    }
+
+    public String getVentaUnidadNombre() {
+        return ventaUnidadNombre;
+    }
+
+    public void setVentaUnidadNombre(String ventaUnidadNombre) {
+        this.ventaUnidadNombre = ventaUnidadNombre;
+    }
+
+    public BigDecimal getVentaUnidadContenido() {
+        return ventaUnidadContenido;
+    }
+
+    public void setVentaUnidadContenido(BigDecimal ventaUnidadContenido) {
+        this.ventaUnidadContenido = ventaUnidadContenido;
+    }
 
     public TipoArticulo getTipo() {
         return tipo;

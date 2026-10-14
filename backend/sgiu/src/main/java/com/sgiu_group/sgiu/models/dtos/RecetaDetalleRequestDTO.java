@@ -5,8 +5,9 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 public record RecetaDetalleRequestDTO(
-    @NotNull(message = "El ID de la materia prima es obligatorio")
-    Long materiaPrimaId,
+    /** Materia prima, insumo o reventa + materia prima. */
+    @NotNull(message = "Indique el ingrediente o insumo de cada fila")
+    Long articuloId,
 
     @NotNull(message = "La cantidad es obligatoria")
     @DecimalMin(value = "0.001", message = "La cantidad consumida debe ser mayor a cero")

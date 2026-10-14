@@ -60,7 +60,7 @@ class VentaServiceTest {
         EspProducto producto = new EspProducto("P1", "Producto Uno", new BigDecimal(precio.toString()));
         ArticuloStock stock = new ArticuloStock();
         stock.setEspProducto(producto);
-        stock.setCantidad(cantidad);
+        stock.setCantidad(BigDecimal.valueOf(cantidad));
         return stock;
     }
 
@@ -90,7 +90,7 @@ class VentaServiceTest {
                 .isInstanceOf(StockInsuficienteException.class)
                 .hasMessage("Stock insuficiente para Producto Uno (código P1): disponible 5, solicitado 10.");
 
-        assertThat(stock.getCantidad()).isEqualTo(5);
+        assertThat(stock.getCantidad()).isEqualByComparingTo("5");
         verify(stockRepository, never()).save(any());
         verify(ventaRepository, never()).save(any());
     }
@@ -110,7 +110,7 @@ class VentaServiceTest {
         ventaService.procesarVenta(request);
 
         // El stock se descuenta de 5 a 3
-        assertThat(stock.getCantidad()).isEqualTo(3);
+        assertThat(stock.getCantidad()).isEqualByComparingTo("3");
         verify(stockRepository).save(stock);
 
         // La venta se guarda con el total calculado (10.50 * 2 = 21.00)
@@ -143,7 +143,7 @@ class VentaServiceTest {
         EspProducto productoB = new EspProducto("P2", "Producto Dos", new BigDecimal("5.00"));
         ArticuloStock stockB = new ArticuloStock();
         stockB.setEspProducto(productoB);
-        stockB.setCantidad(20);
+        stockB.setCantidad(BigDecimal.valueOf(20));
 
         when(stockRepository.findByEspProducto_Codigo("P1")).thenReturn(Optional.of(stockA));
         when(stockRepository.findByEspProducto_Codigo("P2")).thenReturn(Optional.of(stockB));

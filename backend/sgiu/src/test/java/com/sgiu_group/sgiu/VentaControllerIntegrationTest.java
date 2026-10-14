@@ -1,14 +1,12 @@
 package com.sgiu_group.sgiu;
 
 import com.sgiu_group.sgiu.models.entities.EspProducto;
-import com.sgiu_group.sgiu.models.entities.MateriaPrima;
 import com.sgiu_group.sgiu.models.entities.Receta;
 import com.sgiu_group.sgiu.models.entities.RecetaDetalle;
 import com.sgiu_group.sgiu.models.entities.UnidadMedida;
 import com.sgiu_group.sgiu.models.entities.MovFinanciero;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
-import com.sgiu_group.sgiu.repositories.MateriaPrimaRepository;
 import com.sgiu_group.sgiu.repositories.MovFinancieroRepository;
 import com.sgiu_group.sgiu.repositories.PagoVentaRepository;
 import com.sgiu_group.sgiu.repositories.RecetaRepository;
@@ -40,8 +38,6 @@ class VentaControllerIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private MovFinancieroRepository movFinancieroRepository;
     @Autowired
-    private MateriaPrimaRepository materiaPrimaRepository;
-    @Autowired
     private RecetaRepository recetaRepository;
 
     private String venta(EspProducto producto, int cantidad) {
@@ -61,7 +57,7 @@ class VentaControllerIntegrationTest extends AbstractIntegrationTest {
 
         // Stock: 10 - 3 = 7
         assertThat(stockRepository.findByEspProducto_Codigo(idCodigo).orElseThrow().getCantidad())
-                .isEqualTo(7);
+                .isEqualByComparingTo("7");
 
         // Una venta con total = 100 * 3 = 300
         assertThat(ventaRepository.count()).isEqualTo(1);
@@ -105,7 +101,7 @@ class VentaControllerIntegrationTest extends AbstractIntegrationTest {
                         "Stock insuficiente para Poco Stock (código VTA-2): disponible 2, solicitado 5."));
 
         assertThat(stockRepository.findByEspProducto_Codigo(idCodigo).orElseThrow().getCantidad())
-                .isEqualTo(2);
+                .isEqualByComparingTo("2");
         assertThat(ventaRepository.count()).isZero();
         assertThat(movFinancieroRepository.count()).isZero();
     }
@@ -122,9 +118,9 @@ class VentaControllerIntegrationTest extends AbstractIntegrationTest {
     // --- Venta por tanda: solo se descuenta el producto final ---
 
     /** Producto elaborado con receta: 0,2 kg de harina por unidad. */
-    private MateriaPrima elaboradoConReceta(EspProducto producto, int stockHarina) {
-        MateriaPrima harina = materiaPrimaRepository.save(new MateriaPrima(
-                "VTA-HAR", "Harina", new BigDecimal("1200.00"), UnidadMedida.KILO, stockHarina, 0));
+    private EspProducto elaboradoConReceta(EspProducto producto, int stockHarina) {
+        EspProducto harina = datos.crearMateriaPrima(
+                "VTA-HAR", "Harina", new BigDecimal("1200.00"), UnidadMedida.KILO, stockHarina, 0);
         Receta receta = new Receta(producto, "Torta", null, BigDecimal.ZERO);
         receta.addDetalle(new RecetaDetalle(receta, harina, new BigDecimal("0.200"), UnidadMedida.KILO));
         recetaRepository.save(receta);
@@ -134,16 +130,16 @@ class VentaControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void crearVenta_productoConReceta_descuentaSoloElProductoFinalYNoLosInsumos() throws Exception {
         EspProducto torta = datos.crearProducto("VTA-TORTA", "Torta", new BigDecimal("7600.00"), 5, 0);
-        MateriaPrima harina = elaboradoConReceta(torta, 3);
+        EspProducto harina = elaboradoConReceta(torta, 3);
 
         mockMvc.perform(post("/api/ventas").contentType(MediaType.APPLICATION_JSON).content(venta(torta, 1)))
                 .andExpect(status().isCreated());
 
         assertThat(stockRepository.findByEspProducto_Codigo("VTA-TORTA").orElseThrow().getCantidad())
-                .isEqualTo(4);
+                .isEqualByComparingTo("4");
         // Antes: 3 -> 2 (descontaba la receta y además redondeaba 0,2 kg a 1 kg).
         // 3 kg = 3000 g (el stock se guarda en unidad base).
-        assertThat(materiaPrimaRepository.findById(harina.getId()).orElseThrow().getStockActual())
+        assertThat(stockRepository.findByEspProducto(harina).orElseThrow().getCantidad())
                 .isEqualByComparingTo("3000");
     }
 
@@ -157,7 +153,7 @@ class VentaControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isCreated());
 
         assertThat(stockRepository.findByEspProducto_Codigo("VTA-TORTA").orElseThrow().getCantidad())
-                .isEqualTo(1);
+                .isEqualByComparingTo("1");
     }
 
     @Test

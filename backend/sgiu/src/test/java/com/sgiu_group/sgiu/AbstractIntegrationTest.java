@@ -37,7 +37,6 @@ public abstract class AbstractIntegrationTest {
                 "pedidos",
                 "recetas_detalles",
                 "recetas",
-                "materias_primas",
                 "movimientos_financieros",
                 "articulos_stock",
                 "lineas_venta",

@@ -72,7 +72,7 @@ class ProductoControllerIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(productoRepository.findByCodigo("REV-0001")).isPresent();
         assertThat(stockRepository.findByEspProducto_Codigo("REV-0001"))
-                .get().extracting("cantidad").isEqualTo(10);
+                .get().extracting(a -> a.getCantidad().intValueExact()).isEqualTo(10);
     }
 
     @Test
@@ -129,7 +129,7 @@ class ProductoControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.stockMinimo").value(4));
 
         assertThat(stockRepository.findByEspProducto_Codigo("REV-0001").orElseThrow().getStockMinimo())
-                .isEqualTo(4);
+                .isEqualByComparingTo("4");
     }
 
     @Test
@@ -145,7 +145,7 @@ class ProductoControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.stockMinimo").value(7));
 
         assertThat(stockRepository.findByEspProducto_Codigo("MIN-2").orElseThrow().getStockMinimo())
-                .isEqualTo(7);
+                .isEqualByComparingTo("7");
     }
 
     @Test
@@ -211,7 +211,7 @@ class ProductoControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.stockActual").value(8));
 
         assertThat(stockRepository.findByEspProducto_Codigo("STK-1").orElseThrow().getCantidad())
-                .isEqualTo(8);
+                .isEqualByComparingTo("8");
     }
 
     @Test
