@@ -56,7 +56,7 @@ public class ProductoCostosTest extends AbstractIntegrationTest {
     @Test
     @WithMockUser
     void calculoReciprocoCostoYVentaDerivaPorcentaje() throws Exception {
-        // Costo 100 + precio a mano 125 -> $200 (a $100); el mínimo pasa a ser el % que deja: 100
+        // Costo 100 + precio a mano 125 (se guarda tal cual); el mínimo pasa a ser el % que deja: 25
         String json = """
                 {
                     "codigo": "P-RECIP-2",
@@ -71,9 +71,9 @@ public class ProductoCostosTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.precioUnitario").value(200.00))
+                .andExpect(jsonPath("$.precioUnitario").value(125.00))
                 .andExpect(jsonPath("$.modoPrecio").value("MANUAL"))
-                .andExpect(jsonPath("$.porcentajeGanancia").value(100.00));
+                .andExpect(jsonPath("$.porcentajeGanancia").value(25.00));
     }
 
     @Test

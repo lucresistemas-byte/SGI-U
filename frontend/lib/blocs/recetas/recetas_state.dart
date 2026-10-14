@@ -119,16 +119,16 @@ class RecetasState extends Equatable {
   }
 
   /// Precio resultante: costo por unidad × (1 + % ganancia), hacia arriba a
-  /// $100. Si el producto tiene precio a mano, se conserva mientras no quede
-  /// por debajo de ese mínimo. Las preparaciones base no tienen precio.
+  /// $100. Si el producto tiene precio a mano, se conserva tal cual mientras
+  /// deje el %. Las preparaciones base no tienen precio.
   double? get precioResultante {
     final c = costoPorUnidad;
     if (c == null || esPreparacionBase) return null;
     final minimo = precioMinimo(c, porcentajeGanancia);
     final p = creaProductoNuevo ? null : productoElegido;
     if (p != null && p.precioManual) {
-      final manual = redondearA100(p.precioUnitario);
-      return manual > minimo ? manual : minimo;
+      // A mano: tal cual mientras deje el %; si no, el precio del sistema.
+      return p.precioUnitario >= minimoExacto(c, porcentajeGanancia) - 0.005 ? p.precioUnitario : minimo;
     }
     return minimo;
   }

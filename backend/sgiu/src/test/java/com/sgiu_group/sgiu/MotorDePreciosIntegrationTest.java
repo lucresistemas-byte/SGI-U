@@ -167,7 +167,24 @@ class MotorDePreciosIntegrationTest extends AbstractIntegrationTest {
         enviar(put("/api/productos/editar/ELA-TOR"), "{\"precioUnitario\": 5000, \"modoPrecio\": \"MANUAL\"}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(
-                        "El precio $5000.00 deja menos del 100 % de ganancia de Torta: el mínimo es $10700.00."));
+                        "El precio $5000.00 deja menos del 100 % de ganancia de Torta: el mínimo es $10650.00."));
+    }
+
+    @Test
+    void precioAMano_seGuardaTalCual_sinRedondear() throws Exception {
+        tortaConGanache();
+
+        // Mínimo exacto con 100 %: $10.650 (el sistema lo redondearía a $10.700).
+        enviar(put("/api/productos/editar/ELA-TOR"), "{\"precioUnitario\": 10650, \"modoPrecio\": \"MANUAL\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.precioUnitario").value(10650.0));
+        enviar(put("/api/productos/editar/ELA-TOR"), "{\"precioUnitario\": 12345.50, \"modoPrecio\": \"MANUAL\"}")
+                .andExpect(jsonPath("$.precioUnitario").value(12345.5))
+                .andExpect(jsonPath("$.gananciaPesos").value(7020.5));
+        // Si la propagación lo deja por debajo, sube al precio del sistema (redondeado).
+        cambiarPrecioDelChocolate("40000");
+        assertThat(productoRepository.findByCodigo("ELA-TOR").orElseThrow().getPrecioUnitario())
+                .isEqualByComparingTo("21700");
     }
 
     @Test

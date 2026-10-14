@@ -50,6 +50,9 @@ class CostosServiceTest {
     void manual_seConservaMientrasDejeElPorcentaje_ySiNoSubeAlMinimo() {
         assertThat(costos.precioSegunModo(producto(ModoPrecio.MANUAL, "1000", "50", "2000"))).isEqualByComparingTo("2000");
         assertThat(costos.precioSegunModo(producto(ModoPrecio.MANUAL, "1500", "50", "2000"))).isEqualByComparingTo("2300");
+        // A mano: tal cual, sin redondear, si deja el %.
+        assertThat(costos.precioSegunModo(producto(ModoPrecio.MANUAL, "1000", "50", "1550.50"))).isEqualByComparingTo("1550.50");
+        assertThat(costos.precioSegunModo(producto(ModoPrecio.MANUAL, "1000", "50", "1500"))).isEqualByComparingTo("1500");
     }
 
     @Test
@@ -60,8 +63,8 @@ class CostosServiceTest {
     }
 
     @Test
-    void porcentajeQueDejaUnPrecio_redondeadoHaciaAbajo() {
-        assertThat(costos.porcentajeQueDeja(d("125"), d("100"))).isEqualByComparingTo("100");
+    void porcentajeQueDejaUnPrecio_haciaAbajo() {
+        assertThat(costos.porcentajeQueDeja(d("125"), d("100"))).isEqualByComparingTo("25");
         assertThat(costos.porcentajeQueDeja(d("1500"), d("0"))).isEqualByComparingTo("0");
     }
 }

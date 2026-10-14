@@ -97,8 +97,8 @@ class ProductoServiceTest {
         // El código enviado se ignora: lo genera el sistema.
         assertThat(resultado.codigo()).isEqualTo("REV-0007");
         assertThat(resultado.nombre()).isEqualTo("Nuevo");
-        // Precio a mano, redondeado hacia arriba a $100.
-        assertThat(resultado.precioUnitario()).isEqualByComparingTo("100.00");
+        // Precio a mano: tal cual, sin redondear.
+        assertThat(resultado.precioUnitario()).isEqualByComparingTo("15.00");
         assertThat(resultado.stockActual()).isEqualTo(5L);
         assertThat(resultado.stockMinimo()).isEqualTo(3);
         assertThat(resultado.activo()).isFalse();
@@ -155,8 +155,8 @@ class ProductoServiceTest {
         ProductoCatalogoDTO resultado = productoService.actualizarProducto("P1", dto);
 
         assertThat(producto.getNombre()).isEqualTo("Nuevo Nombre");
-        // Precio a mano ($12), redondeado hacia arriba a $100.
-        assertThat(producto.getPrecioUnitario()).isEqualByComparingTo("100.00");
+        // Precio a mano: tal cual, sin redondear.
+        assertThat(producto.getPrecioUnitario()).isEqualByComparingTo("12.00");
         assertThat(producto.getModoPrecio()).isEqualTo(com.sgiu_group.sgiu.models.entities.ModoPrecio.MANUAL);
         assertThat(producto.isActivo()).isTrue();
         assertThat(stock.getStockMinimo()).isEqualByComparingTo("5");

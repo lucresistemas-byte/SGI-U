@@ -135,21 +135,26 @@ public class CostosService {
         return total.setScale(2, RoundingMode.HALF_UP);
     }
 
-    /** Precio mínimo que deja el % de ganancia: costo × (1 + %), redondeado a $100. */
+    /** Precio que calcula el sistema con el % de ganancia: costo × (1 + %), redondeado a $100. */
     public BigDecimal precioMinimo(BigDecimal costoUnitario, BigDecimal porcentaje) {
+        return redondearA100(minimoExacto(costoUnitario, porcentaje));
+    }
+
+    /** Lo mínimo que tiene que valer un precio a mano: costo × (1 + %), sin redondear. */
+    public BigDecimal minimoExacto(BigDecimal costoUnitario, BigDecimal porcentaje) {
         BigDecimal factor = BigDecimal.ONE.add(nz(porcentaje).divide(CIEN, 6, RoundingMode.HALF_UP));
-        return redondearA100(nz(costoUnitario).multiply(factor));
+        return nz(costoUnitario).multiply(factor).setScale(2, RoundingMode.CEILING);
     }
 
     /**
-     * % de ganancia que deja un precio (redondeado a $100) sobre un costo;
+     * % de ganancia que deja un precio sobre un costo;
      * 0 sin costo. Se usa como mínimo de un precio a mano cargado sin %.
      */
     public BigDecimal porcentajeQueDeja(BigDecimal precio, BigDecimal costo) {
         if (costo == null || costo.signum() <= 0) {
             return BigDecimal.ZERO;
         }
-        return redondearA100(precio).subtract(costo).multiply(CIEN).divide(costo, 2, RoundingMode.FLOOR);
+        return precio.subtract(costo).multiply(CIEN).divide(costo, 2, RoundingMode.FLOOR);
     }
 
     /** Precio de venta según el modo del artículo, con su costo unitario ya calculado. */
@@ -157,20 +162,22 @@ public class CostosService {
         BigDecimal minimo = precioMinimo(a.getPrecioCosto(), a.getPorcentajeGanancia());
         return switch (a.getModoPrecio()) {
             case MARGEN -> minimo;
-            // El precio de Sandra se conserva mientras deje el %; si no, sube al mínimo.
-            case MANUAL -> redondearA100(a.getPrecioUnitario()).max(minimo);
+            // El precio de Sandra se conserva tal cual mientras deje el %; si
+            // no, sube al precio que calcula el sistema (redondeado).
+            case MANUAL -> nz(a.getPrecioUnitario()).compareTo(minimoExacto(a.getPrecioCosto(), a.getPorcentajeGanancia())) >= 0
+                    ? a.getPrecioUnitario() : minimo;
             case COSTO_MAS_FIJO -> redondearA100(nz(a.getPrecioCosto()).add(nz(a.getMontoFijo())));
         };
     }
 
     /**
-     * Fija un precio a mano (se redondea a $100). Tiene que dejar al menos el
+     * Fija un precio a mano, tal cual lo escribe Sandra (sin redondear). Tiene que dejar al menos el
      * % de ganancia del artículo: si no, se rechaza indicando el mínimo. El
      * costo unitario tiene que estar calculado (ver {@link #recalcular}).
      */
     public void aplicarPrecioManual(EspProducto a, BigDecimal precio) {
-        BigDecimal redondeado = redondearA100(precio);
-        BigDecimal minimo = precioMinimo(a.getPrecioCosto(), a.getPorcentajeGanancia());
+        BigDecimal redondeado = precio.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal minimo = minimoExacto(a.getPrecioCosto(), a.getPorcentajeGanancia());
         if (redondeado.signum() <= 0) {
             throw new PrecioInvalidoException("El precio debe ser un valor mayor a $0.");
         }

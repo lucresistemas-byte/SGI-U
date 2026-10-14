@@ -144,10 +144,11 @@ class _MateriaPrimaFormDialogState extends State<MateriaPrimaFormDialog> {
     final costo = costoBase * contenido;
     final manual = parseDecimal(_precioVenta.text);
     final porcentaje = parseDecimal(_porcentaje.text) ?? 0;
-    // Como el backend: hacia arriba a $100; el precio fijo no baja del mínimo del %.
-    final minimo = precioMinimo(costo, porcentaje);
-    final precio = manual == null ? minimo : redondearA100(manual);
-    final bajoMinimo = manual != null && precio < minimo;
+    // Como el backend: el precio calculado va hacia arriba a $100; el fijo
+    // queda tal cual, pero no por debajo de lo que deja el %.
+    final minimo = minimoExacto(costo, porcentaje);
+    final precio = manual ?? precioMinimo(costo, porcentaje);
+    final bajoMinimo = manual != null && precio < minimo - 0.005;
     return 'Costo por $_ventaNombreEfectivo: ${formatPesos(costo)} · '
         'Precio: ${formatPesos(precio)}${manual != null ? ' (fijo)' : ''} · '
         'Ganancia: ${formatPesos(precio - costo)}'
@@ -162,8 +163,8 @@ class _MateriaPrimaFormDialogState extends State<MateriaPrimaFormDialog> {
     final costoBase = _costoUnidadBase;
     final contenido = _ventaBase;
     if (manual == null || costoBase == null || contenido == null) return null;
-    final minimo = precioMinimo(costoBase * contenido, parseDecimal(_porcentaje.text) ?? 0);
-    return redondearA100(manual) < minimo ? 'Mínimo ${formatPesos(minimo)}' : null;
+    final minimo = minimoExacto(costoBase * contenido, parseDecimal(_porcentaje.text) ?? 0);
+    return manual < minimo - 0.005 ? 'Mínimo ${formatPesos(minimo)}' : null;
   }
 
   void _cambiarUnidad(UnidadMedida nueva) {
@@ -317,7 +318,7 @@ class _MateriaPrimaFormDialogState extends State<MateriaPrimaFormDialog> {
               decoration: const InputDecoration(
                 labelText: 'Precio fijo (opcional)',
                 prefixText: r'$ ',
-                helperText: 'Vacío: costo × (1 + %). Se redondea a \$100.',
+                helperText: 'Vacío: costo × (1 + %), redondeado a \$100.',
                 border: OutlineInputBorder(),
               ),
               validator: _validarPrecioFijo,

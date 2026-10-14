@@ -51,5 +51,8 @@ double redondearA100(double precio) {
   return ((precio - 1e-6) / 100).ceilToDouble() * 100;
 }
 
-/// Precio mínimo que deja el % de ganancia: costo × (1 + %), a $100.
-double precioMinimo(double costo, double porcentaje) => redondearA100(costo * (1 + porcentaje / 100));
+/// Precio que calcula el sistema con el % de ganancia: costo × (1 + %), a $100.
+double precioMinimo(double costo, double porcentaje) => redondearA100(minimoExacto(costo, porcentaje));
+
+/// Lo mínimo que tiene que valer un precio a mano (sin redondear): costo × (1 + %).
+double minimoExacto(double costo, double porcentaje) => costo * (1 + porcentaje / 100);

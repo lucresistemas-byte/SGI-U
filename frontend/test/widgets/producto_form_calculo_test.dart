@@ -99,7 +99,7 @@ void main() {
       // Por debajo del mínimo ($200 con 25 %) no se puede guardar.
       await tester.enterText(precioFinder, '90');
       await tester.pump();
-      expect(tester.widget<Text>(find.byKey(const Key('modo_precio_form'))).data, contains('el mínimo es \$ 200,00'));
+      expect(tester.widget<Text>(find.byKey(const Key('modo_precio_form'))).data, contains('el mínimo es \$ 125,00'));
       await tester.enterText(precioFinder, '250');
       await tester.pump();
 

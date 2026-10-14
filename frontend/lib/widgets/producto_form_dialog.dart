@@ -57,8 +57,11 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   double get _porcentaje => parseDecimal(_porcentajeController.text) ?? 0;
   double? get _precio => parseDecimal(_precioController.text);
 
-  /// Precio mínimo con el % de ganancia (hacia arriba a $100).
+  /// Precio que calcula el sistema con el % (hacia arriba a $100).
   double get _minimo => precioMinimo(_costo, _porcentaje);
+
+  /// Lo mínimo que puede valer un precio a mano: costo × (1 + %), sin redondear.
+  double get _minimoManual => minimoExacto(_costo, _porcentaje);
 
   String _texto(double v) => v % 1 == 0 ? v.toInt().toString() : v.toStringAsFixed(2);
 
@@ -135,7 +138,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   void _onPrecioVentaChanged(String val) {
     final venta = parseDecimal(val);
     if (venta == null || venta <= 0) return;
-    final manual = _costo <= 0 || redondearA100(venta) != _minimo;
+    final manual = _costo <= 0 || venta != _minimo;
     if (manual != _precioManual) setState(() => _precioManual = manual);
   }
 
@@ -146,7 +149,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     final normalized = precioText.replaceAll(',', '.');
     final precio = double.tryParse(normalized);
     // A mano: no por debajo del mínimo que deja el %.
-    return precio != null && precio > 0 && (!_precioManual || redondearA100(precio) >= _minimo);
+    return precio != null && precio > 0 && (!_precioManual || precio >= _minimoManual - 0.005);
   }
 
   bool _isStockInicialValido() {
@@ -262,10 +265,11 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   /// Ganancia por unidad en $ y %, el mínimo del % y el modo del precio.
   Widget _resumenPrecio() {
     final precio = _precio;
-    final redondeado = precio == null ? null : redondearA100(precio);
+    // A mano se guarda tal cual; calculado ya viene redondeado.
+    final redondeado = precio;
     final ganancia = redondeado == null ? null : redondeado - _costo;
     final real = _costo > 0 && ganancia != null ? ganancia / _costo * 100 : null;
-    final bajoMinimo = _precioManual && redondeado != null && redondeado < _minimo;
+    final bajoMinimo = _precioManual && redondeado != null && redondeado < _minimoManual - 0.005;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -279,9 +283,9 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
         ),
         Text(
           bajoMinimo
-              ? 'Con ${formatDecimal(_porcentaje, decimales: 2)} % de ganancia el mínimo es ${formatPesos(_minimo)}.'
+              ? 'Con ${formatDecimal(_porcentaje, decimales: 2)} % de ganancia el mínimo es ${formatPesos(_minimoManual)}.'
               : _precioManual
-                  ? 'Precio a mano: se conserva mientras deje el ${formatDecimal(_porcentaje, decimales: 2)} %; '
+                  ? 'Precio a mano: se guarda tal cual (sin redondear) mientras deje el ${formatDecimal(_porcentaje, decimales: 2)} %; '
                       'si el costo sube, sube solo al mínimo.'
                   : 'El precio sigue al costo y al %, redondeado hacia arriba a \$100.',
           key: const Key('modo_precio_form'),
