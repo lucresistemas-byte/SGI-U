@@ -94,6 +94,7 @@ class InsumosBloc extends Bloc<InsumosEvent, InsumosState> {
         cantidad: event.cantidad,
         unidad: event.unidad,
         motivo: event.motivo,
+        tipo: event.tipo,
       );
       emit(const InsumoOperacionExitosa('Stock ajustado correctamente'));
       add(const CargarInsumos());

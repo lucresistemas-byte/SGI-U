@@ -12,6 +12,7 @@ class _FakePosApi implements PosApi {
   String? stockCodigo;
   int? stockCantidad;
   String? stockMotivo;
+  String? stockTipo;
   bool getProductsCalled = false;
 
   @override
@@ -52,10 +53,11 @@ class _FakePosApi implements PosApi {
 
   @override
   Future<Product> ajustarStock(String codigo,
-      {required int cantidad, required String motivo}) async {
+      {required int cantidad, required String motivo, String? tipo}) async {
     stockCodigo = codigo;
     stockCantidad = cantidad;
     stockMotivo = motivo;
+    stockTipo = tipo;
     return Product.fromJson({
       'codigo': codigo,
       'nombre': 'Producto 1',
@@ -111,7 +113,8 @@ void main() {
     expect(fake.updateData!.containsKey('stockActual'), isFalse);
     expect(fake.stockCodigo, 'P1');
     expect(fake.stockCantidad, 5);
-    expect(fake.stockMotivo, 'Ajuste manual desde edición');
+    expect(fake.stockMotivo, 'Ajuste manual');
+    expect(fake.stockTipo, 'COMPRA');
     expect(fake.getProductsCalled, isTrue);
   });
 

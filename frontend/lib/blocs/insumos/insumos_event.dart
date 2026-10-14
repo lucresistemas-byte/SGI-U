@@ -44,15 +44,19 @@ class AjustarStockInsumoEvent extends InsumosEvent {
   final String? unidad;
   final String motivo;
 
+  /// COMPRA, AJUSTE o MERMA (null: lo decide el backend según el signo).
+  final String? tipo;
+
   const AjustarStockInsumoEvent({
     required this.id,
     required this.cantidad,
     this.unidad,
     required this.motivo,
+    this.tipo,
   });
 
   @override
-  List<Object?> get props => [id, cantidad, unidad, motivo];
+  List<Object?> get props => [id, cantidad, unidad, motivo, tipo];
 }
 
 /// Activa o desactiva un insumo (los insumos no se eliminan).

@@ -11,6 +11,7 @@ import '../models/pedido.dart';
 import '../models/cambio_precio.dart';
 import '../models/historial_precio.dart';
 import '../models/paquete.dart';
+import '../models/stock.dart';
 import 'package:intl/intl.dart';
 
 /// Contrato de operaciones POS/productos usado por PosBloc.
@@ -21,7 +22,7 @@ abstract interface class PosApi {
   Future<Product> createProduct(Map<String, dynamic> productData);
   Future<Product> updateProduct(String codigo, Map<String, dynamic> productData);
   Future<Product> ajustarStock(String codigo,
-      {required int cantidad, required String motivo});
+      {required int cantidad, required String motivo, String? tipo});
 }
 
 /// Error de la API con un mensaje listo para mostrar al usuario: en español y
@@ -328,11 +329,12 @@ class ApiService implements PosApi {
   /// Devuelve el producto actualizado (con el stock resultante).
   @override
   Future<Product> ajustarStock(String codigo,
-      {required int cantidad, required String motivo}) async {
+      {required int cantidad, required String motivo, String? tipo}) async {
     try {
       final response = await dio.put('/api/productos/stock/$codigo', data: {
         'cantidad': cantidad,
         'motivo': motivo,
+        if (tipo != null) 'tipo': tipo,
       });
       if (response.statusCode == 200) {
         avisarCambiosDePrecio(response.data);
@@ -464,6 +466,42 @@ class ApiService implements PosApi {
     }
   }
 
+  // --- STOCK Y PRODUCCIÓN ---
+  /// Produce [cantidad] de un elaborado o paquete (descuenta sus componentes).
+  /// Si algo no alcanza y no se confirmó, lanza ApiException con codigo
+  /// FALTAN_COMPONENTES y los faltantes en `datos`.
+  Future<ResultadoProduccion> producir(String codigo,
+      {required int cantidad, bool confirmarFaltantes = false, String? motivo}) async {
+    try {
+      final response = await dio.post('/api/productos/$codigo/produccion', data: {
+        'cantidad': cantidad,
+        'confirmarFaltantes': confirmarFaltantes,
+        if (motivo != null && motivo.isNotEmpty) 'motivo': motivo,
+      });
+      return ResultadoProduccion.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw ApiException.de(e, 'No se pudo registrar la producción. Intente nuevamente.');
+    }
+  }
+
+  /// Historial de stock de un artículo; por defecto, los últimos 30 días.
+  Future<List<MovimientoStock>> getMovimientosStock(String codigo,
+      {DateTime? desde, DateTime? hasta, String? tipo}) async {
+    final formato = DateFormat('yyyy-MM-dd');
+    try {
+      final response = await dio.get('/api/stock/movimientos/$codigo', queryParameters: {
+        if (desde != null) 'desde': formato.format(desde),
+        if (hasta != null) 'hasta': formato.format(hasta),
+        if (tipo != null && tipo.isNotEmpty) 'tipo': tipo,
+      });
+      return (response.data as List)
+          .map((m) => MovimientoStock.fromJson(Map<String, dynamic>.from(m as Map)))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException(mensajeDeError(e, 'No se pudo cargar el historial de stock. Intente nuevamente.'));
+    }
+  }
+
   // --- PAQUETES ---
   Future<List<Paquete>> getPaquetes() async {
     try {
@@ -574,11 +612,16 @@ class ApiService implements PosApi {
   }
 
   Future<Insumo> ajustarStockInsumo(int id,
-      {required double cantidad, String? unidad, required String motivo}) async {
+      {required double cantidad, String? unidad, required String motivo, String? tipo}) async {
     try {
       final response = await dio.post(
         '/api/materias-primas/$id/ajuste-stock',
-        data: {'cantidad': cantidad, if (unidad != null) 'unidad': unidad, 'motivo': motivo},
+        data: {
+          'cantidad': cantidad,
+          if (unidad != null) 'unidad': unidad,
+          'motivo': motivo,
+          if (tipo != null) 'tipo': tipo,
+        },
       );
       if (response.statusCode == 200) {
         avisarCambiosDePrecio(response.data);

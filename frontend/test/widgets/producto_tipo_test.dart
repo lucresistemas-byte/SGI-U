@@ -35,7 +35,7 @@ class _FakePosApi implements PosApi {
   Future<void> createSale(Map<String, dynamic> saleData) async {}
 
   @override
-  Future<Product> ajustarStock(String codigo, {required int cantidad, required String motivo}) async =>
+  Future<Product> ajustarStock(String codigo, {required int cantidad, required String motivo, String? tipo}) async =>
       throw UnimplementedError();
 }
 

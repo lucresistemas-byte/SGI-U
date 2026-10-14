@@ -12,6 +12,7 @@ import '../theme/app_colors.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/cargando_diferido.dart';
 import '../widgets/materia_prima_form_dialog.dart';
+import '../widgets/stock_historial_dialog.dart';
 
 class InsumosScreen extends StatefulWidget {
   final InsumosBloc? insumosBloc;
@@ -92,6 +93,8 @@ class _InsumosScreenState extends State<InsumosScreen> {
     final motivoCtrl = TextEditingController(text: 'Ajuste manual de stock');
     final unidades = _unidadesDeStock(insumo);
     var unidad = insumo.unidad.codigo;
+    // Tipo del movimiento; null = según el signo (compra si suma, ajuste si resta).
+    String? tipoMovimiento;
     final detalle = _detalleUnidadesVenta(insumo);
 
     showDialog(
@@ -159,6 +162,26 @@ class _InsumosScreenState extends State<InsumosScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
+                  DropdownButtonFormField<String?>(
+                    key: const Key('ajuste_tipo_dropdown'),
+                    initialValue: tipoMovimiento,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Tipo', border: OutlineInputBorder()),
+                    items: const [
+                      DropdownMenuItem<String?>(value: null, child: Text('Según la cantidad (compra si suma, ajuste si resta)')),
+                      DropdownMenuItem<String?>(value: 'COMPRA', child: Text('Compra')),
+                      DropdownMenuItem<String?>(value: 'AJUSTE', child: Text('Ajuste')),
+                      DropdownMenuItem<String?>(value: 'MERMA', child: Text('Merma (resta)')),
+                    ],
+                    onChanged: (t) => setDialogState(() => tipoMovimiento = t),
+                    validator: (t) {
+                      final cant = parseDecimal(cantidadCtrl.text) ?? 0;
+                      if (t == 'COMPRA' && cant < 0) return 'Una compra suma: use una cantidad positiva';
+                      if (t == 'MERMA' && cant > 0) return 'Una merma resta: use una cantidad negativa';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
                   TextFormField(
                     key: const Key('ajuste_motivo_input'),
                     controller: motivoCtrl,
@@ -191,6 +214,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
                   cantidad: parseDecimal(cantidadCtrl.text)!,
                   unidad: unidad,
                   motivo: motivoCtrl.text.trim(),
+                  tipo: tipoMovimiento,
                 ));
                 Navigator.of(dialogContext).pop();
               },
@@ -420,6 +444,8 @@ class _InsumosScreenState extends State<InsumosScreen> {
             rows: items.map((insumo) {
               final esBajoStock =
                   insumo.stockMinimo != null && insumo.stockActual <= insumo.stockMinimo!;
+              // Negativo: una producción confirmada con faltantes.
+              final negativo = insumo.stockActual < 0;
               // Los desactivados se ven atenuados y se pueden reactivar.
               final atenuado = insumo.activo
                   ? null
@@ -480,13 +506,21 @@ class _InsumosScreenState extends State<InsumosScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              textoEn(insumo.stockActual, insumo.unidad),
+                              textoEn(insumo.stockActual, insumo.unidad).replaceAll('-', '−'),
                               key: Key('stock_insumo_${insumo.codigo}'),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: esBajoStock ? Colors.redAccent : Colors.black87,
+                                color: negativo
+                                    ? Colors.red.shade700
+                                    : esBajoStock
+                                        ? Colors.redAccent
+                                        : Colors.black87,
                               ),
                             ),
+                            if (negativo)
+                              Text('Stock negativo',
+                                  key: Key('stock_negativo_${insumo.codigo}'),
+                                  style: TextStyle(fontSize: 11, color: Colors.red.shade700)),
                             // Cajas enteras (las que vende el POS) y lo suelto.
                             if (_detalleUnidadesVenta(insumo) != null)
                               Text(
@@ -517,6 +551,15 @@ class _InsumosScreenState extends State<InsumosScreen> {
                             key: Key('ajustar_stock_${insumo.codigo}'),
                             icon: const Icon(Icons.tune, color: Color(0xFF0284C7)),
                             onPressed: () => _mostrarDialogoAjusteStock(insumo),
+                          ),
+                        ),
+                        Tooltip(
+                          message: 'Ver historial de stock',
+                          child: IconButton(
+                            key: Key('historial_stock_${insumo.codigo}'),
+                            icon: const Icon(Icons.history, color: Color(0xFF64748B)),
+                            onPressed: () =>
+                                StockHistorialDialog.mostrar(context, codigo: insumo.codigo, nombre: insumo.nombre),
                           ),
                         ),
                         Tooltip(

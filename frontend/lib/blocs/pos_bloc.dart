@@ -68,6 +68,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
             event.codigo,
             cantidad: ajuste,
             motivo: event.stockMotivo ?? 'Ajuste manual',
+            tipo: event.stockTipo,
           );
         }
 
