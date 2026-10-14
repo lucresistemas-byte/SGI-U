@@ -5,7 +5,7 @@ import '../blocs/insumos/insumos_bloc.dart';
 import '../blocs/insumos/insumos_event.dart';
 import '../blocs/insumos/insumos_state.dart';
 import '../models/insumo.dart';
-import '../models/unidad_medida.dart';
+import '../models/unidad_stock.dart';
 import '../utils/numeros.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
@@ -64,12 +64,35 @@ class _InsumosScreenState extends State<InsumosScreen> {
     }
   }
 
-  /// Ajuste en cualquier unidad de la familia (p. ej. "2,5 kg" → 2500 g).
+  /// Unidades de ajuste: las de la familia, la presentación de compra y (reventa
+  /// + materia prima) la unidad de venta.
+  List<UnidadStock> _unidadesDeStock(Insumo insumo) => UnidadStock.opciones(
+        insumo.familia,
+        presentacionNombre: insumo.presentacionDescripcion,
+        presentacionBase: insumo.presentacionEnBase,
+        ventaNombre: insumo.ventaUnidadNombre,
+        ventaBase: insumo.esReventaMateriaPrima && insumo.ventaUnidadContenido != insumo.presentacionEnBase
+            ? insumo.ventaUnidadContenido
+            : null,
+      );
+
+  /// "36 Caja · 50 g sueltos" (solo reventa + materia prima).
+  String? _detalleUnidadesVenta(Insumo insumo) {
+    if (!insumo.esReventaMateriaPrima || insumo.stockUnidadesVenta == null) return null;
+    final suelto = insumo.stockSuelto ?? 0;
+    return '${insumo.stockUnidadesVenta} ${insumo.ventaUnidadNombre ?? ''}'
+        '${suelto > 0 ? ' · ${textoEn(suelto, insumo.familia.base)} sueltos' : ''}';
+  }
+
+  /// Ajuste en una unidad de la familia, por presentación de compra ("llegó
+  /// 1 bulto") o por unidad de venta ("3 cajas").
   void _mostrarDialogoAjusteStock(Insumo insumo) {
     final formKey = GlobalKey<FormState>();
     final cantidadCtrl = TextEditingController();
     final motivoCtrl = TextEditingController(text: 'Ajuste manual de stock');
-    var unidad = insumo.unidad;
+    final unidades = _unidadesDeStock(insumo);
+    var unidad = insumo.unidad.codigo;
+    final detalle = _detalleUnidadesVenta(insumo);
 
     showDialog(
       context: context,
@@ -82,7 +105,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           content: SizedBox(
-            width: 400,
+            width: 460,
             child: Form(
               key: formKey,
               child: Column(
@@ -90,7 +113,8 @@ class _InsumosScreenState extends State<InsumosScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Stock actual: ${textoEn(insumo.stockActual, insumo.unidad)}',
+                    'Stock actual: ${textoEn(insumo.stockActual, insumo.unidad)}'
+                    '${detalle != null ? ' ($detalle)' : ''}',
                     key: const Key('ajuste_stock_actual'),
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   ),
@@ -117,12 +141,15 @@ class _InsumosScreenState extends State<InsumosScreen> {
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: DropdownButtonFormField<UnidadMedida>(
+                        flex: 2,
+                        child: DropdownButtonFormField<String>(
                           key: const Key('ajuste_unidad_dropdown'),
                           initialValue: unidad,
+                          isExpanded: true,
                           decoration: const InputDecoration(labelText: 'Unidad', border: OutlineInputBorder()),
                           items: [
-                            for (final u in insumo.familia.unidades) DropdownMenuItem(value: u, child: Text(u.nombre)),
+                            for (final u in unidades)
+                              DropdownMenuItem(value: u.codigo, child: Text(u.nombre, overflow: TextOverflow.ellipsis)),
                           ],
                           onChanged: (u) {
                             if (u != null) setDialogState(() => unidad = u);
@@ -162,7 +189,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
                 _bloc.add(AjustarStockInsumoEvent(
                   id: insumo.id!,
                   cantidad: parseDecimal(cantidadCtrl.text)!,
-                  unidad: unidad.codigo,
+                  unidad: unidad,
                   motivo: motivoCtrl.text.trim(),
                 ));
                 Navigator.of(dialogContext).pop();
@@ -415,8 +442,22 @@ class _InsumosScreenState extends State<InsumosScreen> {
                       ],
                     ],
                   )),
-                  DataCell(Text('${_currencyFormat.format(insumo.costoUnitario)} / ${insumo.unidad.abreviatura}',
-                      key: Key('costo_insumo_${insumo.codigo}'), style: atenuado)),
+                  DataCell(Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${_currencyFormat.format(insumo.costoUnitario)} / ${insumo.unidad.abreviatura}',
+                          key: Key('costo_insumo_${insumo.codigo}'), style: atenuado),
+                      // Reventa + materia prima: costo y precio de la unidad de venta.
+                      if (insumo.esReventaMateriaPrima && insumo.precioVenta != null)
+                        Text(
+                          '${insumo.ventaUnidadNombre}: ${_currencyFormat.format(insumo.costoUnidadVenta ?? 0)}'
+                          ' → ${_currencyFormat.format(insumo.precioVenta)}${insumo.precioManual ? ' (fijo)' : ''}',
+                          key: Key('precio_venta_insumo_${insumo.codigo}'),
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        ),
+                    ],
+                  )),
                   DataCell(
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -434,13 +475,26 @@ class _InsumosScreenState extends State<InsumosScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          textoEn(insumo.stockActual, insumo.unidad),
-                          key: Key('stock_insumo_${insumo.codigo}'),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: esBajoStock ? Colors.redAccent : Colors.black87,
-                          ),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              textoEn(insumo.stockActual, insumo.unidad),
+                              key: Key('stock_insumo_${insumo.codigo}'),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: esBajoStock ? Colors.redAccent : Colors.black87,
+                              ),
+                            ),
+                            // Cajas enteras (las que vende el POS) y lo suelto.
+                            if (_detalleUnidadesVenta(insumo) != null)
+                              Text(
+                                _detalleUnidadesVenta(insumo)!,
+                                key: Key('unidades_venta_insumo_${insumo.codigo}'),
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                              ),
+                          ],
                         ),
                         if (esBajoStock) ...[
                           const SizedBox(width: 6),

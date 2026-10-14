@@ -2,9 +2,10 @@ import 'package:equatable/equatable.dart';
 import '../utils/parsers.dart';
 import 'unidad_medida.dart';
 
-/// Materia prima o insumo. Stock y costo se guardan en la unidad base de su
-/// familia (gramo, mililitro, centímetro o unidad); [unidadMedida] es la
-/// unidad en que se muestra.
+/// Artículo de Materia Prima: materia prima, insumo o reventa + materia
+/// prima (filas del catálogo único). Stock y costo se guardan en la unidad
+/// base de su familia (gramo, mililitro, centímetro o unidad); [unidadMedida]
+/// es la unidad en que se muestra.
 class Insumo extends Equatable {
   final int? id;
   final String codigo;
@@ -32,6 +33,25 @@ class Insumo extends Equatable {
   final String? presentacionUnidad;
   final double? presentacionPrecio;
 
+  // Reventa + materia prima: se vende por unidades enteras ("Caja" de 100 g).
+  final String? ventaUnidadNombre;
+
+  /// Contenido de la unidad de venta en unidad base.
+  final double? ventaUnidadContenido;
+
+  /// Unidades de venta enteras en stock (lo que ofrece el POS).
+  final int? stockUnidadesVenta;
+
+  /// Lo que queda suelto, en unidad base (p. ej. 50 g).
+  final double? stockSuelto;
+  final double? costoUnidadVenta;
+  final double? porcentajeGanancia;
+  final double? precioVenta;
+
+  /// true = el precio de venta se fijó a mano y no sigue al costo.
+  final bool precioManual;
+  final int? categoriaId;
+
   static const tipos = {
     'MATERIA_PRIMA': 'Materia prima',
     'INSUMO': 'Insumo',
@@ -39,6 +59,15 @@ class Insumo extends Equatable {
   };
 
   String get descripcionTipo => tipos[tipo] ?? tipo;
+
+  bool get esReventaMateriaPrima => tipo == 'REVENTA_MATERIA_PRIMA';
+
+  /// Cantidad de la presentación de compra en unidad base (null si no hay).
+  double? get presentacionEnBase {
+    final u = UnidadMedida.deCodigo(presentacionUnidad);
+    final c = presentacionCantidad;
+    return u == null || c == null ? null : u.aBase(c);
+  }
 
   const Insumo({
     this.id,
@@ -55,6 +84,15 @@ class Insumo extends Equatable {
     this.presentacionCantidad,
     this.presentacionUnidad,
     this.presentacionPrecio,
+    this.ventaUnidadNombre,
+    this.ventaUnidadContenido,
+    this.stockUnidadesVenta,
+    this.stockSuelto,
+    this.costoUnidadVenta,
+    this.porcentajeGanancia,
+    this.precioVenta,
+    this.precioManual = false,
+    this.categoriaId,
   }) : _costoUnidadBase = costoUnidadBase;
 
   /// Unidad para mostrar (UNIDAD si no se reconoce).
@@ -84,8 +122,19 @@ class Insumo extends Equatable {
           json['presentacionCantidad'] != null ? parseDouble(json['presentacionCantidad']) : null,
       presentacionUnidad: json['presentacionUnidad']?.toString(),
       presentacionPrecio: json['presentacionPrecio'] != null ? parseDouble(json['presentacionPrecio']) : null,
+      ventaUnidadNombre: json['ventaUnidadNombre']?.toString(),
+      ventaUnidadContenido: _doble(json['ventaUnidadContenido']),
+      stockUnidadesVenta: json['stockUnidadesVenta'] != null ? parseInt(json['stockUnidadesVenta']) : null,
+      stockSuelto: _doble(json['stockSuelto']),
+      costoUnidadVenta: _doble(json['costoUnidadVenta']),
+      porcentajeGanancia: _doble(json['porcentajeGanancia']),
+      precioVenta: _doble(json['precioVenta']),
+      precioManual: json['precioManual'] == true,
+      categoriaId: json['categoriaId'] != null ? parseInt(json['categoriaId']) : null,
     );
   }
+
+  static double? _doble(dynamic v) => v != null ? parseDouble(v) : null;
 
   Map<String, dynamic> toJson() {
     return {
@@ -103,6 +152,15 @@ class Insumo extends Equatable {
       if (presentacionCantidad != null) 'presentacionCantidad': presentacionCantidad,
       if (presentacionUnidad != null) 'presentacionUnidad': presentacionUnidad,
       if (presentacionPrecio != null) 'presentacionPrecio': presentacionPrecio,
+      if (ventaUnidadNombre != null) 'ventaUnidadNombre': ventaUnidadNombre,
+      if (ventaUnidadContenido != null) 'ventaUnidadContenido': ventaUnidadContenido,
+      if (stockUnidadesVenta != null) 'stockUnidadesVenta': stockUnidadesVenta,
+      if (stockSuelto != null) 'stockSuelto': stockSuelto,
+      if (costoUnidadVenta != null) 'costoUnidadVenta': costoUnidadVenta,
+      if (porcentajeGanancia != null) 'porcentajeGanancia': porcentajeGanancia,
+      if (precioVenta != null) 'precioVenta': precioVenta,
+      'precioManual': precioManual,
+      if (categoriaId != null) 'categoriaId': categoriaId,
     };
   }
 
@@ -132,6 +190,15 @@ class Insumo extends Equatable {
       presentacionCantidad: presentacionCantidad,
       presentacionUnidad: presentacionUnidad,
       presentacionPrecio: presentacionPrecio,
+      ventaUnidadNombre: ventaUnidadNombre,
+      ventaUnidadContenido: ventaUnidadContenido,
+      stockUnidadesVenta: stockUnidadesVenta,
+      stockSuelto: stockSuelto,
+      costoUnidadVenta: costoUnidadVenta,
+      porcentajeGanancia: porcentajeGanancia,
+      precioVenta: precioVenta,
+      precioManual: precioManual,
+      categoriaId: categoriaId,
     );
   }
 
@@ -151,5 +218,14 @@ class Insumo extends Equatable {
         presentacionCantidad,
         presentacionUnidad,
         presentacionPrecio,
+        ventaUnidadNombre,
+        ventaUnidadContenido,
+        stockUnidadesVenta,
+        stockSuelto,
+        costoUnidadVenta,
+        porcentajeGanancia,
+        precioVenta,
+        precioManual,
+        categoriaId,
       ];
 }

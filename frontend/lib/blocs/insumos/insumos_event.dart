@@ -38,7 +38,8 @@ class ActualizarInsumoEvent extends InsumosEvent {
 
 class AjustarStockInsumoEvent extends InsumosEvent {
   final int id;
-  /// En [unidad] (cualquiera de la familia; null = la unidad para mostrar).
+  /// En [unidad]: una de la familia, PRESENTACION o UNIDAD_VENTA (null = la
+  /// unidad para mostrar).
   final double cantidad;
   final String? unidad;
   final String motivo;
