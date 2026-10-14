@@ -175,7 +175,7 @@ class CatalogoUnicoIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.costoUnidadBase").value(22.5))
                 .andExpect(jsonPath("$.costoUnidadVenta").value(2250.0))
                 .andExpect(jsonPath("$.precioVenta").value(3600.0))
-                .andExpect(jsonPath("$.precioManual").value(false))
+                .andExpect(jsonPath("$.modoPrecio").value("MARGEN"))
                 .andExpect(jsonPath("$.stockActual").value(2400.0))
                 .andExpect(jsonPath("$.stockUnidadesVenta").value(24));
     }
@@ -218,7 +218,7 @@ class CatalogoUnicoIntegrationTest extends AbstractIntegrationTest {
                                 + "\"detalles\": [{\"articuloId\": " + gaseosa.getId() + ", \"cantidad\": 1}]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Gaseosa es de reventa y no se puede usar en recetas. "
-                        + "Use materias primas, insumos o reventa + materia prima."));
+                        + "Use materias primas, insumos, reventa + materia prima o preparaciones base."));
     }
 
     @Test
@@ -227,7 +227,7 @@ class CatalogoUnicoIntegrationTest extends AbstractIntegrationTest {
                 + "\"ventaUnidadUnidad\": \"GRAMO\", \"porcentajeGanancia\": 60, \"precioVenta\": 4000");
         mockMvc.perform(post("/api/materias-primas").contentType(MediaType.APPLICATION_JSON).content(alta))
                 .andExpect(jsonPath("$.precioVenta").value(4000.0))
-                .andExpect(jsonPath("$.precioManual").value(true));
+                .andExpect(jsonPath("$.modoPrecio").value("MANUAL"));
         Long id = productoRepository.findByCodigo("RMP-0001").orElseThrow().getId();
 
         // El bulto sube a $30.000: la caja cuesta $2.500 y el precio sigue en $4.000.
@@ -236,14 +236,14 @@ class CatalogoUnicoIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.costoUnidadVenta").value(2500.0))
                 .andExpect(jsonPath("$.precioVenta").value(4000.0))
-                .andExpect(jsonPath("$.precioManual").value(true))
+                .andExpect(jsonPath("$.modoPrecio").value("MANUAL"))
                 .andExpect(jsonPath("$.porcentajeGanancia").value(60.0));
 
         // Sin precio a mano vuelve a seguir al costo: $2.500 × 1,6.
         mockMvc.perform(put("/api/materias-primas/" + id).contentType(MediaType.APPLICATION_JSON)
                         .content(alta.replace("27000", "30000").replace(", \"precioVenta\": 4000", "")))
                 .andExpect(jsonPath("$.precioVenta").value(4000.0))
-                .andExpect(jsonPath("$.precioManual").value(false));
+                .andExpect(jsonPath("$.modoPrecio").value("MARGEN"));
         mockMvc.perform(put("/api/materias-primas/" + id).contentType(MediaType.APPLICATION_JSON)
                         .content(alta.replace("27000", "36000").replace(", \"precioVenta\": 4000", "")))
                 .andExpect(jsonPath("$.costoUnidadVenta").value(3000.0))
@@ -260,7 +260,7 @@ class CatalogoUnicoIntegrationTest extends AbstractIntegrationTest {
         receta.addDetalle(new RecetaDetalle(receta, caja, new BigDecimal("150"), UnidadMedida.GRAMO));
         recetaRepository.save(receta);
 
-        // Bulto a $36.000 → $30 el gramo; la caja $3.000 → $4.800; brownie: 150 g × $30 / 12 = $375 → $750.
+        // Bulto a $36.000 → $30 el gramo; la caja $3.000 → $4.800; brownie: 150 g × $30 / 12 = $375 → $750 → $800 (a $100).
         mockMvc.perform(put("/api/materias-primas/" + caja.getId()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nombre\": \"Caja de chocolate 100 g\", \"unidadMedida\": \"GRAMO\", "
                                 + "\"presentacionCantidad\": 1200, \"presentacionUnidad\": \"GRAMO\", "
@@ -272,7 +272,7 @@ class CatalogoUnicoIntegrationTest extends AbstractIntegrationTest {
 
         EspProducto actualizado = productoRepository.findByCodigo("ELA-T3").orElseThrow();
         assertThat(actualizado.getPrecioCosto()).isEqualByComparingTo("375.00");
-        assertThat(actualizado.getPrecioUnitario()).isEqualByComparingTo("750.00");
+        assertThat(actualizado.getPrecioUnitario()).isEqualByComparingTo("800.00");
     }
 
     @Test

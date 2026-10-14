@@ -26,7 +26,7 @@ void main() {
   setUp(() {
     api = _MockApi();
     registerFallbackValue(<String, dynamic>{});
-    when(() => api.getInsumos()).thenAnswer((_) async => [arroz, bolsa, etiqueta]);
+    when(() => api.getComponentesReceta()).thenAnswer((_) async => [arroz, bolsa, etiqueta]);
     when(() => api.getProducts()).thenAnswer((_) async => [
           {'codigo': 'DUL-001', 'nombre': 'Flan', 'precioUnitario': 10, 'stockActual': 1, 'activo': true}
         ]);

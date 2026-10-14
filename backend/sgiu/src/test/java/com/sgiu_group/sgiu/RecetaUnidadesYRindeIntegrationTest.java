@@ -66,7 +66,7 @@ class RecetaUnidadesYRindeIntegrationTest extends AbstractIntegrationTest {
     @Test
     void unidadesMixtas_costoTotalCostoPorPorcionYPrecio() throws Exception {
         // 200 g de harina ($240) + 150 ml de leche ($225) + 0,5 m de cinta ($100) = $565.
-        // Rinde 8 porciones: $70,63 la porción; con 100 % de ganancia, $141,26.
+        // Rinde 8 porciones: $70,63 la porción; con 100 % de ganancia, $141,26 → $200 (a $100).
         crear("8", fila(harina, "200", "GRAMO"), fila(leche, "150", "MILILITRO"), fila(cinta, "0.5", "METRO"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.costoTotal").value(565.0))
@@ -74,7 +74,8 @@ class RecetaUnidadesYRindeIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.rindeUnidad").value("porciones"))
                 .andExpect(jsonPath("$.costoPorUnidad").value(70.63))
                 .andExpect(jsonPath("$.porcentajeGanancia").value(100.0))
-                .andExpect(jsonPath("$.precioVenta").value(141.26))
+                .andExpect(jsonPath("$.precioVenta").value(200.0))
+                .andExpect(jsonPath("$.gananciaPorUnidad").value(129.37))
                 .andExpect(jsonPath("$.detalles[0].cantidadBase").value(200.0))
                 .andExpect(jsonPath("$.detalles[0].subtotal").value(240.0))
                 .andExpect(jsonPath("$.detalles[1].cantidadBase").value(150.0))
@@ -87,7 +88,7 @@ class RecetaUnidadesYRindeIntegrationTest extends AbstractIntegrationTest {
 
         EspProducto actualizado = productoRepository.findByCodigo("RUR-TORTA").orElseThrow();
         assertThat(actualizado.getPrecioCosto()).isEqualByComparingTo("70.63");
-        assertThat(actualizado.getPrecioUnitario()).isEqualByComparingTo("141.26");
+        assertThat(actualizado.getPrecioUnitario()).isEqualByComparingTo("200");
     }
 
     @Test
@@ -137,10 +138,10 @@ class RecetaUnidadesYRindeIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.costoUnidadBase").value(1.6));
 
-        // $645 / 8 = $80,63 la porción; precio $161,26.
+        // $645 / 8 = $80,63 la porción; precio $161,26 → $200.
         EspProducto actualizado = productoRepository.findByCodigo("RUR-TORTA").orElseThrow();
         assertThat(actualizado.getPrecioCosto()).isEqualByComparingTo("80.63");
-        assertThat(actualizado.getPrecioUnitario()).isEqualByComparingTo("161.26");
+        assertThat(actualizado.getPrecioUnitario()).isEqualByComparingTo("200");
     }
 
     @Test
@@ -154,6 +155,6 @@ class RecetaUnidadesYRindeIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.rindeUnidad").value("alfajores"))
                 .andExpect(jsonPath("$.costoPorUnidad").value(10.0))
-                .andExpect(jsonPath("$.precioVenta").value(20.0));
+                .andExpect(jsonPath("$.precioVenta").value(100.0));
     }
 }

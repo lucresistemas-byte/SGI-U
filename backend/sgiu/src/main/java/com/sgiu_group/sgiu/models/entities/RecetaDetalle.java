@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 
 @Entity
 @Table(name = "recetas_detalles")
@@ -46,17 +45,5 @@ public class RecetaDetalle extends BaseEntity {
         this.unidadMedida = unidadMedida != null ? unidadMedida : (articulo != null ? articulo.getUnidadMedida() : UnidadMedida.UNIDAD);
         this.cantidadBase = cantidad != null && this.unidadMedida.getFamilia() != null
                 ? this.unidadMedida.aBase(cantidad) : (cantidad != null ? cantidad : BigDecimal.ZERO);
-    }
-
-    /** Costo de la fila sin redondear: cantidad en unidad base × costo por unidad base. */
-    public BigDecimal calcularCosto() {
-        if (articulo == null || articulo.getCostoUnidadBase() == null || cantidadBase == null) {
-            return BigDecimal.ZERO;
-        }
-        return articulo.getCostoUnidadBase().multiply(cantidadBase);
-    }
-
-    public BigDecimal calcularSubtotal() {
-        return calcularCosto().setScale(2, RoundingMode.HALF_UP);
     }
 }

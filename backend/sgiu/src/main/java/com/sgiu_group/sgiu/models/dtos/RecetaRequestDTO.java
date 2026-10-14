@@ -29,6 +29,12 @@ public record RecetaRequestDTO(
     /** Qué rinde ("porciones", "unidades"); por defecto, unidades. */
     String rindeUnidad,
 
+    /**
+     * Preparación base: unidad del rinde, de peso o volumen (GRAMO, KILO,
+     * MILILITRO, LITRO): "rinde 800 g". Se ignora en los elaborados que se venden.
+     */
+    String rindeUnidadMedida,
+
     @NotEmpty(message = "La receta debe contener al menos un insumo")
     @Valid
     List<RecetaDetalleRequestDTO> detalles

@@ -207,8 +207,13 @@ void main() {
       expect(ok.pagos, isEmpty);
       expect(ok.completedSale!.paymentMethod, 'Efectivo');
       expect(ok.completedSale!.totalAmount, 300.0);
-      expect(enviado(api)['pagos'], [
+      final venta = enviado(api);
+      expect(venta['pagos'], [
         {'metodoPagoId': 1, 'monto': 300.0}
+      ]);
+      // Etapa 4: cada línea lleva el precio congelado al agregarla al carrito.
+      expect(venta['lineas'], [
+        {'codigoProducto': 'P1', 'cantidad': 2, 'precioUnitario': 150.0}
       ]);
       await bloc.close();
     });

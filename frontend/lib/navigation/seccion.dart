@@ -6,7 +6,7 @@ import '../screens/insumos_screen.dart';
 import '../screens/movimientos_screen.dart';
 import '../screens/pedidos_screen.dart';
 import '../screens/pos_screen.dart';
-import '../screens/recetas_screen.dart';
+import '../screens/recetas_y_paquetes_screen.dart';
 import '../screens/settings_screen.dart';
 
 /// Secciones de la app que se muestran dentro de AppShell, en el orden del
@@ -16,7 +16,7 @@ enum Seccion {
   movimientos(Icons.receipt_long, 'Movimientos', 'Movimientos'),
   catalogo(Icons.inventory_2, 'Productos', 'Productos'),
   insumos(Icons.egg_outlined, 'Materia Prima', 'Materia Prima / Insumos'),
-  recetas(Icons.menu_book, 'Recetas', 'Recetas de Producción'),
+  recetas(Icons.menu_book, 'Recetas y paquetes', 'Recetas y paquetes'),
   pedidos(Icons.assignment_outlined, 'Pedidos', 'Pedidos con Seña'),
   balance(Icons.balance, 'Balance', 'Balance'),
   dashboard(Icons.dashboard_outlined, 'Dashboard', 'Dashboard'),
@@ -39,7 +39,7 @@ enum Seccion {
         Seccion.movimientos => const MovimientosScreen(),
         Seccion.catalogo => const CatalogoScreen(),
         Seccion.insumos => const InsumosScreen(),
-        Seccion.recetas => const RecetasScreen(),
+        Seccion.recetas => const RecetasYPaquetesScreen(),
         Seccion.pedidos => const PedidosScreen(),
         Seccion.balance => const BalanceScreen(),
         Seccion.dashboard => const DashboardScreen(),

@@ -7,9 +7,13 @@ import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import com.sgiu_group.sgiu.repositories.CategoriaRepository;
+import com.sgiu_group.sgiu.repositories.HistorialPrecioRepository;
+import com.sgiu_group.sgiu.repositories.PaqueteArmadoRepository;
+import com.sgiu_group.sgiu.repositories.RecetaRepository;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -33,9 +37,24 @@ class ProductoServiceTest {
     private ArticuloStockRepository stockRepository;
     @Mock
     private CodigoService codigoService;
+    @Mock
+    private CategoriaRepository categoriaRepository;
+    @Mock
+    private RecetaRepository recetaRepository;
+    @Mock
+    private PaqueteArmadoRepository armadoRepository;
+    @Mock
+    private HistorialPrecioRepository historialRepository;
 
-    @InjectMocks
     private ProductoService productoService;
+
+    /** Con el CostosService real (sobre repositorios simulados): es el que calcula los precios. */
+    @BeforeEach
+    void setUp() {
+        CostosService costos = new CostosService(productoRepository, recetaRepository, armadoRepository, historialRepository);
+        productoService = new ProductoService(codigoService, productoRepository, stockRepository, categoriaRepository,
+                costos, recetaRepository);
+    }
 
     @Test
     void getCatalogo_delegaEnElRepositorio() {
@@ -78,6 +97,7 @@ class ProductoServiceTest {
         // El código enviado se ignora: lo genera el sistema.
         assertThat(resultado.codigo()).isEqualTo("REV-0007");
         assertThat(resultado.nombre()).isEqualTo("Nuevo");
+        // Precio a mano: tal cual, sin redondear.
         assertThat(resultado.precioUnitario()).isEqualByComparingTo("15.00");
         assertThat(resultado.stockActual()).isEqualTo(5L);
         assertThat(resultado.stockMinimo()).isEqualTo(3);
@@ -135,7 +155,9 @@ class ProductoServiceTest {
         ProductoCatalogoDTO resultado = productoService.actualizarProducto("P1", dto);
 
         assertThat(producto.getNombre()).isEqualTo("Nuevo Nombre");
+        // Precio a mano: tal cual, sin redondear.
         assertThat(producto.getPrecioUnitario()).isEqualByComparingTo("12.00");
+        assertThat(producto.getModoPrecio()).isEqualTo(com.sgiu_group.sgiu.models.entities.ModoPrecio.MANUAL);
         assertThat(producto.isActivo()).isTrue();
         assertThat(stock.getStockMinimo()).isEqualByComparingTo("5");
         assertThat(resultado.stockActual()).isEqualTo(4L);

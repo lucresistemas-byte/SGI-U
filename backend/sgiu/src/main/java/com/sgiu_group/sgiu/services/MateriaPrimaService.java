@@ -3,12 +3,14 @@ package com.sgiu_group.sgiu.services;
 import com.sgiu_group.sgiu.exceptions.RecetaInvalidaException;
 import com.sgiu_group.sgiu.exceptions.RecursoNoEncontradoException;
 import com.sgiu_group.sgiu.models.dtos.AjusteStockMateriaPrimaDTO;
+import com.sgiu_group.sgiu.models.dtos.CambioPrecioDTO;
 import com.sgiu_group.sgiu.models.dtos.MateriaPrimaRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.MateriaPrimaResponseDTO;
 import com.sgiu_group.sgiu.models.entities.ArticuloStock;
 import com.sgiu_group.sgiu.models.entities.Categoria;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.models.entities.FamiliaUnidad;
+import com.sgiu_group.sgiu.models.entities.ModoPrecio;
 import com.sgiu_group.sgiu.models.entities.Receta;
 import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.models.entities.UnidadMedida;
@@ -50,6 +52,7 @@ public class MateriaPrimaService {
     private final RecetaRepository recetaRepository;
     private final CategoriaRepository categoriaRepository;
     private final CodigoService codigoService;
+    private final CostosService costosService;
 
     @Transactional(readOnly = true)
     public List<MateriaPrimaResponseDTO> listarTodos(boolean incluirInactivos) {
@@ -60,6 +63,22 @@ public class MateriaPrimaService {
                 .collect(Collectors.toMap(s -> s.getEspProducto().getId(), Function.identity()));
         return articulos.stream()
                 .sorted(Comparator.comparing(EspProducto::getCodigo))
+                .map(a -> toResponseDTO(a, stocks.get(a.getId())))
+                .toList();
+    }
+
+    /** Componentes de receta activos: los de Materia Prima y las preparaciones base con rinde en peso o volumen. */
+    @Transactional(readOnly = true)
+    public List<MateriaPrimaResponseDTO> listarComponentesDeReceta() {
+        List<EspProducto> articulos = new ArrayList<>(
+                productoRepository.findByTipoInAndActivoTrue(TipoArticulo.deMateriaPrima()));
+        productoRepository.findByTipoInAndActivoTrue(java.util.Set.of(TipoArticulo.ELABORADO)).stream()
+                .filter(p -> p.esPreparacionBase() && p.getFamilia() != null)
+                .forEach(articulos::add);
+        Map<Long, ArticuloStock> stocks = stockRepository.findByEspProductoIn(articulos).stream()
+                .collect(Collectors.toMap(s -> s.getEspProducto().getId(), Function.identity()));
+        return articulos.stream()
+                .sorted(Comparator.comparing(EspProducto::getNombre, String.CASE_INSENSITIVE_ORDER))
                 .map(a -> toResponseDTO(a, stocks.get(a.getId())))
                 .toList();
     }
@@ -84,6 +103,7 @@ public class MateriaPrimaService {
         aplicarPresentacion(articulo, dto);
         aplicarVenta(articulo, dto);
         articulo = productoRepository.save(articulo);
+        costosService.propagar(articulo, null, "Alta de " + articulo.getNombre());
 
         ArticuloStock stock = new ArticuloStock(articulo, cantidadEnBase(articulo, dto.stockActual(), dto.stockUnidad()));
         stock.setStockMinimo(cantidadEnBase(articulo, dto.stockMinimo(), dto.stockUnidad()));
@@ -91,7 +111,7 @@ public class MateriaPrimaService {
 
         log.info("[MATERIA PRIMA] Creado '{}' ({}) con costo ${} por {}", articulo.getNombre(),
                 articulo.getCodigo(), articulo.getCostoUnidadBase(), articulo.getFamilia().getUnidadBase());
-        return toResponseDTO(articulo, stock);
+        return toResponseDTO(articulo, stock, List.of());
     }
 
     @Transactional
@@ -99,7 +119,7 @@ public class MateriaPrimaService {
         EspProducto articulo = buscar(id);
         ArticuloStock stock = stockDe(articulo);
 
-        BigDecimal costoAnterior = articulo.getCostoUnidadBase();
+        CostosService.Foto antes = costosService.foto(articulo);
         articulo.setNombre(dto.nombre().trim());
         UnidadMedida nueva = parseUnidad(dto.unidadMedida());
         if (nueva.getFamilia() != articulo.getFamilia()) {
@@ -117,12 +137,12 @@ public class MateriaPrimaService {
 
         EspProducto actualizado = productoRepository.save(articulo);
 
-        // Si cambió el costo, se recalculan costo y precio de los elaborados que lo usan.
-        if (costoAnterior == null || costoAnterior.compareTo(actualizado.getCostoUnidadBase()) != 0) {
-            recalcularRecetasConArticulo(actualizado.getId());
-        }
+        // Se recalculan su costo y precio y, en cascada, todo lo que lo usa
+        // (recetas en varios niveles y paquetes).
+        List<CambioPrecioDTO> cambios = costosService.propagar(actualizado, antes,
+                "Cambio en " + actualizado.getNombre() + " (" + actualizado.getCodigo() + ")");
 
-        return toResponseDTO(actualizado, stock);
+        return toResponseDTO(actualizado, stock, cambios);
     }
 
     @Transactional
@@ -159,21 +179,6 @@ public class MateriaPrimaService {
         return toResponseDTO(productoRepository.save(articulo), stockDe(articulo));
     }
 
-    /** Costo y precio de los elaborados cuyas recetas activas usan el artículo. */
-    @Transactional
-    public void recalcularRecetasConArticulo(Long articuloId) {
-        for (Receta r : recetaRepository.findRecetasByArticuloId(articuloId)) {
-            EspProducto producto = r.getProducto();
-            if (producto != null) {
-                // Costo unitario = costo de receta / rinde; precio con el % del producto.
-                r.aplicarCostoAlProducto();
-                productoRepository.save(producto);
-                log.info("[RECETA RECALCULO] Producto elaborado '{}' ({}) actualizado: nuevo costo ${}, nuevo precio venta ${}",
-                        producto.getNombre(), producto.getCodigo(), producto.getPrecioCosto(), producto.getPrecioUnitario());
-            }
-        }
-    }
-
     private EspProducto buscar(Long id) {
         return productoRepository.findById(id)
                 .filter(a -> a.getTipo().esDeMateriaPrima())
@@ -185,24 +190,20 @@ public class MateriaPrimaService {
                 .orElseGet(() -> stockRepository.save(new ArticuloStock(articulo, BigDecimal.ZERO)));
     }
 
-    /**
-     * Costo por unidad base = precio / (cantidad de la presentación en unidad
-     * base), con 4 decimales. Bolsa de 25 kg a $30.000 → $1,2000 por gramo.
-     */
+    /** Presentación de compra; el costo por unidad base lo calcula CostosService. */
     private void aplicarPresentacion(EspProducto articulo, MateriaPrimaRequestDTO dto) {
         UnidadMedida unidad = unidadDeLaFamilia(articulo, dto.presentacionUnidad(), null);
-        BigDecimal cantidadBase = unidad.aBase(dto.presentacionCantidad());
         articulo.setPresentacionDescripcion(textoOpcional(dto.presentacionDescripcion()));
         articulo.setPresentacionCantidad(dto.presentacionCantidad());
         articulo.setPresentacionUnidad(unidad);
         articulo.setPresentacionPrecio(dto.presentacionPrecio());
-        articulo.setCostoUnidadBase(dto.presentacionPrecio().divide(cantidadBase, 4, RoundingMode.HALF_UP));
+        costosService.recalcular(articulo);
     }
 
     /**
      * Reventa + materia prima: unidad de venta (por defecto, la presentación
-     * de compra), % de ganancia, precio a mano opcional y categoría. Costo y
-     * precio salen de la unidad de venta.
+     * de compra), % de ganancia, precio a mano opcional (nunca por debajo del
+     * %) y categoría. Costo y precio los calcula CostosService.
      */
     private void aplicarVenta(EspProducto articulo, MateriaPrimaRequestDTO dto) {
         if (!articulo.esReventaMateriaPrima()) {
@@ -219,16 +220,16 @@ public class MateriaPrimaService {
         articulo.setVentaUnidadNombre(nombre.length() > 50 ? nombre.substring(0, 50) : nombre);
         articulo.setVentaUnidadContenido(contenido.setScale(3, RoundingMode.HALF_UP));
         articulo.setPorcentajeGanancia(dto.porcentajeGanancia());
-        articulo.setPrecioManual(dto.precioVenta() != null);
-        if (dto.precioVenta() != null) {
-            articulo.setPrecioUnitario(dto.precioVenta().setScale(2, RoundingMode.HALF_UP));
-        }
         if (dto.categoriaId() != null) {
             Categoria categoria = categoriaRepository.findById(dto.categoriaId())
                     .orElseThrow(() -> new RecetaInvalidaException("La categoría elegida no existe."));
             articulo.setCategoria(categoria);
         }
-        articulo.aplicarCostoDeVenta();
+        articulo.setModoPrecio(ModoPrecio.MARGEN);
+        costosService.recalcular(articulo);
+        if (dto.precioVenta() != null) {
+            costosService.aplicarPrecioManual(articulo, dto.precioVenta());
+        }
     }
 
     /**
@@ -335,6 +336,10 @@ public class MateriaPrimaService {
     }
 
     public MateriaPrimaResponseDTO toResponseDTO(EspProducto a, ArticuloStock stock) {
+        return toResponseDTO(a, stock, List.of());
+    }
+
+    public MateriaPrimaResponseDTO toResponseDTO(EspProducto a, ArticuloStock stock, List<CambioPrecioDTO> cambios) {
         BigDecimal cantidad = stock != null ? stock.getCantidad() : BigDecimal.ZERO;
         boolean rmp = a.esReventaMateriaPrima();
         return new MateriaPrimaResponseDTO(
@@ -346,7 +351,7 @@ public class MateriaPrimaService {
                 a.getUnidadMedida().name(),
                 a.getFamilia().getUnidadBase().name(),
                 a.getCostoUnidadBase(),
-                a.costoPor(a.getUnidadMedida()).setScale(4, RoundingMode.HALF_UP),
+                costosService.costoPor(a, a.getUnidadMedida()),
                 a.getPresentacionDescripcion(),
                 a.getPresentacionCantidad(),
                 a.getPresentacionUnidad() != null ? a.getPresentacionUnidad().name() : null,
@@ -361,8 +366,10 @@ public class MateriaPrimaService {
                 rmp ? a.getPrecioCosto() : null,
                 rmp ? a.getPorcentajeGanancia() : null,
                 rmp ? a.getPrecioUnitario() : null,
-                rmp && a.isPrecioManual(),
-                a.getCategoria() != null ? a.getCategoria().getId() : null
+                rmp ? a.getModoPrecio().name() : null,
+                rmp ? CostosService.ganancia(a.getPrecioUnitario(), a.getPrecioCosto()) : null,
+                a.getCategoria() != null ? a.getCategoria().getId() : null,
+                cambios
         );
     }
 }

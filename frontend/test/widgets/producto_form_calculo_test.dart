@@ -78,21 +78,30 @@ void main() {
       await tester.enterText(porcentajeFinder, '50');
       await tester.pump();
 
-      // El campo de precio debe haberse calculado automáticamente en 150
+      // Precio = costo × (1 + %) = 150, hacia arriba a $100 → 200.
       final TextFormField precioField = tester.widget(precioFinder);
-      expect(precioField.controller?.text, '150');
+      expect(precioField.controller?.text, '200');
+      expect(tester.widget<Text>(find.byKey(const Key('ganancia_pesos_form'))).data, contains('100,00'));
 
-      // 2. Modificamos el Margen a 25% -> Precio debe ser 125
+      // 2. Margen 25 % -> 125 -> 200.
       await tester.enterText(porcentajeFinder, '25');
       await tester.pump();
       final TextFormField precioField2 = tester.widget(precioFinder);
-      expect(precioField2.controller?.text, '125');
+      expect(precioField2.controller?.text, '200');
 
-      // 3. Modificamos el Precio de Venta a 200 -> Margen debe recalcularse a 100%
-      await tester.enterText(precioFinder, '200');
+      // 3. Un precio distinto queda fijado a mano; el % (25) es el mínimo y no cambia.
+      await tester.enterText(precioFinder, '250');
       await tester.pump();
       final TextFormField porcentajeField = tester.widget(porcentajeFinder);
-      expect(porcentajeField.controller?.text, '100');
+      expect(porcentajeField.controller?.text, '25');
+      expect(tester.widget<Text>(find.byKey(const Key('modo_precio_form'))).data, contains('Precio a mano'));
+
+      // Por debajo del mínimo ($200 con 25 %) no se puede guardar.
+      await tester.enterText(precioFinder, '90');
+      await tester.pump();
+      expect(tester.widget<Text>(find.byKey(const Key('modo_precio_form'))).data, contains('el mínimo es \$ 125,00'));
+      await tester.enterText(precioFinder, '250');
+      await tester.pump();
 
       // 4. Completamos los campos requeridos y guardamos
       await tester.enterText(find.widgetWithText(TextFormField, 'Nombre del Producto'), 'Café Especial');
@@ -105,9 +114,10 @@ void main() {
       // Verificamos que el payload contenga costo, margen y precio de venta
       expect(fake.createdData, isNotNull);
       expect(fake.createdData!.containsKey('codigo'), isFalse);
-      expect(fake.createdData!['precioUnitario'], 200.0);
+      expect(fake.createdData!['precioUnitario'], 250.0);
+      expect(fake.createdData!['modoPrecio'], 'MANUAL');
       expect(fake.createdData!['precio_costo'], 100.0);
-      expect(fake.createdData!['porcentaje_ganancia'], 100.0);
+      expect(fake.createdData!['porcentaje_ganancia'], 25.0);
     });
 
     testWidgets(

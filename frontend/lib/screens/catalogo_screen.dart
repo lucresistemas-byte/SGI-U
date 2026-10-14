@@ -8,9 +8,15 @@ import '../widgets/producto_form_dialog.dart';
 import '../widgets/app_scaffold.dart';
 import '../theme/app_colors.dart';
 import '../widgets/cargando_diferido.dart';
+import '../services/api_service.dart';
+import '../utils/numeros.dart';
+import 'historial_precios_view.dart';
 
 class CatalogoScreen extends StatefulWidget {
-  const CatalogoScreen({super.key});
+  /// Para el historial de precios (inyectable en los tests).
+  final ApiService? apiService;
+
+  const CatalogoScreen({super.key, this.apiService});
 
   @override
   State<CatalogoScreen> createState() => _CatalogoScreenState();
@@ -83,10 +89,39 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     );
   }
 
+  /// Productos: dos pestañas, la lista y el historial de precios.
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      body: BlocListener<PosBloc, PosState>(
+      body: DefaultTabController(
+        length: 2,
+        child: Column(
+          children: [
+            const Material(
+              color: Colors.white,
+              child: TabBar(
+                key: Key('tabs_productos'),
+                labelColor: AppColors.verdeTeal,
+                indicatorColor: AppColors.verdeTeal,
+                tabs: [
+                  Tab(key: Key('tab_productos'), text: 'Productos'),
+                  Tab(key: Key('tab_historial_precios'), text: 'Historial de precios'),
+                ],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [_productos(context), HistorialPreciosView(apiService: widget.apiService)],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _productos(BuildContext context) {
+    return BlocListener<PosBloc, PosState>(
         listenWhen: (previous, current) =>
             previous.errorMessage != current.errorMessage ||
             previous.successMessage != current.successMessage,
@@ -288,6 +323,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                           DataColumn(label: Text('Categoría')),
                                           DataColumn(
                                               label: Text('Precio Unit. (\$)')),
+                                          DataColumn(label: Text('Ganancia')),
                                           DataColumn(label: Text('Stock')),
                                           DataColumn(label: Text('Estado')),
                                           DataColumn(label: Text('Acciones')),
@@ -306,9 +342,20 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                                 style: const TextStyle(
                                                     color: Color(0xFF475569)))),
                                             DataCell(Text(
-                                                '\$${producto.precioUnitario.toStringAsFixed(2)}',
+                                                '\$${producto.precioUnitario.toStringAsFixed(2)}'
+                                                '${producto.precioManual ? ' (a mano)' : ''}',
                                                 style: const TextStyle(
                                                     color: Color(0xFF475569)))),
+                                            // Ganancia por unidad en $ y en %.
+                                            DataCell(Text(
+                                                producto.gananciaPesos == null
+                                                    ? '—'
+                                                    : '${formatPesos(producto.gananciaPesos!)}'
+                                                        '${producto.porcentajeReal != null ? ' (${formatDecimal(producto.porcentajeReal!, decimales: 1)} %)' : ''}',
+                                                key: Key('ganancia_${producto.codigo}'),
+                                                style: const TextStyle(
+                                                    color: Color(0xFF15803D),
+                                                    fontWeight: FontWeight.w600))),
                                              DataCell(Text(
                                                  '${producto.stockActual} ${producto.unidadStock}',
                                                  style: const TextStyle(
@@ -323,11 +370,13 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                                   key: Key('editar_producto_${producto.codigo}'),
                                                   tooltip: producto.esReventaMateriaPrima
                                                       ? 'Se edita en Materia Prima'
-                                                      : 'Editar',
+                                                      : producto.esPaquete
+                                                          ? 'Se edita en Recetas y paquetes'
+                                                          : 'Editar',
                                                   icon: const Icon(Icons.edit,
                                                       color: Color(0xFF004D40),
                                                       size: 20),
-                                                  onPressed: producto.esReventaMateriaPrima ? null : () {
+                                                  onPressed: producto.esReventaMateriaPrima || producto.esPaquete ? null : () {
                                                     // ABRE EL MODAL DE EDICIÓN
                                                     showDialog(
                                                       context: context,
@@ -433,7 +482,6 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 }

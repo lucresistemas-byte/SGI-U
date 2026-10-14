@@ -144,10 +144,27 @@ class _MateriaPrimaFormDialogState extends State<MateriaPrimaFormDialog> {
     final costo = costoBase * contenido;
     final manual = parseDecimal(_precioVenta.text);
     final porcentaje = parseDecimal(_porcentaje.text) ?? 0;
-    final precio = manual ?? costo * (1 + porcentaje / 100);
-    final margen = manual != null && costo > 0 ? (manual - costo) / costo * 100 : porcentaje;
+    // Como el backend: el precio calculado va hacia arriba a $100; el fijo
+    // queda tal cual, pero no por debajo de lo que deja el %.
+    final minimo = minimoExacto(costo, porcentaje);
+    final precio = manual ?? precioMinimo(costo, porcentaje);
+    final bajoMinimo = manual != null && precio < minimo - 0.005;
     return 'Costo por $_ventaNombreEfectivo: ${formatPesos(costo)} · '
-        'Precio: ${formatPesos(precio)} (${formatDecimal(margen, decimales: 2)} %${manual != null ? ', fijo' : ''})';
+        'Precio: ${formatPesos(precio)}${manual != null ? ' (fijo)' : ''} · '
+        'Ganancia: ${formatPesos(precio - costo)}'
+        '${bajoMinimo ? ' · Por debajo del mínimo con ${formatDecimal(porcentaje, decimales: 2)} %: ${formatPesos(minimo)}' : ''}';
+  }
+
+  /// El precio fijo no puede dejar menos del % de ganancia.
+  String? _validarPrecioFijo(String? v) {
+    final error = _validarDecimal(v, requerido: false, positivo: true);
+    if (error != null) return error;
+    final manual = parseDecimal(v);
+    final costoBase = _costoUnidadBase;
+    final contenido = _ventaBase;
+    if (manual == null || costoBase == null || contenido == null) return null;
+    final minimo = minimoExacto(costoBase * contenido, parseDecimal(_porcentaje.text) ?? 0);
+    return manual < minimo - 0.005 ? 'Mínimo ${formatPesos(minimo)}' : null;
   }
 
   void _cambiarUnidad(UnidadMedida nueva) {
@@ -301,10 +318,10 @@ class _MateriaPrimaFormDialogState extends State<MateriaPrimaFormDialog> {
               decoration: const InputDecoration(
                 labelText: 'Precio fijo (opcional)',
                 prefixText: r'$ ',
-                helperText: 'Vacío: costo × (1 + % de ganancia).',
+                helperText: 'Vacío: costo × (1 + %), redondeado a \$100.',
                 border: OutlineInputBorder(),
               ),
-              validator: (v) => _validarDecimal(v, requerido: false, positivo: true),
+              validator: _validarPrecioFijo,
             ),
           ),
         ],

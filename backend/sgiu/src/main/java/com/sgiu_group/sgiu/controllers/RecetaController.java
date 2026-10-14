@@ -1,7 +1,9 @@
 package com.sgiu_group.sgiu.controllers;
 
+import com.sgiu_group.sgiu.models.dtos.MateriaPrimaResponseDTO;
 import com.sgiu_group.sgiu.models.dtos.RecetaRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.RecetaResponseDTO;
+import com.sgiu_group.sgiu.services.MateriaPrimaService;
 import com.sgiu_group.sgiu.services.RecetaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,16 @@ import java.util.List;
 public class RecetaController {
 
     private final RecetaService recetaService;
+    private final MateriaPrimaService materiaPrimaService;
+
+    /**
+     * Lo que se puede usar en una receta (activo): materias primas, insumos,
+     * reventa + materia prima y preparaciones base con rinde en peso o volumen.
+     */
+    @GetMapping("/componentes")
+    public ResponseEntity<List<MateriaPrimaResponseDTO>> componentes() {
+        return ResponseEntity.ok(materiaPrimaService.listarComponentesDeReceta());
+    }
 
     @GetMapping
     /** Todas las recetas: no se eliminan ni se desactivan (ver productoActivo). */

@@ -57,7 +57,7 @@ class ProductoTipoIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(post("/api/productos/crear").contentType(MediaType.APPLICATION_JSON)
                         .content(producto("T-4", "PAQUETE")))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("El tipo PAQUETE todavía no está disponible."));
+                .andExpect(jsonPath("$.error").value("Los paquetes se crean desde Recetas y paquetes."));
         mockMvc.perform(post("/api/productos/crear").contentType(MediaType.APPLICATION_JSON)
                         .content(producto("T-5", "OTRO")))
                 .andExpect(status().isBadRequest())

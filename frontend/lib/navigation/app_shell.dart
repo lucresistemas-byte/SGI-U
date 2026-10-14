@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import '../models/cambio_precio.dart';
+import '../services/api_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/cambios_precio_dialog.dart';
 import '../utils/es_mobile.dart';
 import '../widgets/marca_negocio.dart';
 import '../widgets/side_menu.dart';
@@ -42,6 +45,22 @@ class _AppShellState extends State<AppShell> {
     // Nombre y logo para el menú desde el arranque (antes el nombre recién
     // aparecía después de entrar a Configuración).
     MarcaNegocio.cargar();
+    // Después de cualquier guardado que cambie precios (en cualquier sección)
+    // se muestra el resumen "Se actualizaron N precios".
+    ApiService.cambiosDePrecio.addListener(_mostrarCambiosDePrecio);
+  }
+
+  @override
+  void dispose() {
+    ApiService.cambiosDePrecio.removeListener(_mostrarCambiosDePrecio);
+    super.dispose();
+  }
+
+  void _mostrarCambiosDePrecio() {
+    final cambios = ApiService.cambiosDePrecio.value;
+    if (cambios.isEmpty || !mounted) return;
+    ApiService.cambiosDePrecio.value = const <CambioPrecio>[];
+    CambiosPrecioDialog.mostrar(context, cambios);
   }
 
   void _seleccionar(Seccion seccion) {

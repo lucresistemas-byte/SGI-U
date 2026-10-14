@@ -4,6 +4,7 @@ import '../../models/insumo.dart';
 import '../../models/product.dart';
 import '../../models/receta.dart';
 import '../../models/receta_detalle.dart';
+import '../../utils/numeros.dart';
 
 class RecetasState extends Equatable {
   final bool isLoading;
@@ -39,6 +40,12 @@ class RecetasState extends Equatable {
   final double? rinde;
   final String rindeUnidad;
 
+  /// Preparación base: rinde en peso o volumen (GRAMO, KILO, MILILITRO, LITRO).
+  final String rindeUnidadMedida;
+
+  /// Al editar: la receta es de una preparación base.
+  final bool editaPreparacionBase;
+
   const RecetasState({
     this.isLoading = false,
     this.isSaving = false,
@@ -64,6 +71,8 @@ class RecetasState extends Equatable {
     this.costoTotal = 0.0,
     this.rinde,
     this.rindeUnidad = 'porciones',
+    this.rindeUnidadMedida = 'GRAMO',
+    this.editaPreparacionBase = false,
   });
 
   factory RecetasState.initial() => const RecetasState();
@@ -86,6 +95,20 @@ class RecetasState extends Equatable {
   /// Costo por unidad rendida (porción, alfajor...): costo total / rinde.
   double? get costoPorUnidad => rinde != null && rinde! > 0 ? costoTotal / rinde! : null;
 
+  /// La receta es de una preparación base (no se vende; rinde en peso o volumen).
+  bool get esPreparacionBase {
+    if (editingRecetaId != null) return editaPreparacionBase;
+    if (creaProductoNuevo) return nuevoProductoPreparacionBase;
+    return productoElegido?.esPreparacionBase ?? false;
+  }
+
+  Product? get productoElegido {
+    for (final p in availableProductos) {
+      if (p.codigo == selectedProductoCodigo) return p;
+    }
+    return null;
+  }
+
   /// % de ganancia del producto: el del producto nuevo o el del existente.
   double get porcentajeGanancia {
     if (creaProductoNuevo) return nuevoProductoPorcentaje ?? 0;
@@ -95,10 +118,26 @@ class RecetasState extends Equatable {
     return 0;
   }
 
-  /// Precio resultante = costo por unidad × (1 + % ganancia).
+  /// Precio resultante: costo por unidad × (1 + % ganancia), hacia arriba a
+  /// $100. Si el producto tiene precio a mano, se conserva tal cual mientras
+  /// deje el %. Las preparaciones base no tienen precio.
   double? get precioResultante {
     final c = costoPorUnidad;
-    return c == null ? null : c * (1 + porcentajeGanancia / 100);
+    if (c == null || esPreparacionBase) return null;
+    final minimo = precioMinimo(c, porcentajeGanancia);
+    final p = creaProductoNuevo ? null : productoElegido;
+    if (p != null && p.precioManual) {
+      // A mano: tal cual mientras deje el %; si no, el precio del sistema.
+      return p.precioUnitario >= minimoExacto(c, porcentajeGanancia) - 0.005 ? p.precioUnitario : minimo;
+    }
+    return minimo;
+  }
+
+  /// Ganancia por unidad en pesos: precio − costo por unidad.
+  double? get gananciaResultante {
+    final precio = precioResultante;
+    final c = costoPorUnidad;
+    return precio == null || c == null ? null : precio - c;
   }
 
   bool get creaProductoNuevo => editingRecetaId == null && usarProductoNuevo;
@@ -149,6 +188,8 @@ class RecetasState extends Equatable {
     double? rinde,
     bool quitarRinde = false,
     String? rindeUnidad,
+    String? rindeUnidadMedida,
+    bool? editaPreparacionBase,
     bool clearError = false,
     bool clearSuccess = false,
   }) {
@@ -180,6 +221,8 @@ class RecetasState extends Equatable {
       costoTotal: costoTotal ?? this.costoTotal,
       rinde: quitarRinde ? null : (rinde ?? this.rinde),
       rindeUnidad: rindeUnidad ?? this.rindeUnidad,
+      rindeUnidadMedida: rindeUnidadMedida ?? this.rindeUnidadMedida,
+      editaPreparacionBase: editaPreparacionBase ?? this.editaPreparacionBase,
     );
   }
 
@@ -209,5 +252,7 @@ class RecetasState extends Equatable {
         costoTotal,
         rinde,
         rindeUnidad,
+        rindeUnidadMedida,
+        editaPreparacionBase,
       ];
 }

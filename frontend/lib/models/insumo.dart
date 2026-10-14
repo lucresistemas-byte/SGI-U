@@ -48,8 +48,16 @@ class Insumo extends Equatable {
   final double? porcentajeGanancia;
   final double? precioVenta;
 
-  /// true = el precio de venta se fijó a mano y no sigue al costo.
-  final bool precioManual;
+  /// MARGEN (costo × (1 + %)) o MANUAL (precio fijado a mano, nunca por debajo del %).
+  final String? modoPrecio;
+
+  /// Ganancia por unidad de venta en pesos: precio − costo.
+  final double? gananciaPesos;
+
+  bool get precioManual => modoPrecio == 'MANUAL';
+
+  /// Preparación base usada como componente de receta (viene de /api/recetas/componentes).
+  bool get esPreparacionBase => tipo == 'ELABORADO';
   final int? categoriaId;
 
   static const tipos = {
@@ -58,7 +66,7 @@ class Insumo extends Equatable {
     'REVENTA_MATERIA_PRIMA': 'Reventa + materia prima',
   };
 
-  String get descripcionTipo => tipos[tipo] ?? tipo;
+  String get descripcionTipo => tipo == 'ELABORADO' ? 'Preparación base' : (tipos[tipo] ?? tipo);
 
   bool get esReventaMateriaPrima => tipo == 'REVENTA_MATERIA_PRIMA';
 
@@ -91,7 +99,8 @@ class Insumo extends Equatable {
     this.costoUnidadVenta,
     this.porcentajeGanancia,
     this.precioVenta,
-    this.precioManual = false,
+    this.modoPrecio,
+    this.gananciaPesos,
     this.categoriaId,
   }) : _costoUnidadBase = costoUnidadBase;
 
@@ -129,7 +138,8 @@ class Insumo extends Equatable {
       costoUnidadVenta: _doble(json['costoUnidadVenta']),
       porcentajeGanancia: _doble(json['porcentajeGanancia']),
       precioVenta: _doble(json['precioVenta']),
-      precioManual: json['precioManual'] == true,
+      modoPrecio: json['modoPrecio']?.toString(),
+      gananciaPesos: _doble(json['gananciaPesos']),
       categoriaId: json['categoriaId'] != null ? parseInt(json['categoriaId']) : null,
     );
   }
@@ -159,7 +169,8 @@ class Insumo extends Equatable {
       if (costoUnidadVenta != null) 'costoUnidadVenta': costoUnidadVenta,
       if (porcentajeGanancia != null) 'porcentajeGanancia': porcentajeGanancia,
       if (precioVenta != null) 'precioVenta': precioVenta,
-      'precioManual': precioManual,
+      if (modoPrecio != null) 'modoPrecio': modoPrecio,
+      if (gananciaPesos != null) 'gananciaPesos': gananciaPesos,
       if (categoriaId != null) 'categoriaId': categoriaId,
     };
   }
@@ -197,7 +208,8 @@ class Insumo extends Equatable {
       costoUnidadVenta: costoUnidadVenta,
       porcentajeGanancia: porcentajeGanancia,
       precioVenta: precioVenta,
-      precioManual: precioManual,
+      modoPrecio: modoPrecio,
+      gananciaPesos: gananciaPesos,
       categoriaId: categoriaId,
     );
   }
@@ -225,7 +237,8 @@ class Insumo extends Equatable {
         costoUnidadVenta,
         porcentajeGanancia,
         precioVenta,
-        precioManual,
+        modoPrecio,
+        gananciaPesos,
         categoriaId,
       ];
 }

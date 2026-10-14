@@ -5,6 +5,7 @@ import com.sgiu_group.sgiu.models.dtos.LineaVentaDTO;
 import com.sgiu_group.sgiu.models.dtos.PagoVentaRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.VentaResponseDTO;
 import com.sgiu_group.sgiu.exceptions.PagoInvalidoException;
+import com.sgiu_group.sgiu.exceptions.PrecioInvalidoException;
 import com.sgiu_group.sgiu.models.entities.*;
 import com.sgiu_group.sgiu.exceptions.ProductoInvalidoException;
 import com.sgiu_group.sgiu.exceptions.ProductoNoEncontradoException;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,18 +34,24 @@ public class VentaService {
     private final PagoVentaRepository pagoRepository;
     private final MovFinancieroRepository movFinancieroRepository;
     private final MetodoPagoService metodoPagoService;
+    private final HistorialPrecioRepository historialPrecioRepository;
+
+    /** Cuánto dura congelado el precio de un carrito después de un cambio de precio. */
+    private static final long HORAS_PRECIO_CONGELADO = 24;
 
     // Inyección por constructor: No requiere @Autowired manual
     public VentaService(VentaRepository ventaRepository,
                         ArticuloStockRepository stockRepository,
                         PagoVentaRepository pagoRepository,
                         MovFinancieroRepository movFinancieroRepository,
-                        MetodoPagoService metodoPagoService) {
+                        MetodoPagoService metodoPagoService,
+                        HistorialPrecioRepository historialPrecioRepository) {
         this.ventaRepository = ventaRepository;
         this.stockRepository = stockRepository;
         this.pagoRepository = pagoRepository;
         this.movFinancieroRepository = movFinancieroRepository;
         this.metodoPagoService = metodoPagoService;
+        this.historialPrecioRepository = historialPrecioRepository;
     }
 
     /**
@@ -61,6 +69,7 @@ public class VentaService {
 
         // Fase 1: validación de stock y total de todas las líneas antes de tocar nada
         Map<String, ArticuloStock> stockPorCodigo = new HashMap<>();
+        Map<LineaVentaDTO, BigDecimal> precioPorLinea = new HashMap<>();
         for (LineaVentaDTO dto : request.lineas()) {
             ArticuloStock stock = stockRepository.findByEspProducto_Codigo(dto.codigoProducto())
                 .orElseThrow(() -> new ProductoNoEncontradoException("Producto no encontrado: " + dto.codigoProducto()));
@@ -77,9 +86,10 @@ public class VentaService {
                         + "): disponible " + producto.unidadesDeVentaEn(stock.getCantidad())
                         + ", solicitado " + dto.cantidad() + ".");
             }
-            // Precio unitario real de la BD (RN05)
-            totalAcumulado = totalAcumulado.add(
-                    stock.getEspProducto().getPrecioUnitario().multiply(new BigDecimal(dto.cantidad())));
+            // Precio de la BD (RN05), salvo el congelado en el carrito.
+            BigDecimal precio = precioDeLaLinea(producto, dto);
+            precioPorLinea.put(dto, precio);
+            totalAcumulado = totalAcumulado.add(precio.multiply(new BigDecimal(dto.cantidad())));
         }
 
         // Los pagos se validan antes de tocar el stock: si no cubren el
@@ -96,6 +106,7 @@ public class VentaService {
 
             // Creamos la línea de venta
             LineaVenta linea = new LineaVenta(venta, stock.getEspProducto(), dto.cantidad());
+            linea.setPrecioUnitario(precioPorLinea.get(dto));
             venta.addLinea(linea);
         }
 
@@ -119,6 +130,26 @@ public class VentaService {
                     linea.getKey().getId(), linea.getKey().getNombre(), linea.getValue()));
         }
         return new VentaResponseDTO(ventaGuardada.getId(), totalAcumulado, cobro.vuelto(), registrados);
+    }
+
+    /**
+     * Precio que se cobra: el actual o, si el carrito trae otro, ese mismo
+     * siempre que el producto lo haya tenido hasta un cambio de las últimas
+     * 24 horas (el precio del carrito queda congelado). Si no, se rechaza.
+     */
+    private BigDecimal precioDeLaLinea(EspProducto producto, LineaVentaDTO dto) {
+        BigDecimal actual = producto.getPrecioUnitario();
+        if (dto.precioUnitario() == null || dto.precioUnitario().compareTo(actual) == 0) {
+            return actual;
+        }
+        boolean congelado = historialPrecioRepository.tuvoPrecioDesde(producto.getId(), dto.precioUnitario(),
+                LocalDateTime.now().minusHours(HORAS_PRECIO_CONGELADO));
+        if (!congelado) {
+            throw new PrecioInvalidoException("El precio de " + producto.getNombre() + " es $"
+                    + actual.toPlainString() + ", no $" + dto.precioUnitario().toPlainString()
+                    + ". Quítelo del carrito y vuelva a agregarlo.");
+        }
+        return dto.precioUnitario().setScale(2, RoundingMode.HALF_UP);
     }
 
     /** Lo que se registra por método (en orden) y el vuelto en efectivo. */

@@ -55,10 +55,15 @@ public class EspProducto extends BaseEntity {
     @Column(nullable = false)
     private boolean vendible = true;
 
-    /** true = el precio de venta se fijó a mano y no sigue al costo. */
-    @Column(name = "precio_manual", nullable = false)
-    @org.hibernate.annotations.ColumnDefault("false")
-    private boolean precioManual = false;
+    /** Cómo se calcula el precio de venta (lo calcula CostosService). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "modo_precio", nullable = false, length = 20)
+    @org.hibernate.annotations.ColumnDefault("'MARGEN'")
+    private ModoPrecio modoPrecio = ModoPrecio.MARGEN;
+
+    /** Paquetes: monto fijo que se suma al costo del armado. */
+    @Column(name = "monto_fijo", precision = 10, scale = 2)
+    private BigDecimal montoFijo;
 
     // --- Materia prima, insumo y reventa + materia prima ---
     // El stock (articulos_stock) y el costo se guardan en la unidad base de la
@@ -130,68 +135,16 @@ public class EspProducto extends BaseEntity {
         this.activo = true;
     }
 
-    // --- MÉTODOS DE CÁLCULO ---
-
-    public void recalcularMargenDesdePrecios() {
-        if (precioCosto != null && precioCosto.compareTo(BigDecimal.ZERO) > 0 && precioUnitario != null) {
-            this.porcentajeGanancia = precioUnitario.subtract(precioCosto)
-                    .divide(precioCosto, 4, RoundingMode.HALF_UP)
-                    .multiply(new BigDecimal("100"))
-                    .setScale(2, RoundingMode.HALF_UP);
-        } else {
-            this.porcentajeGanancia = BigDecimal.ZERO;
-        }
-    }
-
-    public void recalcularPrecioDesdeCostoYMargen() {
-        if (precioCosto != null && porcentajeGanancia != null) {
-            BigDecimal factor = BigDecimal.ONE.add(
-                    porcentajeGanancia.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP)
-            );
-            this.precioUnitario = precioCosto.multiply(factor).setScale(2, RoundingMode.HALF_UP);
-        }
-    }
-
     // --- MATERIA PRIMA ---
 
     public boolean esReventaMateriaPrima() {
         return tipo == TipoArticulo.REVENTA_MATERIA_PRIMA;
     }
 
-    /** Costo de una unidad de la familia (p. ej. el kilo), sin redondear. */
-    public BigDecimal costoPor(UnidadMedida unidad) {
-        return costoUnidadBase == null ? BigDecimal.ZERO : costoUnidadBase.multiply(unidad.getFactor());
-    }
-
     /** Cantidad de la presentación de compra en unidad base (un bulto de 12 cajas de 100 g = 1200 g). */
     public BigDecimal presentacionEnBase() {
         return presentacionCantidad == null || presentacionUnidad == null
                 ? null : presentacionUnidad.aBase(presentacionCantidad);
-    }
-
-    /** Costo de la unidad de venta: costo por unidad base × contenido. */
-    public BigDecimal costoPorUnidadDeVenta() {
-        if (costoUnidadBase == null || ventaUnidadContenido == null) {
-            return BigDecimal.ZERO;
-        }
-        return costoUnidadBase.multiply(ventaUnidadContenido).setScale(2, RoundingMode.HALF_UP);
-    }
-
-    /**
-     * Reventa + materia prima: el costo es el de la unidad de venta. El precio
-     * sale del % de ganancia, salvo que se haya fijado a mano: entonces se
-     * conserva y se recalcula el %.
-     */
-    public void aplicarCostoDeVenta() {
-        if (!esReventaMateriaPrima()) {
-            return;
-        }
-        this.precioCosto = costoPorUnidadDeVenta();
-        if (precioManual) {
-            recalcularMargenDesdePrecios();
-        } else {
-            recalcularPrecioDesdeCostoYMargen();
-        }
     }
 
     /** Unidades enteras que se pueden vender con un stock dado (en unidad base). */
@@ -221,12 +174,20 @@ public class EspProducto extends BaseEntity {
 
     // --- GETTERS Y SETTERS ---
 
-    public boolean isPrecioManual() {
-        return precioManual;
+    public ModoPrecio getModoPrecio() {
+        return modoPrecio;
     }
 
-    public void setPrecioManual(boolean precioManual) {
-        this.precioManual = precioManual;
+    public void setModoPrecio(ModoPrecio modoPrecio) {
+        this.modoPrecio = modoPrecio != null ? modoPrecio : ModoPrecio.MARGEN;
+    }
+
+    public BigDecimal getMontoFijo() {
+        return montoFijo;
+    }
+
+    public void setMontoFijo(BigDecimal montoFijo) {
+        this.montoFijo = montoFijo;
     }
 
     public FamiliaUnidad getFamilia() {

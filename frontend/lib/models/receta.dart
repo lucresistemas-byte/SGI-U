@@ -26,6 +26,17 @@ class Receta extends Equatable {
   final double porcentajeGanancia;
   final double precioVenta;
 
+  /// Precio − costo por unidad (null en preparaciones base).
+  final double? gananciaPorUnidad;
+  final String modoPrecio;
+
+  /// Preparación base: rinde en peso o volumen ([rindeUnidadMedida]) y no se vende.
+  final bool preparacionBase;
+  final String? rindeUnidadMedida;
+
+  /// Preparación base: costo por unidad base del rinde (por gramo, por ml).
+  final double? costoUnidadBase;
+
   const Receta({
     this.id,
     required this.espProductoCodigo,
@@ -42,6 +53,11 @@ class Receta extends Equatable {
     this.costoPorUnidad = 0,
     this.porcentajeGanancia = 0,
     this.precioVenta = 0,
+    this.gananciaPorUnidad,
+    this.modoPrecio = 'MARGEN',
+    this.preparacionBase = false,
+    this.rindeUnidadMedida,
+    this.costoUnidadBase,
   }) : costoTotal = costoTotal ?? 0.0;
 
   factory Receta.fromJson(Map<String, dynamic> json) {
@@ -74,6 +90,11 @@ class Receta extends Equatable {
       costoPorUnidad: parseDouble(json['costoPorUnidad']),
       porcentajeGanancia: parseDouble(json['porcentajeGanancia']),
       precioVenta: parseDouble(json['precioVenta']),
+      gananciaPorUnidad: json['gananciaPorUnidad'] != null ? parseDouble(json['gananciaPorUnidad']) : null,
+      modoPrecio: json['modoPrecio']?.toString() ?? 'MARGEN',
+      preparacionBase: json['preparacionBase'] == true,
+      rindeUnidadMedida: json['rindeUnidadMedida']?.toString(),
+      costoUnidadBase: json['costoUnidadBase'] != null ? parseDouble(json['costoUnidadBase']) : null,
     );
   }
 
@@ -127,6 +148,11 @@ class Receta extends Equatable {
       costoPorUnidad: costoPorUnidad,
       porcentajeGanancia: porcentajeGanancia,
       precioVenta: precioVenta,
+      gananciaPorUnidad: gananciaPorUnidad,
+      modoPrecio: modoPrecio,
+      preparacionBase: preparacionBase,
+      rindeUnidadMedida: rindeUnidadMedida,
+      costoUnidadBase: costoUnidadBase,
     );
   }
 
