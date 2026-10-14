@@ -34,15 +34,18 @@ public class ProductoService {
     }
 
     /**
-     * Catálogo con filtros opcionales: [tipo] (ver TipoArticulo) y [vendible]
-     * (true = lo que se vende en el POS: activo, de un tipo vendible y que no
-     * sea preparación base).
+     * Productos: los artículos de tipos que se venden (elaborado, reventa,
+     * reventa + materia prima, paquete). Filtros opcionales: [tipo] (ver
+     * TipoArticulo) y [vendible] (true = lo que se vende en el POS: activo, de
+     * un tipo vendible y que no sea preparación base).
      */
     @Transactional(readOnly = true)
     public List<ProductoCatalogoDTO> getCatalogo(String categoria, String tipo, Boolean vendible) {
-        List<ProductoCatalogoDTO> catalogo = (categoria != null && !categoria.isBlank())
-                ? productoRepository.obtenerCatalogoPorCategoria(categoria.trim())
-                : productoRepository.obtenerCatalogo();
+        String filtroCategoria = (categoria != null && !categoria.isBlank()) ? categoria.trim() : null;
+        List<ProductoCatalogoDTO> catalogo = productoRepository
+                .catalogoConStock(TipoArticulo.vendibles(), filtroCategoria).stream()
+                .map(fila -> aDTO((EspProducto) fila[0], (ArticuloStock) fila[1]))
+                .toList();
         TipoArticulo filtroTipo = (tipo != null && !tipo.isBlank()) ? parseTipo(tipo) : null;
         return catalogo.stream()
                 .filter(p -> filtroTipo == null || p.tipo() == filtroTipo)
@@ -70,6 +73,10 @@ public class ProductoService {
         TipoArticulo t = parseTipo(tipo);
         if (t == TipoArticulo.ELABORADO) {
             throw new ProductoInvalidoException("Los productos elaborados se crean desde Recetas.");
+        }
+        if (t.esDeMateriaPrima()) {
+            throw new ProductoInvalidoException("Los artículos de tipo " + t.name()
+                    + " se crean desde Materia Prima.");
         }
         if (t != TipoArticulo.REVENTA) {
             throw new ProductoInvalidoException("El tipo " + t.name() + " todavía no está disponible.");
@@ -146,13 +153,12 @@ public class ProductoService {
         }
         productoRepository.save(nuevoProducto);
 
-        ArticuloStock nuevoStock = new ArticuloStock();
-        nuevoStock.setEspProducto(nuevoProducto);
-        nuevoStock.setCantidad(dto.stockActual() != null ? dto.stockActual().intValue() : 0);
-        nuevoStock.setStockMinimo(dto.stockMinimo() != null ? dto.stockMinimo() : 0);
+        ArticuloStock nuevoStock = new ArticuloStock(nuevoProducto,
+                dto.stockActual() != null ? dto.stockActual() : 0L);
+        nuevoStock.setStockMinimo(BigDecimal.valueOf(dto.stockMinimo() != null ? dto.stockMinimo() : 0));
         stockRepository.save(nuevoStock);
 
-        return aDTO(nuevoProducto, nuevoStock.getCantidad(), nuevoStock.getStockMinimo());
+        return aDTO(nuevoProducto, nuevoStock);
     }
 
     @Transactional
@@ -189,11 +195,18 @@ public class ProductoService {
             }
         }
 
-        if (dto.precioUnitario() != null) {
+        // Reventa + materia prima: el costo sale de Materia Prima. Un precio
+        // distinto del actual queda fijado a mano (no sigue al costo).
+        boolean mismoPrecio = dto.precioUnitario() != null && productoExistente.getPrecioUnitario() != null
+                && dto.precioUnitario().compareTo(productoExistente.getPrecioUnitario()) == 0;
+        if (dto.precioUnitario() != null && !(productoExistente.esReventaMateriaPrima() && mismoPrecio)) {
             if (dto.precioUnitario().compareTo(new BigDecimal("0.01")) < 0) {
                 throw new IllegalArgumentException("El precio debe ser un valor mayor a $0.");
             }
             productoExistente.setPrecioUnitario(dto.precioUnitario());
+            if (productoExistente.esReventaMateriaPrima()) {
+                productoExistente.setPrecioManual(true);
+            }
             if (dto.porcentajeGanancia() == null) {
                 productoExistente.recalcularMargenDesdePrecios();
             }
@@ -219,47 +232,45 @@ public class ProductoService {
         productoRepository.save(productoExistente);
 
         ArticuloStock stock = stockRepository.findByEspProducto(productoExistente)
-                .orElseGet(() -> {
-                    ArticuloStock nuevo = new ArticuloStock();
-                    nuevo.setEspProducto(productoExistente);
-                    nuevo.setCantidad(0);
-                    nuevo.setStockMinimo(0);
-                    return nuevo;
-                });
+                .orElseGet(() -> new ArticuloStock(productoExistente, BigDecimal.ZERO));
 
         if (dto.stockMinimo() != null) {
-            stock.setStockMinimo(dto.stockMinimo());
+            // En unidades de venta (cajas para la reventa + materia prima).
+            stock.setStockMinimo(productoExistente.stockParaVender(dto.stockMinimo()));
             stockRepository.save(stock);
         }
 
-        return aDTO(productoExistente, stock.getCantidad(), stock.getStockMinimo());
+        return aDTO(productoExistente, stock);
     }
 
+    /**
+     * Ajuste en unidades de venta: unidades para elaborados y reventa; para la
+     * reventa + materia prima, unidades de venta enteras (1 caja = 100 g).
+     */
     @Transactional
     public ProductoCatalogoDTO ajustarStock(String codigo, Integer cantidad) {
         EspProducto producto = productoRepository.findByCodigo(codigo)
                 .orElseThrow(() -> new IllegalArgumentException("No se encontró un producto con el código: " + codigo));
 
         ArticuloStock stock = stockRepository.findByEspProducto(producto)
-                .orElseGet(() -> {
-                    ArticuloStock nuevo = new ArticuloStock();
-                    nuevo.setEspProducto(producto);
-                    nuevo.setCantidad(0);
-                    return nuevo;
-                });
+                .orElseGet(() -> new ArticuloStock(producto, BigDecimal.ZERO));
 
-        int nuevoStock = stock.getCantidad() + cantidad;
-        if (nuevoStock < 0) {
+        BigDecimal ajuste = producto.stockParaVender(Math.abs(cantidad.longValue()));
+        BigDecimal nuevoStock = cantidad < 0 ? stock.getCantidad().subtract(ajuste) : stock.getCantidad().add(ajuste);
+        if (nuevoStock.signum() < 0) {
             throw new IllegalArgumentException("El stock no puede quedar negativo.");
         }
 
         stock.setCantidad(nuevoStock);
         stockRepository.save(stock);
 
-        return aDTO(producto, nuevoStock, stock.getStockMinimo());
+        return aDTO(producto, stock);
     }
 
-    private static ProductoCatalogoDTO aDTO(EspProducto p, int cantidad, Integer stockMinimo) {
+    /** Stock y stock mínimo en unidades de venta enteras (cajas para la reventa + materia prima). */
+    private static ProductoCatalogoDTO aDTO(EspProducto p, ArticuloStock stock) {
+        BigDecimal cantidad = stock != null ? stock.getCantidad() : BigDecimal.ZERO;
+        BigDecimal minimo = stock != null ? stock.getStockMinimo() : BigDecimal.ZERO;
         return new ProductoCatalogoDTO(
                 p.getCodigo(),
                 p.getNombre(),
@@ -268,11 +279,13 @@ public class ProductoService {
                 p.getPorcentajeGanancia(),
                 p.getUnidadMedida(),
                 p.getCategoria() != null ? p.getCategoria().getNombre() : null,
-                Long.valueOf(cantidad),
-                stockMinimo,
+                p.unidadesDeVentaEn(cantidad),
+                (int) p.unidadesDeVentaEn(minimo),
                 p.isActivo(),
                 p.getTipo(),
-                p.isVendible()
+                p.isVendible(),
+                p.esReventaMateriaPrima() ? p.getVentaUnidadNombre() : null,
+                p.isPrecioManual()
         );
     }
 }

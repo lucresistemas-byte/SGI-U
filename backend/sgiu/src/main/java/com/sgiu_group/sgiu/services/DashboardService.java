@@ -3,6 +3,9 @@ package com.sgiu_group.sgiu.services;
 import com.sgiu_group.sgiu.exceptions.FechasInvalidasException;
 import com.sgiu_group.sgiu.exceptions.FiltroInvalidoException;
 import com.sgiu_group.sgiu.models.dtos.dashboard.*;
+import com.sgiu_group.sgiu.models.entities.ArticuloStock;
+import com.sgiu_group.sgiu.models.entities.EspProducto;
+import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
 import com.sgiu_group.sgiu.repositories.*;
 import org.springframework.stereotype.Service;
@@ -179,8 +182,7 @@ public class DashboardService {
     }
 
     private Long calcularCantidadStockBajo() {
-        return Optional.ofNullable(articuloStockRepository.countProductosConStockCritico())
-                .orElse(0L);
+        return (long) articuloStockRepository.findStockCritico(TipoArticulo.vendibles()).size();
     }
 
     private List<IngresosEgresosPorDiaDTO> generarIngresosVsEgresosPorDia(
@@ -238,15 +240,14 @@ public class DashboardService {
     }
 
     private List<ProductoStockCriticoDTO> generarProductosCriticos() {
-        List<Object[]> resultados = articuloStockRepository.findProductosConStockCriticoDetallado();
         List<ProductoStockCriticoDTO> lista = new ArrayList<>();
-        for (Object[] row : resultados) {
-            Long productoId = ((Number) row[0]).longValue();
-            String nombre = (String) row[1];
-            Integer stockActual = (Integer) row[2];
-            Integer stockMinimo = (Integer) row[3];
+        // En unidades de venta (cajas enteras para la reventa + materia prima).
+        for (ArticuloStock a : articuloStockRepository.findStockCritico(TipoArticulo.vendibles())) {
+            EspProducto p = a.getEspProducto();
+            int stockActual = (int) p.unidadesDeVentaEn(a.getCantidad());
+            int stockMinimo = (int) p.unidadesDeVentaEn(a.getStockMinimo());
             String estado = stockActual == 0 ? "AGOTADO" : "BAJO";
-            lista.add(new ProductoStockCriticoDTO(productoId, nombre, stockActual, stockMinimo, estado));
+            lista.add(new ProductoStockCriticoDTO(p.getId(), p.getNombre(), stockActual, stockMinimo, estado));
         }
         return lista;
     }

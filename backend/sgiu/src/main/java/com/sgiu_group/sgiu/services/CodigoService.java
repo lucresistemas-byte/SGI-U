@@ -3,7 +3,6 @@ package com.sgiu_group.sgiu.services;
 import com.sgiu_group.sgiu.models.entities.SecuenciaCodigo;
 import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
-import com.sgiu_group.sgiu.repositories.MateriaPrimaRepository;
 import com.sgiu_group.sgiu.repositories.SecuenciaCodigoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -25,7 +24,6 @@ public class CodigoService {
 
     private final SecuenciaCodigoRepository secuencias;
     private final EspProductoRepository productos;
-    private final MateriaPrimaRepository materiasPrimas;
     private final PlatformTransactionManager transactionManager;
 
     /**
@@ -42,7 +40,7 @@ public class CodigoService {
         do {
             secuencia.setUltimo(secuencia.getUltimo() + 1);
             codigo = String.format("%s-%04d", prefijo, secuencia.getUltimo());
-        } while (productos.existsByCodigo(codigo) || materiasPrimas.existsByCodigo(codigo));
+        } while (productos.existsByCodigo(codigo));
         return codigo;
     }
 

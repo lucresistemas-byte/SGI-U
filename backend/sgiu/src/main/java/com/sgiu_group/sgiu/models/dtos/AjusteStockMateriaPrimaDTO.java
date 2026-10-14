@@ -4,12 +4,15 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
-/** Ajuste de stock (positivo suma, negativo resta) en cualquier unidad de la familia. */
-public record AjusteStockInsumoDTO(
+/**
+ * Ajuste de stock (positivo suma, negativo resta). La unidad puede ser una de
+ * la familia, PRESENTACION ("llegó 1 bulto") o UNIDAD_VENTA ("3 cajas").
+ */
+public record AjusteStockMateriaPrimaDTO(
     @NotNull(message = "La cantidad es obligatoria")
     BigDecimal cantidad,
 
-    /** Por defecto, la unidad para mostrar del insumo. */
+    /** Por defecto, la unidad para mostrar. */
     String unidad,
 
     @NotBlank(message = "El motivo del ajuste es obligatorio")

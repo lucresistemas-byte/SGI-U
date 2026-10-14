@@ -7,7 +7,9 @@ import com.sgiu_group.sgiu.models.entities.LineaVenta;
 import com.sgiu_group.sgiu.models.entities.MetodoPago;
 import com.sgiu_group.sgiu.models.entities.MovFinanciero;
 import com.sgiu_group.sgiu.models.entities.PagoVenta;
+import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
+import com.sgiu_group.sgiu.models.entities.UnidadMedida;
 import com.sgiu_group.sgiu.models.entities.Venta;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
@@ -20,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -70,12 +73,66 @@ public class TestDataFactory {
         EspProducto producto = new EspProducto(codigo, nombre, precio);
         productoRepository.save(producto);
 
-        ArticuloStock stock = new ArticuloStock();
-        stock.setEspProducto(producto);
-        stock.setCantidad(cantidadStock);
-        stock.setStockMinimo(stockMinimo);
+        ArticuloStock stock = new ArticuloStock(producto, cantidadStock);
+        stock.setStockMinimo(BigDecimal.valueOf(stockMinimo));
         stockRepository.save(stock);
         return producto;
+    }
+
+    /**
+     * Materia prima con costo, stock y stock mínimo expresados en [unidad]
+     * (p. ej. $1000 el kilo y 10 kilos): se guardan en unidad base (1 por
+     * gramo, 10000 g). La presentación de compra es 1 [unidad] a ese costo.
+     */
+    public EspProducto crearMateriaPrima(String codigo, String nombre, BigDecimal costoPorUnidad,
+                                         UnidadMedida unidad, int stock, int stockMinimo) {
+        return crearArticuloDeMateriaPrima(TipoArticulo.MATERIA_PRIMA, codigo, nombre, costoPorUnidad, unidad,
+                stock, stockMinimo);
+    }
+
+    public EspProducto crearArticuloDeMateriaPrima(TipoArticulo tipo, String codigo, String nombre,
+                                                   BigDecimal costoPorUnidad, UnidadMedida unidad,
+                                                   int stock, int stockMinimo) {
+        EspProducto articulo = new EspProducto(codigo, nombre, BigDecimal.ZERO);
+        articulo.setTipo(tipo);
+        articulo.setFamilia(unidad.getFamilia());
+        articulo.setUnidadMedida(unidad);
+        articulo.setCostoUnidadBase(costoPorUnidad.divide(unidad.getFactor(), 4, RoundingMode.HALF_UP));
+        articulo.setPresentacionCantidad(BigDecimal.ONE);
+        articulo.setPresentacionUnidad(unidad);
+        articulo.setPresentacionPrecio(costoPorUnidad);
+        productoRepository.save(articulo);
+
+        ArticuloStock articuloStock = new ArticuloStock(articulo, unidad.aBase(BigDecimal.valueOf(stock)));
+        articuloStock.setStockMinimo(unidad.aBase(BigDecimal.valueOf(stockMinimo)));
+        stockRepository.save(articuloStock);
+        return articulo;
+    }
+
+    /**
+     * Reventa + materia prima por peso: se compra [presentacionGramos] a
+     * [precioPresentacion] y se vende por [ventaUnidad] de [contenidoGramos],
+     * con [porcentaje] de ganancia. Stock en gramos.
+     */
+    public EspProducto crearReventaMateriaPrima(String codigo, String nombre, int presentacionGramos,
+                                                BigDecimal precioPresentacion, String ventaUnidad,
+                                                int contenidoGramos, BigDecimal porcentaje, int stockGramos) {
+        EspProducto articulo = new EspProducto(codigo, nombre, BigDecimal.ZERO);
+        articulo.setTipo(TipoArticulo.REVENTA_MATERIA_PRIMA);
+        articulo.setFamilia(UnidadMedida.GRAMO.getFamilia());
+        articulo.setUnidadMedida(UnidadMedida.GRAMO);
+        articulo.setPresentacionCantidad(BigDecimal.valueOf(presentacionGramos));
+        articulo.setPresentacionUnidad(UnidadMedida.GRAMO);
+        articulo.setPresentacionPrecio(precioPresentacion);
+        articulo.setCostoUnidadBase(precioPresentacion.divide(BigDecimal.valueOf(presentacionGramos), 4, RoundingMode.HALF_UP));
+        articulo.setVentaUnidadNombre(ventaUnidad);
+        articulo.setVentaUnidadContenido(BigDecimal.valueOf(contenidoGramos).setScale(3));
+        articulo.setPorcentajeGanancia(porcentaje);
+        articulo.aplicarCostoDeVenta();
+        productoRepository.save(articulo);
+        // Con 3 decimales, como en la base.
+        stockRepository.save(new ArticuloStock(articulo, BigDecimal.valueOf(stockGramos).setScale(3)));
+        return articulo;
     }
 
     /** Producto ELABORADO (vendible = false: preparación base). */

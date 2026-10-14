@@ -87,7 +87,7 @@ class Receta extends Equatable {
       'costosAdicionales': costosAdicionales,
       'costoTotal': costoTotal,
       'detalles': detalles.map((d) => {
-        'materiaPrimaId': d.materiaPrimaId,
+        'articuloId': d.articuloId,
         'cantidad': d.cantidad,
         'unidadMedida': d.unidadMedida,
       }).toList(),

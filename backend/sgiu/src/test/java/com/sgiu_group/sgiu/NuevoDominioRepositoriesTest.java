@@ -1,5 +1,6 @@
 package com.sgiu_group.sgiu;
 
+import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.repositories.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,8 +18,6 @@ public class NuevoDominioRepositoriesTest extends AbstractIntegrationTest {
     @Autowired
     private EspProductoRepository espProductoRepository;
 
-    @Autowired
-    private MateriaPrimaRepository materiaPrimaRepository;
 
     @Autowired
     private RecetaRepository recetaRepository;
@@ -31,7 +30,6 @@ public class NuevoDominioRepositoriesTest extends AbstractIntegrationTest {
         assertNotNull(categoriaRepository);
         assertNotNull(configuracionNegocioRepository);
         assertNotNull(espProductoRepository);
-        assertNotNull(materiaPrimaRepository);
         assertNotNull(recetaRepository);
         assertNotNull(pedidoRepository);
     }

@@ -1,10 +1,10 @@
 package com.sgiu_group.sgiu;
 
-import com.sgiu_group.sgiu.models.entities.MateriaPrima;
+import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.models.entities.Receta;
 import com.sgiu_group.sgiu.models.entities.RecetaDetalle;
 import com.sgiu_group.sgiu.models.entities.UnidadMedida;
-import com.sgiu_group.sgiu.repositories.MateriaPrimaRepository;
+import com.sgiu_group.sgiu.repositories.EspProductoRepository;
 import com.sgiu_group.sgiu.repositories.RecetaRepository;
 import com.sgiu_group.sgiu.support.TestDataFactory;
 import org.junit.jupiter.api.Test;
@@ -29,14 +29,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MateriaPrimaUnidadesIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
-    private MateriaPrimaRepository repository;
+    private EspProductoRepository repository;
     @Autowired
     private RecetaRepository recetaRepository;
     @Autowired
     private TestDataFactory datos;
 
     private ResultActions crear(String json) throws Exception {
-        return mockMvc.perform(post("/api/insumos").contentType(MediaType.APPLICATION_JSON).content(json));
+        return mockMvc.perform(post("/api/materias-primas").contentType(MediaType.APPLICATION_JSON).content(json));
     }
 
     private static String insumo(String nombre, String unidad, String presentacion, String cantidad,
@@ -88,19 +88,19 @@ class MateriaPrimaUnidadesIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void ajusteDeStock_enCualquierUnidadDeLaFamilia() throws Exception {
-        MateriaPrima harina = repository.save(new MateriaPrima("MPU-1", "Harina", new BigDecimal("1200"), UnidadMedida.KILO, 1, 0));
+        EspProducto harina = datos.crearMateriaPrima("MPU-1", "Harina", new BigDecimal("1200"), UnidadMedida.KILO, 1, 0);
 
-        mockMvc.perform(post("/api/insumos/" + harina.getId() + "/ajuste-stock").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/materias-primas/" + harina.getId() + "/ajuste-stock").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"cantidad\": 2.5, \"unidad\": \"KILO\", \"motivo\": \"Compra\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stockActual").value(3500.0));
-        mockMvc.perform(post("/api/insumos/" + harina.getId() + "/ajuste-stock").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/materias-primas/" + harina.getId() + "/ajuste-stock").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"cantidad\": -500, \"unidad\": \"GRAMO\", \"motivo\": \"Merma\"}"))
                 .andExpect(jsonPath("$.stockActual").value(3000.0));
-        mockMvc.perform(post("/api/insumos/" + harina.getId() + "/ajuste-stock").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/materias-primas/" + harina.getId() + "/ajuste-stock").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"cantidad\": 1, \"unidad\": \"LITRO\", \"motivo\": \"x\"}"))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(post("/api/insumos/" + harina.getId() + "/ajuste-stock").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/materias-primas/" + harina.getId() + "/ajuste-stock").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"cantidad\": -4, \"unidad\": \"KILO\", \"motivo\": \"x\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(
@@ -113,9 +113,9 @@ class MateriaPrimaUnidadesIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void cambiarLaUnidadParaMostrar_dentroDeLaFamilia_sePermiteConStock() throws Exception {
-        MateriaPrima harina = repository.save(new MateriaPrima("MPU-2", "Harina", new BigDecimal("1000"), UnidadMedida.KILO, 3, 0));
+        EspProducto harina = datos.crearMateriaPrima("MPU-2", "Harina", new BigDecimal("1000"), UnidadMedida.KILO, 3, 0);
 
-        mockMvc.perform(put("/api/insumos/" + harina.getId()).contentType(MediaType.APPLICATION_JSON).content(editar("GRAMO")))
+        mockMvc.perform(put("/api/materias-primas/" + harina.getId()).contentType(MediaType.APPLICATION_JSON).content(editar("GRAMO")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unidadMedida").value("GRAMO"))
                 .andExpect(jsonPath("$.stockActual").value(3000.0));
@@ -123,25 +123,25 @@ class MateriaPrimaUnidadesIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void cambiarDeFamilia_conStockOEnRecetaActiva_devuelve400() throws Exception {
-        MateriaPrima conStock = repository.save(new MateriaPrima("MPU-3", "Harina", new BigDecimal("1000"), UnidadMedida.KILO, 3, 0));
-        mockMvc.perform(put("/api/insumos/" + conStock.getId()).contentType(MediaType.APPLICATION_JSON).content(editar("LITRO")))
+        EspProducto conStock = datos.crearMateriaPrima("MPU-3", "Harina", new BigDecimal("1000"), UnidadMedida.KILO, 3, 0);
+        mockMvc.perform(put("/api/materias-primas/" + conStock.getId()).contentType(MediaType.APPLICATION_JSON).content(editar("LITRO")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("No se puede pasar Harina de peso a volumen porque tiene stock "
-                        + "(3 kg). Lleve el stock a 0 con un ajuste o cree un insumo nuevo."));
+                        + "(3 kg). Lleve el stock a 0 con un ajuste o cree un artículo nuevo."));
 
-        MateriaPrima enReceta = repository.save(new MateriaPrima("MPU-4", "Harina", new BigDecimal("1000"), UnidadMedida.KILO, 0, 0));
+        EspProducto enReceta = datos.crearMateriaPrima("MPU-4", "Harina", new BigDecimal("1000"), UnidadMedida.KILO, 0, 0);
         Receta receta = new Receta(datos.crearElaborado("MPU-T", "Torta", new BigDecimal("100"), 0, true),
                 "Torta base", null, BigDecimal.ZERO);
         receta.addDetalle(new RecetaDetalle(receta, enReceta, new BigDecimal("0.2"), UnidadMedida.KILO));
         recetaRepository.save(receta);
-        mockMvc.perform(put("/api/insumos/" + enReceta.getId()).contentType(MediaType.APPLICATION_JSON).content(editar("LITRO")))
+        mockMvc.perform(put("/api/materias-primas/" + enReceta.getId()).contentType(MediaType.APPLICATION_JSON).content(editar("LITRO")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("No se puede pasar Harina de peso a volumen porque se usa en "
-                        + "recetas activas (Torta base). Lleve el stock a 0 con un ajuste o cree un insumo nuevo."));
+                        + "recetas activas (Torta base). Lleve el stock a 0 con un ajuste o cree un artículo nuevo."));
 
         // Sin stock ni recetas, sí se puede.
-        MateriaPrima libre = repository.save(new MateriaPrima("MPU-5", "Harina", new BigDecimal("1000"), UnidadMedida.KILO, 0, 0));
-        mockMvc.perform(put("/api/insumos/" + libre.getId()).contentType(MediaType.APPLICATION_JSON).content(editar("LITRO")))
+        EspProducto libre = datos.crearMateriaPrima("MPU-5", "Harina", new BigDecimal("1000"), UnidadMedida.KILO, 0, 0);
+        mockMvc.perform(put("/api/materias-primas/" + libre.getId()).contentType(MediaType.APPLICATION_JSON).content(editar("LITRO")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.familia").value("VOLUMEN"));
         assertThat(repository.findById(libre.getId()).orElseThrow().getUnidadMedida()).isEqualTo(UnidadMedida.LITRO);

@@ -17,6 +17,6 @@ public interface RecetaRepository extends JpaRepository<Receta, Long> {
     Optional<Receta> findByProducto(EspProducto producto);
     List<Receta> findByActivoTrue();
 
-    @Query("SELECT DISTINCT r FROM Receta r JOIN r.detalles d WHERE d.materiaPrima.id = :materiaPrimaId AND r.activo = true")
-    List<Receta> findRecetasByMateriaPrimaId(@Param("materiaPrimaId") Long materiaPrimaId);
+    @Query("SELECT DISTINCT r FROM Receta r JOIN r.detalles d WHERE d.articulo.id = :articuloId AND r.activo = true")
+    List<Receta> findRecetasByArticuloId(@Param("articuloId") Long articuloId);
 }

@@ -22,7 +22,7 @@ class InsumosBloc extends Bloc<InsumosEvent, InsumosState> {
   Future<List<String>> recetasActivasQueUsan(int insumoId) async {
     final recetas = await _apiService.getRecetas();
     return recetas
-        .where((r) => r.detalles.any((d) => d.materiaPrimaId == insumoId))
+        .where((r) => r.detalles.any((d) => d.articuloId == insumoId))
         .map((r) => r.nombre)
         .toList();
   }

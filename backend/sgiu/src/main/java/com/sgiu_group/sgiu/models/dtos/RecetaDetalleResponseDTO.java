@@ -4,9 +4,10 @@ import java.math.BigDecimal;
 
 public record RecetaDetalleResponseDTO(
     Long id,
-    Long materiaPrimaId,
-    String materiaPrimaCodigo,
-    String materiaPrimaNombre,
+    Long articuloId,
+    String articuloCodigo,
+    String articuloNombre,
+    String articuloTipo,
     /** En la unidad elegida. */
     BigDecimal cantidad,
     String unidadMedida,

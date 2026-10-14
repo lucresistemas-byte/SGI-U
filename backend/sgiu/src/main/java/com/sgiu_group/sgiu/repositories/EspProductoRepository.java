@@ -1,12 +1,13 @@
 package com.sgiu_group.sgiu.repositories;
 
 import com.sgiu_group.sgiu.models.entities.EspProducto;
-import com.sgiu_group.sgiu.models.dtos.ProductoCatalogoDTO;
+import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,49 +18,23 @@ public interface EspProductoRepository extends JpaRepository<EspProducto, Long> 
 
     boolean existsByCodigo(String codigo);
 
+    List<EspProducto> findByTipoIn(Collection<TipoArticulo> tipos);
 
+    List<EspProducto> findByTipoInAndActivoTrue(Collection<TipoArticulo> tipos);
+
+    /**
+     * Artículos de los tipos dados con su stock (fila [EspProducto,
+     * ArticuloStock]; el stock puede ser null), filtrados por categoría si se indica.
+     */
     @Query("""
-           SELECT new com.sgiu_group.sgiu.models.dtos.ProductoCatalogoDTO(
-               p.codigo,
-               p.nombre,
-               p.precioUnitario,
-               p.precioCosto,
-               p.porcentajeGanancia,
-               p.unidadMedida,
-               c.nombre,
-               COALESCE(SUM(s.cantidad), 0L),
-               COALESCE(s.stockMinimo, 0),
-               p.activo,
-               p.tipo,
-               p.vendible
-           )
+           SELECT p, s
            FROM EspProducto p
            LEFT JOIN p.categoria c
            LEFT JOIN ArticuloStock s ON s.espProducto = p
-           GROUP BY p.codigo, p.nombre, p.precioUnitario, p.precioCosto, p.porcentajeGanancia, p.unidadMedida, c.nombre, p.activo, s.stockMinimo, p.tipo, p.vendible
+           WHERE p.tipo IN :tipos
+             AND (:categoria IS NULL OR LOWER(c.nombre) = LOWER(:categoria))
+           ORDER BY p.codigo
            """)
-    List<ProductoCatalogoDTO> obtenerCatalogo();
-
-    @Query("""
-           SELECT new com.sgiu_group.sgiu.models.dtos.ProductoCatalogoDTO(
-               p.codigo,
-               p.nombre,
-               p.precioUnitario,
-               p.precioCosto,
-               p.porcentajeGanancia,
-               p.unidadMedida,
-               c.nombre,
-               COALESCE(SUM(s.cantidad), 0L),
-               COALESCE(s.stockMinimo, 0),
-               p.activo,
-               p.tipo,
-               p.vendible
-           )
-           FROM EspProducto p
-           LEFT JOIN p.categoria c
-           LEFT JOIN ArticuloStock s ON s.espProducto = p
-           WHERE (:categoria IS NULL OR LOWER(c.nombre) = LOWER(:categoria))
-           GROUP BY p.codigo, p.nombre, p.precioUnitario, p.precioCosto, p.porcentajeGanancia, p.unidadMedida, c.nombre, p.activo, s.stockMinimo, p.tipo, p.vendible
-           """)
-    List<ProductoCatalogoDTO> obtenerCatalogoPorCategoria(@Param("categoria") String categoria);
+    List<Object[]> catalogoConStock(@Param("tipos") Collection<TipoArticulo> tipos,
+                                    @Param("categoria") String categoria);
 }

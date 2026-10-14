@@ -11,7 +11,6 @@ import com.sgiu_group.sgiu.models.dtos.ProductoElaboradoNuevoDTO;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
 import com.sgiu_group.sgiu.repositories.CategoriaRepository;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
-import com.sgiu_group.sgiu.repositories.MateriaPrimaRepository;
 import com.sgiu_group.sgiu.repositories.RecetaDetalleRepository;
 import com.sgiu_group.sgiu.repositories.RecetaRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +29,6 @@ public class RecetaService {
     private final CodigoService codigoService;
     private final RecetaRepository recetaRepository;
     private final RecetaDetalleRepository recetaDetalleRepository;
-    private final MateriaPrimaRepository materiaPrimaRepository;
     private final ArticuloStockRepository stockRepository;
     private final CategoriaRepository categoriaRepository;
     private final EspProductoRepository espProductoRepository;
@@ -82,7 +80,6 @@ public class RecetaService {
         }
 
         validarDuplicadosYExistencia(dto.detalles(), Set.of());
-        validarCiclos(producto.getId(), dto.detalles(), new HashSet<>());
         return guardarNueva(producto, dto);
     }
 
@@ -113,11 +110,7 @@ public class RecetaService {
         producto.setCategoria(categoria);
         producto = espProductoRepository.save(producto);
 
-        ArticuloStock stock = new ArticuloStock();
-        stock.setEspProducto(producto);
-        stock.setCantidad(0);
-        stock.setStockMinimo(0);
-        stockRepository.save(stock);
+        stockRepository.save(new ArticuloStock(producto, BigDecimal.ZERO));
 
         return guardarNueva(producto, dto);
     }
@@ -159,12 +152,11 @@ public class RecetaService {
         Receta receta = recetaRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Receta no encontrada con ID: " + id));
 
-        // Un insumo que ya estaba en la receta puede quedar aunque se haya
+        // Un componente que ya estaba en la receta puede quedar aunque se haya
         // desactivado; uno nuevo tiene que estar activo.
         Set<Long> yaEnLaReceta = new HashSet<>();
-        receta.getDetalles().forEach(d -> yaEnLaReceta.add(d.getMateriaPrima().getId()));
+        receta.getDetalles().forEach(d -> yaEnLaReceta.add(d.getArticulo().getId()));
         validarDuplicadosYExistencia(dto.detalles(), yaEnLaReceta);
-        validarCiclos(receta.getProducto().getId(), dto.detalles(), new HashSet<>());
 
         receta.setNombre(dto.nombre().trim());
         receta.setDescripcion(dto.descripcion());
@@ -186,44 +178,34 @@ public class RecetaService {
     }
 
     private void validarDuplicadosYExistencia(List<RecetaDetalleRequestDTO> detalles,
-                                              Set<Long> insumosPermitidosInactivos) {
-        Set<Long> insumosVistos = new HashSet<>();
+                                              Set<Long> permitidosInactivos) {
+        Set<Long> vistos = new HashSet<>();
         for (RecetaDetalleRequestDTO d : detalles) {
-            MateriaPrima mp = materiaPrimaRepository.findById(d.materiaPrimaId())
-                    .orElseThrow(() -> new RecursoNoEncontradoException("Materia prima no encontrada con ID: " + d.materiaPrimaId()));
-            if (!insumosVistos.add(d.materiaPrimaId())) {
-                throw new RecetaInvalidaException("El insumo " + mp.getNombre() + " está dos veces en la receta.");
+            EspProducto articulo = componente(d.articuloId());
+            if (!vistos.add(d.articuloId())) {
+                throw new RecetaInvalidaException(articulo.getNombre() + " está dos veces en la receta.");
             }
             // La unidad se valida antes de crear nada (también el producto nuevo).
-            unidadDeLaFila(mp, d.unidadMedida());
-            if (!mp.isActivo() && !insumosPermitidosInactivos.contains(mp.getId())) {
-                throw new RecetaInvalidaException("El insumo " + mp.getNombre()
+            unidadDeLaFila(articulo, d.unidadMedida());
+            if (!articulo.isActivo() && !permitidosInactivos.contains(articulo.getId())) {
+                throw new RecetaInvalidaException(articulo.getNombre()
                         + " está desactivado. Reactívelo para usarlo en una receta.");
             }
         }
     }
 
-    private void validarCiclos(Long productoElaboradoId, List<RecetaDetalleRequestDTO> detalles, Set<Long> visitados) {
-        visitados.add(productoElaboradoId);
-
-        for (RecetaDetalleRequestDTO d : detalles) {
-            MateriaPrima mp = materiaPrimaRepository.findById(d.materiaPrimaId()).orElse(null);
-            if (mp != null && mp.getProducto() != null) {
-                Long subProductoId = mp.getProducto().getId();
-                if (subProductoId.equals(productoElaboradoId) || visitados.contains(subProductoId)) {
-                    throw new RecetaInvalidaException("Dependencia circular (ciclo) detectada entre insumos y producto elaborado (ID: " + subProductoId + ")");
-                }
-
-                // Si este sub-producto a su vez tiene una receta, exploramos sus insumos
-                Optional<Receta> subRecetaOpt = recetaRepository.findByProducto_IdAndActivoTrue(subProductoId);
-                if (subRecetaOpt.isPresent()) {
-                    List<RecetaDetalleRequestDTO> subDetalles = subRecetaOpt.get().getDetalles().stream()
-                            .map(sd -> new RecetaDetalleRequestDTO(sd.getMateriaPrima().getId(), sd.getCantidad(), sd.getUnidadMedida().name()))
-                            .toList();
-                    validarCiclos(subProductoId, subDetalles, new HashSet<>(visitados));
-                }
-            }
+    /**
+     * Componente de receta: materia prima, insumo o reventa + materia prima.
+     * (Las preparaciones base como componente llegan en la etapa 4.)
+     */
+    private EspProducto componente(Long articuloId) {
+        EspProducto articulo = espProductoRepository.findById(articuloId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Artículo no encontrado con ID: " + articuloId));
+        if (!articulo.getTipo().esDeMateriaPrima()) {
+            throw new RecetaInvalidaException(articulo.getNombre() + " es de " + descripcionTipo(articulo.getTipo())
+                    + " y no se puede usar en recetas. Use materias primas, insumos o reventa + materia prima.");
         }
+        return articulo;
     }
 
     /**
@@ -233,16 +215,14 @@ public class RecetaService {
      */
     private void poblarDetalles(Receta receta, List<RecetaDetalleRequestDTO> detallesDTO) {
         for (RecetaDetalleRequestDTO d : detallesDTO) {
-            MateriaPrima mp = materiaPrimaRepository.findById(d.materiaPrimaId())
-                    .orElseThrow(() -> new RecursoNoEncontradoException("Materia prima no encontrada: " + d.materiaPrimaId()));
-            RecetaDetalle detalle = new RecetaDetalle(receta, mp, d.cantidad(), unidadDeLaFila(mp, d.unidadMedida()));
-            receta.addDetalle(detalle);
+            EspProducto articulo = componente(d.articuloId());
+            receta.addDetalle(new RecetaDetalle(receta, articulo, d.cantidad(), unidadDeLaFila(articulo, d.unidadMedida())));
         }
     }
 
-    private static UnidadMedida unidadDeLaFila(MateriaPrima mp, String unidadStr) {
+    private static UnidadMedida unidadDeLaFila(EspProducto articulo, String unidadStr) {
         if (unidadStr == null || unidadStr.isBlank()) {
-            return mp.getFamilia().getUnidadBase();
+            return articulo.getFamilia().getUnidadBase();
         }
         UnidadMedida unidad;
         try {
@@ -250,10 +230,10 @@ public class RecetaService {
         } catch (IllegalArgumentException e) {
             throw new RecetaInvalidaException("Unidad de medida no válida: " + unidadStr);
         }
-        if (!unidad.esDe(mp.getFamilia())) {
+        if (!unidad.esDe(articulo.getFamilia())) {
             throw new RecetaInvalidaException("La unidad " + unidad.name().toLowerCase() + " no corresponde a "
-                    + mp.getNombre() + ", que se mide en " + mp.getFamilia().getDescripcion() + " ("
-                    + String.join(", ", UnidadMedida.de(mp.getFamilia()).stream()
+                    + articulo.getNombre() + ", que se mide en " + articulo.getFamilia().getDescripcion() + " ("
+                    + String.join(", ", UnidadMedida.de(articulo.getFamilia()).stream()
                             .map(u -> u.name().toLowerCase()).toList()) + ").");
         }
         return unidad;
@@ -276,16 +256,17 @@ public class RecetaService {
         List<RecetaDetalleResponseDTO> detallesDTO = r.getDetalles().stream()
                 .map(d -> new RecetaDetalleResponseDTO(
                         d.getId(),
-                        d.getMateriaPrima().getId(),
-                        d.getMateriaPrima().getCodigo(),
-                        d.getMateriaPrima().getNombre(),
+                        d.getArticulo().getId(),
+                        d.getArticulo().getCodigo(),
+                        d.getArticulo().getNombre(),
+                        d.getArticulo().getTipo().name(),
                         d.getCantidad(),
                         d.getUnidadMedida().name(),
-                        d.getMateriaPrima().costoPor(d.getUnidadMedida()).setScale(4, java.math.RoundingMode.HALF_UP),
+                        d.getArticulo().costoPor(d.getUnidadMedida()).setScale(4, java.math.RoundingMode.HALF_UP),
                         d.calcularSubtotal(),
                         d.getCantidadBase(),
-                        d.getMateriaPrima().getFamilia().getUnidadBase().name(),
-                        d.getMateriaPrima().getFamilia().name()
+                        d.getArticulo().getFamilia().getUnidadBase().name(),
+                        d.getArticulo().getFamilia().name()
                 ))
                 .toList();
 

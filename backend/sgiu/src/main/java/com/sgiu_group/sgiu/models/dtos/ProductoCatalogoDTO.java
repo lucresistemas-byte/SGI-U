@@ -17,7 +17,14 @@ public record ProductoCatalogoDTO(
     Boolean activo,
     TipoArticulo tipo,
     /** false = preparación base (no se vende en el POS). */
-    Boolean vendible
+    Boolean vendible,
+    /**
+     * Reventa + materia prima: unidad en que se vende ("Caja"). El stock y el
+     * stock mínimo vienen en esa unidad (cajas enteras).
+     */
+    String unidadVenta,
+    /** true = el precio se fijó a mano y no sigue al costo. */
+    Boolean precioManual
 ) {
     /** Producto de reventa vendible (compatibilidad de tests y fixtures). */
     public ProductoCatalogoDTO(
@@ -33,7 +40,7 @@ public record ProductoCatalogoDTO(
             Boolean activo
     ) {
         this(codigo, nombre, precioUnitario, precioCosto, porcentajeGanancia, unidadMedida,
-                categoria, stockActual, stockMinimo, activo, TipoArticulo.REVENTA, true);
+                categoria, stockActual, stockMinimo, activo, TipoArticulo.REVENTA, true, null, false);
     }
 
     public ProductoCatalogoDTO(

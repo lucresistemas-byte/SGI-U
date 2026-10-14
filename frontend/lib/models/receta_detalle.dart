@@ -3,9 +3,9 @@ import '../utils/parsers.dart';
 
 class RecetaDetalle extends Equatable {
   final int? id;
-  final int materiaPrimaId;
-  final String? materiaPrimaCodigo;
-  final String? materiaPrimaNombre;
+  final int articuloId;
+  final String? articuloCodigo;
+  final String? articuloNombre;
   final double cantidad;
   final String unidadMedida;
   final double costoUnitario;
@@ -16,16 +16,16 @@ class RecetaDetalle extends Equatable {
   final int? claveUi;
 
   /// Fila recién agregada, todavía sin insumo elegido.
-  bool get sinInsumo => materiaPrimaId <= 0;
+  bool get sinInsumo => articuloId <= 0;
 
   /// Fila con insumo y cantidad: se puede guardar.
   bool get completa => !sinInsumo && cantidad > 0;
 
   const RecetaDetalle({
     this.id,
-    required this.materiaPrimaId,
-    this.materiaPrimaCodigo,
-    this.materiaPrimaNombre,
+    required this.articuloId,
+    this.articuloCodigo,
+    this.articuloNombre,
     required this.cantidad,
     this.unidadMedida = 'UNIDAD',
     this.costoUnitario = 0.0,
@@ -42,9 +42,9 @@ class RecetaDetalle extends Equatable {
 
     return RecetaDetalle(
       id: json['id'] is int ? json['id'] as int : int.tryParse(json['id']?.toString() ?? ''),
-      materiaPrimaId: parseInt(json['materiaPrimaId'] ?? json['materia_prima_id']),
-      materiaPrimaCodigo: json['materiaPrimaCodigo']?.toString() ?? json['materia_prima_codigo']?.toString(),
-      materiaPrimaNombre: json['materiaPrimaNombre']?.toString() ?? json['materia_prima_nombre']?.toString(),
+      articuloId: parseInt(json['articuloId'] ?? json['articulo_id']),
+      articuloCodigo: json['articuloCodigo']?.toString() ?? json['articulo_codigo']?.toString(),
+      articuloNombre: json['articuloNombre']?.toString() ?? json['articulo_nombre']?.toString(),
       cantidad: cantidad,
       unidadMedida: json['unidadMedida']?.toString() ?? json['unidad_medida']?.toString() ?? 'UNIDAD',
       costoUnitario: costoUnitario,
@@ -55,9 +55,9 @@ class RecetaDetalle extends Equatable {
   Map<String, dynamic> toJson() {
     return {
       if (id != null) 'id': id,
-      'materiaPrimaId': materiaPrimaId,
-      if (materiaPrimaCodigo != null) 'materiaPrimaCodigo': materiaPrimaCodigo,
-      if (materiaPrimaNombre != null) 'materiaPrimaNombre': materiaPrimaNombre,
+      'articuloId': articuloId,
+      if (articuloCodigo != null) 'articuloCodigo': articuloCodigo,
+      if (articuloNombre != null) 'articuloNombre': articuloNombre,
       'cantidad': cantidad,
       'unidadMedida': unidadMedida,
       'costoUnitario': costoUnitario,
@@ -67,9 +67,9 @@ class RecetaDetalle extends Equatable {
 
   RecetaDetalle copyWith({
     int? id,
-    int? materiaPrimaId,
-    String? materiaPrimaCodigo,
-    String? materiaPrimaNombre,
+    int? articuloId,
+    String? articuloCodigo,
+    String? articuloNombre,
     double? cantidad,
     String? unidadMedida,
     double? costoUnitario,
@@ -80,9 +80,9 @@ class RecetaDetalle extends Equatable {
     final costo = costoUnitario ?? this.costoUnitario;
     return RecetaDetalle(
       id: id ?? this.id,
-      materiaPrimaId: materiaPrimaId ?? this.materiaPrimaId,
-      materiaPrimaCodigo: materiaPrimaCodigo ?? this.materiaPrimaCodigo,
-      materiaPrimaNombre: materiaPrimaNombre ?? this.materiaPrimaNombre,
+      articuloId: articuloId ?? this.articuloId,
+      articuloCodigo: articuloCodigo ?? this.articuloCodigo,
+      articuloNombre: articuloNombre ?? this.articuloNombre,
       cantidad: cant,
       unidadMedida: unidadMedida ?? this.unidadMedida,
       costoUnitario: costo,
@@ -94,9 +94,9 @@ class RecetaDetalle extends Equatable {
   @override
   List<Object?> get props => [
         id,
-        materiaPrimaId,
-        materiaPrimaCodigo,
-        materiaPrimaNombre,
+        articuloId,
+        articuloCodigo,
+        articuloNombre,
         cantidad,
         unidadMedida,
         costoUnitario,

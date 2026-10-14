@@ -28,7 +28,7 @@ void main() {
     nombre: 'Flan base',
     rinde: 1,
     detalles: const [
-      RecetaDetalle(materiaPrimaId: 1, materiaPrimaNombre: 'Arroz', cantidad: 1, unidadMedida: 'KILO'),
+      RecetaDetalle(articuloId: 1, articuloNombre: 'Arroz', cantidad: 1, unidadMedida: 'KILO'),
     ],
   );
 

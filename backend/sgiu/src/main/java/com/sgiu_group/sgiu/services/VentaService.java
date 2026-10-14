@@ -67,11 +67,15 @@ public class VentaService {
             stockPorCodigo.put(dto.codigoProducto(), stock);
             validarVendible(stock.getEspProducto());
 
-            // RN02: Verificación de stock de producto final
-            if (stock.getCantidad() < dto.cantidad()) {
+            // RN02: Verificación de stock de producto final. La reventa +
+            // materia prima se vende por unidades enteras (1 caja = 100 g):
+            // lo suelto nunca se vende.
+            EspProducto producto = stock.getEspProducto();
+            if (producto.stockParaVender(dto.cantidad()).compareTo(stock.getCantidad()) > 0) {
                 throw new StockInsuficienteException("Stock insuficiente para "
-                        + stock.getEspProducto().getNombre() + " (código " + dto.codigoProducto()
-                        + "): disponible " + stock.getCantidad() + ", solicitado " + dto.cantidad() + ".");
+                        + producto.getNombre() + " (código " + dto.codigoProducto()
+                        + "): disponible " + producto.unidadesDeVentaEn(stock.getCantidad())
+                        + ", solicitado " + dto.cantidad() + ".");
             }
             // Precio unitario real de la BD (RN05)
             totalAcumulado = totalAcumulado.add(
@@ -86,8 +90,8 @@ public class VentaService {
         for (LineaVentaDTO dto : request.lineas()) {
             ArticuloStock stock = stockPorCodigo.get(dto.codigoProducto());
 
-            // Descuento de inventario
-            stock.setCantidad(stock.getCantidad() - dto.cantidad());
+            // Descuento de inventario (en unidad base: 1 caja = 100 g)
+            stock.setCantidad(stock.getCantidad().subtract(stock.getEspProducto().stockParaVender(dto.cantidad())));
             stockRepository.save(stock);
 
             // Creamos la línea de venta

@@ -2,13 +2,11 @@ package com.sgiu_group.sgiu;
 
 import com.sgiu_group.sgiu.models.entities.Categoria;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
-import com.sgiu_group.sgiu.models.entities.MateriaPrima;
 import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.models.entities.UnidadMedida;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
 import com.sgiu_group.sgiu.repositories.CategoriaRepository;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
-import com.sgiu_group.sgiu.repositories.MateriaPrimaRepository;
 import com.sgiu_group.sgiu.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,21 +28,19 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private TestDataFactory datos;
     @Autowired
-    private MateriaPrimaRepository materiaPrimaRepository;
-    @Autowired
     private EspProductoRepository productoRepository;
     @Autowired
     private ArticuloStockRepository stockRepository;
     @Autowired
     private CategoriaRepository categoriaRepository;
 
-    private MateriaPrima harina;
+    private EspProducto harina;
     private Categoria tortas;
 
     @BeforeEach
     void insumos() {
-        harina = materiaPrimaRepository.save(new MateriaPrima(
-                "RCE-HAR", "Harina", new BigDecimal("1000.00"), UnidadMedida.KILO, 10, 0));
+        harina = datos.crearMateriaPrima(
+                "RCE-HAR", "Harina", new BigDecimal("1000.00"), UnidadMedida.KILO, 10, 0);
         tortas = categoriaRepository.save(new Categoria("RCE Tortas"));
     }
 
@@ -55,7 +51,7 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
 
     /** Receta de 0,2 kg de harina ($200) + $100 adicionales = costo $300. */
     private String detalles(boolean repetido) {
-        String d = "{\"materiaPrimaId\": " + harina.getId() + ", \"cantidad\": 0.2, \"unidadMedida\": \"KILO\"}";
+        String d = "{\"articuloId\": " + harina.getId() + ", \"cantidad\": 0.2, \"unidadMedida\": \"KILO\"}";
         return "[" + d + (repetido ? ", " + d : "") + "]";
     }
 
@@ -138,7 +134,7 @@ class RecetaCreaElaboradoIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
                         .content(conProductoNuevo(nuevo("\"nombre\": \"Tarta de coco\""), true)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("El insumo Harina está dos veces en la receta."));
+                .andExpect(jsonPath("$.error").value("Harina está dos veces en la receta."));
 
         assertThat(productoRepository.count()).isEqualTo(antes);
     }

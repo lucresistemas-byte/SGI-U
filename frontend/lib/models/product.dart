@@ -19,6 +19,18 @@ class Product {
   /// false = preparación base (un ELABORADO que no se vende).
   final bool vendible;
 
+  /// Reventa + materia prima: unidad en que se vende ("Caja"). El stock
+  /// viene en esa unidad (cajas enteras).
+  final String? unidadVenta;
+
+  /// true = el precio se fijó a mano y no sigue al costo.
+  final bool precioManual;
+
+  bool get esReventaMateriaPrima => tipo == 'REVENTA_MATERIA_PRIMA';
+
+  /// Unidad en que se cuenta el stock para mostrar ("Caja", "UNIDAD").
+  String get unidadStock => unidadVenta ?? unidadMedida ?? 'UNIDAD';
+
   static const tiposVendibles = {'ELABORADO', 'REVENTA', 'REVENTA_MATERIA_PRIMA', 'PAQUETE'};
 
   /// Se muestra y se puede vender en el POS.
@@ -41,6 +53,8 @@ class Product {
     this.porcentajeGanancia,
     this.tipo = 'REVENTA',
     this.vendible = true,
+    this.unidadVenta,
+    this.precioManual = false,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -61,7 +75,7 @@ class Product {
       codigo: json['codigo'] ?? '',
       nombre: json['nombre'] ?? '',
       precioUnitario: (json['precioUnitario'] as num?)?.toDouble() ?? 0.0,
-      stockActual: json['stockActual'] ?? 0,
+      stockActual: (json['stockActual'] as num?)?.toInt() ?? 0,
       stockMinimo: (json['stockMinimo'] as num?)?.toInt() ?? 0,
       activo: json['activo'] ?? true,
       categoria: cat,
@@ -70,6 +84,8 @@ class Product {
       porcentajeGanancia: margen,
       tipo: json['tipo']?.toString() ?? 'REVENTA',
       vendible: json['vendible'] ?? true,
+      unidadVenta: json['unidadVenta']?.toString(),
+      precioManual: json['precioManual'] == true,
     );
   }
 
@@ -90,6 +106,8 @@ class Product {
       if (porcentajeGanancia != null) 'porcentaje_ganancia': porcentajeGanancia,
       'tipo': tipo,
       'vendible': vendible,
+      if (unidadVenta != null) 'unidadVenta': unidadVenta,
+      'precioManual': precioManual,
     };
   }
 
@@ -106,6 +124,8 @@ class Product {
     double? porcentajeGanancia,
     String? tipo,
     bool? vendible,
+    String? unidadVenta,
+    bool? precioManual,
   }) {
     return Product(
       codigo: codigo ?? this.codigo,
@@ -120,6 +140,8 @@ class Product {
       porcentajeGanancia: porcentajeGanancia ?? this.porcentajeGanancia,
       tipo: tipo ?? this.tipo,
       vendible: vendible ?? this.vendible,
+      unidadVenta: unidadVenta ?? this.unidadVenta,
+      precioManual: precioManual ?? this.precioManual,
     );
   }
 

@@ -39,9 +39,9 @@ class ProductoServiceTest {
 
     @Test
     void getCatalogo_delegaEnElRepositorio() {
-        ProductoCatalogoDTO dto = new ProductoCatalogoDTO(
-                "P1", "Producto Uno", new BigDecimal("10.50"), 8L, 2, true);
-        when(productoRepository.obtenerCatalogo()).thenReturn(List.of(dto));
+        EspProducto producto = new EspProducto("P1", "Producto Uno", new BigDecimal("10.50"));
+        when(productoRepository.catalogoConStock(any(), any()))
+                .thenReturn(List.<Object[]>of(new Object[]{producto, new ArticuloStock(producto, 8)}));
 
         List<ProductoCatalogoDTO> catalogo = productoService.getCatalogo();
 
@@ -124,8 +124,8 @@ class ProductoServiceTest {
         EspProducto producto = new EspProducto("P1", "Viejo", new BigDecimal("10.00"));
         ArticuloStock stock = new ArticuloStock();
         stock.setEspProducto(producto);
-        stock.setCantidad(4);
-        stock.setStockMinimo(1);
+        stock.setCantidad(BigDecimal.valueOf(4));
+        stock.setStockMinimo(BigDecimal.valueOf(1));
 
         when(productoRepository.findByCodigo("P1")).thenReturn(Optional.of(producto));
         when(stockRepository.findByEspProducto(producto)).thenReturn(Optional.of(stock));
@@ -137,7 +137,7 @@ class ProductoServiceTest {
         assertThat(producto.getNombre()).isEqualTo("Nuevo Nombre");
         assertThat(producto.getPrecioUnitario()).isEqualByComparingTo("12.00");
         assertThat(producto.isActivo()).isTrue();
-        assertThat(stock.getStockMinimo()).isEqualTo(5);
+        assertThat(stock.getStockMinimo()).isEqualByComparingTo("5");
         assertThat(resultado.stockActual()).isEqualTo(4L);
         verify(stockRepository).save(stock);
     }
@@ -156,7 +156,7 @@ class ProductoServiceTest {
         EspProducto producto = new EspProducto("P1", "Viejo", new BigDecimal("10.00"));
         ArticuloStock stock = new ArticuloStock();
         stock.setEspProducto(producto);
-        stock.setCantidad(2);
+        stock.setCantidad(BigDecimal.valueOf(2));
 
         when(productoRepository.findByCodigo("P1")).thenReturn(Optional.of(producto));
         when(stockRepository.findByEspProducto(producto)).thenReturn(Optional.of(stock));
@@ -165,7 +165,7 @@ class ProductoServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("El stock no puede quedar negativo.");
 
-        assertThat(stock.getCantidad()).isEqualTo(2);
+        assertThat(stock.getCantidad()).isEqualByComparingTo("2");
         verify(stockRepository, never()).save(any());
     }
 
@@ -174,14 +174,14 @@ class ProductoServiceTest {
         EspProducto producto = new EspProducto("P1", "Viejo", new BigDecimal("10.00"));
         ArticuloStock stock = new ArticuloStock();
         stock.setEspProducto(producto);
-        stock.setCantidad(2);
+        stock.setCantidad(BigDecimal.valueOf(2));
 
         when(productoRepository.findByCodigo("P1")).thenReturn(Optional.of(producto));
         when(stockRepository.findByEspProducto(producto)).thenReturn(Optional.of(stock));
 
         ProductoCatalogoDTO resultado = productoService.ajustarStock("P1", 3);
 
-        assertThat(stock.getCantidad()).isEqualTo(5);
+        assertThat(stock.getCantidad()).isEqualByComparingTo("5");
         assertThat(resultado.stockActual()).isEqualTo(5L);
         verify(stockRepository).save(stock);
     }

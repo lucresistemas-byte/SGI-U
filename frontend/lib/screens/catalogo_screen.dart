@@ -310,19 +310,24 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                                 style: const TextStyle(
                                                     color: Color(0xFF475569)))),
                                              DataCell(Text(
-                                                 '${producto.stockActual} ${producto.unidadMedida ?? 'UNIDAD'}',
+                                                 '${producto.stockActual} ${producto.unidadStock}',
                                                  style: const TextStyle(
                                                      color: Color(0xFF475569)))),
                                             DataCell(
                                                 _buildBadge(producto.activo)),
                                             DataCell(Row(
                                               children: [
-                                                // BOTÓN EDITAR
+                                                // BOTÓN EDITAR (la reventa + materia
+                                                // prima se edita en Materia Prima).
                                                 IconButton(
+                                                  key: Key('editar_producto_${producto.codigo}'),
+                                                  tooltip: producto.esReventaMateriaPrima
+                                                      ? 'Se edita en Materia Prima'
+                                                      : 'Editar',
                                                   icon: const Icon(Icons.edit,
                                                       color: Color(0xFF004D40),
                                                       size: 20),
-                                                  onPressed: () {
+                                                  onPressed: producto.esReventaMateriaPrima ? null : () {
                                                     // ABRE EL MODAL DE EDICIÓN
                                                     showDialog(
                                                       context: context,

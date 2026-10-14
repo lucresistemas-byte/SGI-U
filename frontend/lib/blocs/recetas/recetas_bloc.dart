@@ -25,7 +25,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
     on<AgregarFilaInsumo>(_onAgregarFilaInsumo);
     on<AgregarFilaVacia>((event, emit) => emit(state.copyWith(detalles: [
           ...state.detalles,
-          RecetaDetalle(materiaPrimaId: 0, cantidad: 0, unidadMedida: '', claveUi: _nuevaClave()),
+          RecetaDetalle(articuloId: 0, cantidad: 0, unidadMedida: '', claveUi: _nuevaClave()),
         ])));
     on<RemoverFilaInsumo>(_onRemoverFilaInsumo);
     on<CambiarInsumoFila>(_onCambiarInsumoFila);
@@ -75,9 +75,9 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
   RecetaDetalle _fila(Insumo insumo, double cantidad, UnidadMedida unidad, int? claveUi) {
     final costo = insumo.costoPor(unidad);
     return RecetaDetalle(
-      materiaPrimaId: insumo.id ?? 0,
-      materiaPrimaCodigo: insumo.codigo,
-      materiaPrimaNombre: insumo.nombre,
+      articuloId: insumo.id ?? 0,
+      articuloCodigo: insumo.codigo,
+      articuloNombre: insumo.nombre,
       cantidad: cantidad,
       unidadMedida: unidad.codigo,
       costoUnitario: costo,
@@ -101,7 +101,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
   void _onCambiarUnidadFila(CambiarUnidadFila event, Emitter<RecetasState> emit) {
     if (event.index < 0 || event.index >= state.detalles.length) return;
     final actual = state.detalles[event.index];
-    final insumo = _insumo(actual.materiaPrimaId);
+    final insumo = _insumo(actual.articuloId);
     if (insumo == null || event.unidad.familia != insumo.familia) return;
     final nuevos = List<RecetaDetalle>.from(state.detalles);
     nuevos[event.index] = _fila(insumo, actual.cantidad, event.unidad, actual.claveUi);
@@ -329,8 +329,8 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
   String? _insumoRepetido() {
     final vistos = <int>{};
     for (final d in state.detalles) {
-      if (!d.sinInsumo && !vistos.add(d.materiaPrimaId)) {
-        return d.materiaPrimaNombre ?? 'con ID ${d.materiaPrimaId}';
+      if (!d.sinInsumo && !vistos.add(d.articuloId)) {
+        return d.articuloNombre ?? 'con ID ${d.articuloId}';
       }
     }
     return null;
@@ -354,7 +354,7 @@ class RecetasBloc extends Bloc<RecetasEvent, RecetasState> {
         'rinde': state.rinde,
         'rindeUnidad': state.rindeUnidad.trim().isEmpty ? 'unidades' : state.rindeUnidad.trim(),
         'detalles': state.detalles.map((d) => {
-          'materiaPrimaId': d.materiaPrimaId,
+          'articuloId': d.articuloId,
           'cantidad': d.cantidad,
           'unidadMedida': d.unidadMedida,
         }).toList(),

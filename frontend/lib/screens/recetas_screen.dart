@@ -490,7 +490,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
     final unidad = UnidadMedida.deCodigo(detalle.unidadMedida);
     Insumo? insumo;
     for (final i in state.availableInsumos) {
-      if (i.id == detalle.materiaPrimaId) insumo = i;
+      if (i.id == detalle.articuloId) insumo = i;
     }
     if (detalle.sinInsumo || insumo == null || unidad == null) {
       return SizedBox(
@@ -501,7 +501,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
     }
     // Se recrea al cambiar insumo o unidad (initialValue se lee una sola vez).
     return SizedBox(
-      key: ValueKey('unidad_${detalle.materiaPrimaId}_${unidad.codigo}'),
+      key: ValueKey('unidad_${detalle.articuloId}_${unidad.codigo}'),
       width: 120,
       child: DropdownButtonFormField<UnidadMedida>(
         key: Key('unidad_insumo_fila_$index'),
@@ -738,7 +738,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                         if (state.availableInsumos.isNotEmpty) {
                           // La fila nueva llega vacía: el usuario elige el insumo
                           // (solo entre los que no están en la receta) y la cantidad.
-                          final usados = state.detalles.map((d) => d.materiaPrimaId).toSet();
+                          final usados = state.detalles.map((d) => d.articuloId).toSet();
                           final libres = state.availableInsumos
                               .where((i) => !usados.contains(i.id))
                               .toList();
@@ -792,7 +792,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                       // Insumos ofrecidos: los que no están en otra fila.
                       final usadosEnOtras = {
                         for (var i = 0; i < state.detalles.length; i++)
-                          if (i != index) state.detalles[i].materiaPrimaId,
+                          if (i != index) state.detalles[i].articuloId,
                       };
                       final ofrecidos = state.availableInsumos
                           .where((i) => !usadosEnOtras.contains(i.id))
@@ -817,15 +817,15 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                 // Un insumo desactivado ya no está entre los
                                 // disponibles: se muestra fijo, sin dropdown.
                                 child: state.availableInsumos.isNotEmpty &&
-                                        (detalle.materiaPrimaId <= 0 ||
+                                        (detalle.articuloId <= 0 ||
                                             ofrecidos.any(
-                                                (i) => i.id == detalle.materiaPrimaId))
+                                                (i) => i.id == detalle.articuloId))
                                     ? DropdownButtonFormField<int>(
                                         key: Key('selector_insumo_fila_$index'),
                                         isExpanded: true,
                                         initialValue: detalle.sinInsumo
                                             ? null
-                                            : detalle.materiaPrimaId,
+                                            : detalle.articuloId,
                                         hint: const Text('Elegir insumo'),
                                         decoration: const InputDecoration(
                                           labelText: 'Insumo',
@@ -847,8 +847,8 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                         },
                                       )
                                     : Text(
-                                        '${detalle.materiaPrimaNombre ?? 'Insumo #${detalle.materiaPrimaId}'}'
-                                        '${state.availableInsumos.isEmpty ? '' : state.availableInsumos.any((i) => i.id == detalle.materiaPrimaId) ? ' (repetido)' : ' (desactivado)'}',
+                                        '${detalle.articuloNombre ?? 'Insumo #${detalle.articuloId}'}'
+                                        '${state.availableInsumos.isEmpty ? '' : state.availableInsumos.any((i) => i.id == detalle.articuloId) ? ' (repetido)' : ' (desactivado)'}',
                                         key: Key('insumo_fijo_fila_$index'),
                                         style: const TextStyle(fontWeight: FontWeight.w600),
                                       ),

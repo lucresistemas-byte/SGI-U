@@ -1,12 +1,10 @@
 package com.sgiu_group.sgiu;
 
 import com.sgiu_group.sgiu.models.entities.EspProducto;
-import com.sgiu_group.sgiu.models.entities.MateriaPrima;
 import com.sgiu_group.sgiu.models.entities.Receta;
 import com.sgiu_group.sgiu.models.entities.RecetaDetalle;
 import com.sgiu_group.sgiu.models.entities.UnidadMedida;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
-import com.sgiu_group.sgiu.repositories.MateriaPrimaRepository;
 import com.sgiu_group.sgiu.repositories.RecetaRepository;
 import com.sgiu_group.sgiu.support.TestDataFactory;
 import org.junit.jupiter.api.Test;
@@ -35,20 +33,18 @@ class RecetaIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private TestDataFactory datos;
     @Autowired
-    private MateriaPrimaRepository materiaPrimaRepository;
-    @Autowired
     private RecetaRepository recetaRepository;
     @Autowired
     private EspProductoRepository productoRepository;
 
     private EspProducto torta;
-    private MateriaPrima harina;
+    private EspProducto harina;
 
     /** Torta con receta activa: 0,2 kg de harina a $1000/kg + $100 adicionales = costo 300. */
     private Receta tortaConReceta() {
         torta = datos.crearElaborado("REC-TORTA", "Torta", new BigDecimal("1000.00"), 0, true);
-        harina = materiaPrimaRepository.save(new MateriaPrima(
-                "REC-HAR", "Harina", new BigDecimal("1000.00"), UnidadMedida.KILO, 10, 0));
+        harina = datos.crearMateriaPrima(
+                "REC-HAR", "Harina", new BigDecimal("1000.00"), UnidadMedida.KILO, 10, 0);
         Receta receta = new Receta(torta, "Torta base", null, new BigDecimal("100.00"));
         receta.addDetalle(new RecetaDetalle(receta, harina, new BigDecimal("0.200"), UnidadMedida.KILO));
         receta = recetaRepository.save(receta);
@@ -58,7 +54,7 @@ class RecetaIntegrationTest extends AbstractIntegrationTest {
 
     private String recetaJson(String nombre, String cantidadHarina, String adicionales) {
         return "{\"espProductoCodigo\": \"REC-TORTA\", \"nombre\": \"" + nombre + "\", "
-                + "\"costosAdicionales\": " + adicionales + ", \"rinde\": 1, \"detalles\": [{\"materiaPrimaId\": "
+                + "\"costosAdicionales\": " + adicionales + ", \"rinde\": 1, \"detalles\": [{\"articuloId\": "
                 + harina.getId() + ", \"cantidad\": " + cantidadHarina + ", \"unidadMedida\": \"KILO\"}]}";
     }
 
@@ -136,9 +132,9 @@ class RecetaIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(post("/api/recetas").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"espProductoCodigo\": \"" + budin.getCodigo() + "\", \"nombre\": \"Budín\", "
-                                + "\"rinde\": 1, \"detalles\": [{\"materiaPrimaId\": " + harina.getId() + ", \"cantidad\": 0.2}, "
-                                + "{\"materiaPrimaId\": " + harina.getId() + ", \"cantidad\": 0.1}]}"))
+                                + "\"rinde\": 1, \"detalles\": [{\"articuloId\": " + harina.getId() + ", \"cantidad\": 0.2}, "
+                                + "{\"articuloId\": " + harina.getId() + ", \"cantidad\": 0.1}]}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("El insumo Harina está dos veces en la receta."));
+                .andExpect(jsonPath("$.error").value("Harina está dos veces en la receta."));
     }
 }

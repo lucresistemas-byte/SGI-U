@@ -83,13 +83,12 @@ class DashboardServiceTest {
         when(ventaRepository.sumTotalVentasEnRango(any(), any())).thenReturn(new BigDecimal("600.00"));
         when(lineaVentaRepository.findTopProductosVendidos(any(), any()))
                 .thenReturn(fila(new Object[]{1L, "Producto A", 4L, new BigDecimal("250.00")}));
-        when(articuloStockRepository.countProductosConStockCritico()).thenReturn(2L);
         when(movFinancieroRepository.findIngresosEgresosPorDia(any(), any(), any()))
                 .thenReturn(fila(new Object[]{fechaSql, new BigDecimal("1000.00"), new BigDecimal("400.00")}));
         when(pagoVentaRepository.findVentasAgrupadasPorMetodoPago(any(), any()))
                 .thenReturn(fila(new Object[]{"Efectivo", 3L, new BigDecimal("600.00")}));
-        when(articuloStockRepository.findProductosConStockCriticoDetallado())
-                .thenReturn(fila(new Object[]{1L, "Producto A", 3, 5}));
+        when(articuloStockRepository.findStockCritico(any()))
+                .thenReturn(List.of(stock("Producto A", 3, 5), stock("Producto C", 1, 2)));
         when(movFinancieroRepository.findSaldoNetoAcumuladoPorDia(any(), any(), any()))
                 .thenReturn(fila(new Object[]{fechaSql, new BigDecimal("600.00")}));
 
@@ -110,7 +109,7 @@ class DashboardServiceTest {
         assertThat(response.getGraficos().getVentasPorMetodoPago().get(0).getMetodoPago()).isEqualTo("Efectivo");
         assertThat(response.getGraficos().getTopProductosMasVendidos()).hasSize(1);
         assertThat(response.getGraficos().getEvolucionSaldoNeto()).hasSize(1);
-        assertThat(response.getGraficos().getProductosConMenorStock()).hasSize(1);
+        assertThat(response.getGraficos().getProductosConMenorStock()).hasSize(2);
         assertThat(response.getGraficos().getProductosConMenorStock().get(0).getEstado()).isEqualTo("BAJO");
 
         assertThat(response.getMetadata().isHayDatos()).isTrue();
@@ -122,7 +121,7 @@ class DashboardServiceTest {
         when(lineaVentaRepository.findTopProductosVendidos(any(), any())).thenReturn(List.of());
         when(movFinancieroRepository.findIngresosEgresosPorDia(any(), any(), any())).thenReturn(List.of());
         when(pagoVentaRepository.findVentasAgrupadasPorMetodoPago(any(), any())).thenReturn(List.of());
-        when(articuloStockRepository.findProductosConStockCriticoDetallado()).thenReturn(List.of());
+        when(articuloStockRepository.findStockCritico(any())).thenReturn(List.of());
         when(movFinancieroRepository.findSaldoNetoAcumuladoPorDia(any(), any(), any())).thenReturn(List.of());
 
         DashboardResponseDTO response = dashboardService.obtenerDashboard(desde, hasta, null, null, null);
@@ -143,9 +142,8 @@ class DashboardServiceTest {
         when(movFinancieroRepository.findIngresosEgresosPorDia(any(), any(), any())).thenReturn(List.of());
         when(pagoVentaRepository.findVentasAgrupadasPorMetodoPago(any(), any())).thenReturn(List.of());
         when(movFinancieroRepository.findSaldoNetoAcumuladoPorDia(any(), any(), any())).thenReturn(List.of());
-        when(articuloStockRepository.countProductosConStockCritico()).thenReturn(1L);
-        when(articuloStockRepository.findProductosConStockCriticoDetallado())
-                .thenReturn(fila(new Object[]{1L, "Producto B", 0, 5}));
+        when(articuloStockRepository.findStockCritico(any()))
+                .thenReturn(List.of(stock("Producto B", 0, 5)));
 
         DashboardResponseDTO response = dashboardService.obtenerDashboard(desde, hasta, null, null, null);
 
@@ -157,7 +155,7 @@ class DashboardServiceTest {
         when(lineaVentaRepository.findTopProductosVendidos(any(), any())).thenReturn(List.of());
         when(movFinancieroRepository.findIngresosEgresosPorDia(any(), any(), any())).thenReturn(List.of());
         when(pagoVentaRepository.findVentasAgrupadasPorMetodoPago(any(), any())).thenReturn(List.of());
-        when(articuloStockRepository.findProductosConStockCriticoDetallado()).thenReturn(List.of());
+        when(articuloStockRepository.findStockCritico(any())).thenReturn(List.of());
         when(movFinancieroRepository.findSaldoNetoAcumuladoPorDia(any(), any(), any())).thenReturn(List.of());
         when(movFinancieroRepository.sumByTipoYMetodoEnRango(any(), any(), eq(TipoMovimiento.EGRESO), any()))
                 .thenReturn(new BigDecimal("400.00"));
@@ -167,5 +165,12 @@ class DashboardServiceTest {
         assertThat(response.getKpis().getIngresosPeriodo()).isEqualByComparingTo("0");
         assertThat(response.getKpis().getEgresosPeriodo()).isEqualByComparingTo("400.00");
         assertThat(response.getKpis().getSaldoNeto()).isEqualByComparingTo("-400.00");
+    }
+
+    private static com.sgiu_group.sgiu.models.entities.ArticuloStock stock(String nombre, int cantidad, int minimo) {
+        var producto = new com.sgiu_group.sgiu.models.entities.EspProducto("P-" + nombre, nombre, BigDecimal.ONE);
+        var stock = new com.sgiu_group.sgiu.models.entities.ArticuloStock(producto, cantidad);
+        stock.setStockMinimo(BigDecimal.valueOf(minimo));
+        return stock;
     }
 }

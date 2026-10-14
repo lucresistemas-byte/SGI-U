@@ -34,7 +34,7 @@ void main() {
           detalles: [
             for (final i in insumos)
               RecetaDetalle(
-                  materiaPrimaId: i.id!, materiaPrimaNombre: i.nombre, cantidad: 1, unidadMedida: 'KILO', claveUi: i.id),
+                  articuloId: i.id!, articuloNombre: i.nombre, cantidad: 1, unidadMedida: 'KILO', claveUi: i.id),
           ],
         ));
     await t.pumpWidget(MaterialApp(home: RecetasScreen(recetasBloc: bloc, initialBuildingMode: true)));

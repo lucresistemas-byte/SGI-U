@@ -126,7 +126,7 @@ class VentaPagoMixtoIntegrationTest extends AbstractIntegrationTest {
         assertThat(ventaRepository.count()).isZero();
         assertThat(pagoRepository.count()).isZero();
         assertThat(movRepository.count()).isZero();
-        assertThat(stockRepository.findByEspProducto_Codigo("MIX-1").orElseThrow().getCantidad()).isEqualTo(10);
+        assertThat(stockRepository.findByEspProducto_Codigo("MIX-1").orElseThrow().getCantidad()).isEqualByComparingTo("10");
     }
 
     @Test

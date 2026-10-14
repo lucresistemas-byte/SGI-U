@@ -41,7 +41,7 @@ class ProductCard extends StatelessWidget {
                 Text(
                   isAgotado
                       ? 'Agotado'
-                      : 'Stock: ${product.stockActual} ${product.unidadMedida ?? 'UNIDAD'}',
+                      : 'Stock: ${product.stockActual} ${product.unidadStock}',
                   key: const ValueKey('product_card_stock_text'),
                   style: TextStyle(
                     color: isAgotado ? Colors.red : Colors.grey[600],
@@ -49,7 +49,7 @@ class ProductCard extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
-                if (product.unidadMedida != null && product.unidadMedida!.isNotEmpty)
+                if (product.unidadStock.isNotEmpty)
                   Container(
                     key: const ValueKey('product_card_unidad_badge'),
                     margin: const EdgeInsets.only(top: 2),
@@ -59,7 +59,7 @@ class ProductCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      product.unidadMedida!,
+                      product.unidadStock,
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
