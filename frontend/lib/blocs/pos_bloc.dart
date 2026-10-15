@@ -7,6 +7,7 @@ import '../models/linea_pago.dart';
 import '../models/metodo_pago.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
+import '../utils/numeros.dart';
 
 class PosBloc extends Bloc<PosEvent, PosState> {
   final PosApi _apiService;
@@ -167,7 +168,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     }
   }
 
-  static String _pesos(double v) => '\$${v.toStringAsFixed(2)}';
+  static String _pesos(double v) => formatPesos(v);
 
   /// D.4.1/D.4.2: una línea más del cobro. Un método que no es efectivo no
   /// puede pasarse de lo que falta; el efectivo sí (vuelto).

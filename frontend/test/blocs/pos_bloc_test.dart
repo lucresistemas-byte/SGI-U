@@ -188,7 +188,7 @@ void main() {
 
       final s = await despues(bloc, const ConfirmSale(), (s) => s.errorMessage != null);
 
-      expect(s.errorMessage, 'Los pagos no cubren el total: faltan \$300.00.');
+      expect(s.errorMessage, 'Los pagos no cubren el total: faltan \$ 300,00.');
       expect(s.cobroCubierto, isFalse);
       verifyNever(() => api.createSale(any()));
       await bloc.close();
@@ -246,7 +246,7 @@ void main() {
       expect(s.cobroCubierto, isTrue);
 
       final ok = await despues(bloc, const ConfirmSale(), (s) => s.successMessage != null);
-      expect(ok.successMessage, 'Venta registrada correctamente. Vuelto: \$200.00');
+      expect(ok.successMessage, 'Venta registrada correctamente. Vuelto: \$ 200,00');
       expect(ok.completedSale!.vuelto, 200.0);
       expect(enviado(api)['pagos'], [
         {'metodoPagoId': 1, 'monto': 500.0}
@@ -261,7 +261,7 @@ void main() {
       final s = await despues(bloc, const AgregarPago(3, 250), (s) => s.errorMessage != null);
 
       expect(s.errorMessage,
-          'Con Tarjeta no se puede pagar más de lo que falta (\$200.00). Solo el efectivo tiene vuelto.');
+          'Con Tarjeta no se puede pagar más de lo que falta (\$ 200,00). Solo el efectivo tiene vuelto.');
       expect(s.pagos.map((p) => p.metodo.id), [1]);
       await bloc.close();
     });

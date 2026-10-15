@@ -4,9 +4,10 @@ import '../blocs/pos_bloc.dart';
 import '../blocs/pos_event.dart';
 import '../blocs/pos_state.dart';
 import '../models/metodo_pago.dart';
+import '../utils/numeros.dart';
 import 'metodo_pago_dropdown.dart';
 
-String _pesos(double v) => '\$${v.toStringAsFixed(2)}';
+String _pesos(double v) => formatPesos(v);
 
 /// Cobro del POS (D.4.1/D.4.2): una o varias líneas (método + monto) que
 /// cubran el total. Un toque en un método paga todo lo que falta (venta

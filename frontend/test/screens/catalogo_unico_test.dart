@@ -97,7 +97,7 @@ void main() {
     });
     expect(producto.unidadStock, 'Caja');
     await t.pumpWidget(MaterialApp(home: Scaffold(body: ProductCard(product: producto, onAdd: (_) {}))));
-    expect(find.text('Stock: 36 Caja'), findsOneWidget);
+    expect(find.text('Stock: 36 cajas'), findsOneWidget);
   });
 
   testWidgets('el armador de recetas ofrece la caja como componente, en gramos', (t) async {

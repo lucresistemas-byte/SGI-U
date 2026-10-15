@@ -9,6 +9,7 @@ import '../services/pdf_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/parsers.dart';
 import '../widgets/cargando_diferido.dart';
+import '../widgets/tabla_ajustada.dart';
 
 class BalanceScreen extends StatefulWidget {
   const BalanceScreen({super.key});
@@ -508,100 +509,88 @@ class _BalanceScreenState extends State<BalanceScreen> {
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
           ),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: ConstrainedBox(
-                      constraints:
-                          BoxConstraints(minWidth: constraints.maxWidth),
-                      child: DataTable(
-                        columnSpacing: 40,
-                        horizontalMargin: 24,
-                        headingRowHeight: 50,
-                        headingRowColor: WidgetStateProperty.resolveWith(
-                            (_) => const Color(0xFFF6F6F6)),
-                        headingTextStyle: const TextStyle(
-                            fontWeight: FontWeight.w600, color: Colors.black87),
-                        dataRowMinHeight: 60,
-                        dataRowMaxHeight: 60,
-                        dividerThickness: 1,
-                        columns: const [
-                          DataColumn(label: Text('Fecha/Hora')),
-                          DataColumn(label: Text('Tipo')),
-                          DataColumn(label: Text('Monto')),
-                          DataColumn(label: Text('Costo')),
-                          DataColumn(label: Text('Ganancia')),
-                          DataColumn(label: Text('Método de Pago')),
-                          DataColumn(label: Text('Categoría')),
-                          DataColumn(label: Text('Descripción')),
-                        ],
-                        rows: movimientos.map((mov) {
-                          String tipoRaw = parseString(mov['tipo']);
-                          String tipoDisplay =
-                              tipoRaw.toLowerCase() == 'ingreso'
-                                  ? 'Ingreso'
-                                  : 'Egreso';
-                          bool isIngreso = tipoDisplay == 'Ingreso';
+            child: TablaAjustada(
+              tabla: DataTable(
+                columnSpacing: 24,
+                horizontalMargin: 24,
+                headingRowHeight: 50,
+                headingRowColor: WidgetStateProperty.resolveWith(
+                    (_) => const Color(0xFFF6F6F6)),
+                headingTextStyle: const TextStyle(
+                    fontWeight: FontWeight.w600, color: Colors.black87),
+                dataRowMinHeight: 60,
+                dataRowMaxHeight: 60,
+                dividerThickness: 1,
+                columns: const [
+                  DataColumn(columnWidth: columnaAjustable, label: Text('Fecha/Hora')),
+                  DataColumn(columnWidth: columnaAjustable, label: Text('Tipo')),
+                  DataColumn(columnWidth: columnaAjustable, label: Text('Monto')),
+                  DataColumn(columnWidth: columnaAjustable, label: Text('Costo')),
+                  DataColumn(columnWidth: columnaAjustable, label: Text('Ganancia')),
+                  DataColumn(columnWidth: columnaAjustable, label: Text('Método de Pago')),
+                  DataColumn(columnWidth: columnaAjustable, label: Text('Categoría')),
+                  DataColumn(columnWidth: columnaFlexible, label: Text('Descripción')),
+                ],
+                rows: movimientos.map((mov) {
+                  String tipoRaw = parseString(mov['tipo']);
+                  String tipoDisplay =
+                      tipoRaw.toLowerCase() == 'ingreso'
+                          ? 'Ingreso'
+                          : 'Egreso';
+                  bool isIngreso = tipoDisplay == 'Ingreso';
 
-                          String metodoRaw = parseString(mov['metodoPago']);
-                          String metodoDisplay = _parseMetodoPago(metodoRaw);
+                  String metodoRaw = parseString(mov['metodoPago']);
+                  String metodoDisplay = _parseMetodoPago(metodoRaw);
 
-                          double monto = parseDouble(mov['monto']);
-                          double costo = parseDouble(mov['costo']);
-                          double ganancia = parseDouble(mov['ganancia']);
-                          String fechaHora =
-                              _formatFechaHora(parseString(mov['fechaHora']));
-                          String categoria =
-                              parseString(mov['categoria'], 'Sin categoría');
-                          String descripcion =
-                              parseString(mov['descripcion'], '-');
+                  double monto = parseDouble(mov['monto']);
+                  double costo = parseDouble(mov['costo']);
+                  double ganancia = parseDouble(mov['ganancia']);
+                  String fechaHora =
+                      _formatFechaHora(parseString(mov['fechaHora']));
+                  String categoria =
+                      parseString(mov['categoria'], 'Sin categoría');
+                  String descripcion =
+                      parseString(mov['descripcion'], '-');
 
-                          return DataRow(cells: [
-                            DataCell(Text(fechaHora,
-                                style: const TextStyle(color: Colors.black87))),
-                            DataCell(_buildTipoBadge(tipoDisplay, isIngreso)),
-                            DataCell(
-                              Text(
-                                (isIngreso ? '+ ' : '- ') + _formatMonto(monto),
-                                style: TextStyle(
-                                  color: isIngreso
-                                      ? const Color(0xFF008A3D)
-                                      : const Color(0xFFFF2E2E),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                _formatMonto(costo),
-                                style: const TextStyle(color: Color(0xFF666666)),
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                (ganancia >= 0 ? '+ ' : '') + _formatMonto(ganancia),
-                                style: TextStyle(
-                                  color: ganancia >= 0
-                                      ? const Color(0xFF008A3D)
-                                      : const Color(0xFFFF2E2E),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            DataCell(_buildMetodoBadge(metodoDisplay)),
-                            DataCell(Text(categoria)),
-                            DataCell(Text(descripcion,
-                                maxLines: 2, overflow: TextOverflow.ellipsis)),
-                          ]);
-                        }).toList(),
+                  return DataRow(cells: [
+                    DataCell(Text(fechaHora,
+                        style: const TextStyle(color: Colors.black87))),
+                    DataCell(_buildTipoBadge(tipoDisplay, isIngreso)),
+                    DataCell(
+                      Text(
+                        (isIngreso ? '+ ' : '- ') + _formatMonto(monto),
+                        style: TextStyle(
+                          color: isIngreso
+                              ? const Color(0xFF008A3D)
+                              : const Color(0xFFFF2E2E),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                    DataCell(
+                      Text(
+                        _formatMonto(costo),
+                        style: const TextStyle(color: Color(0xFF666666)),
+                      ),
+                    ),
+                    DataCell(
+                      Text(
+                        (ganancia >= 0 ? '+ ' : '') + _formatMonto(ganancia),
+                        style: TextStyle(
+                          color: ganancia >= 0
+                              ? const Color(0xFF008A3D)
+                              : const Color(0xFFFF2E2E),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    DataCell(_buildMetodoBadge(metodoDisplay)),
+                    DataCell(Text(categoria)),
+                    DataCell(Text(descripcion,
+                        maxLines: 2, overflow: TextOverflow.ellipsis)),
+                  ]);
+                }).toList(),
+              ),
             ),
           ),
           Container(

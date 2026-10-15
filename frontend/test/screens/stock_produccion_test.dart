@@ -125,7 +125,7 @@ void main() {
     await t.pumpAndSettle();
 
     final stock = t.widget<Text>(find.byKey(const Key('stock_ELA-0002')));
-    expect(stock.data, '−2 UNIDAD');
+    expect(stock.data, '−2 unidades');
     expect(stock.style!.color, Colors.red.shade700);
     expect(find.text('Puedo producir hasta 0'), findsOneWidget);
     expect(find.byKey(const Key('producir_ELA-0002')), findsOneWidget);

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../models/unidad_medida.dart';
+import '../utils/numeros.dart';
 import '../models/product.dart';
 
 class ProductCard extends StatelessWidget {
@@ -35,13 +37,13 @@ class ProductCard extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.bold)
                 ),
                 const SizedBox(height: 4),
-                Text('\$${product.precioUnitario.toStringAsFixed(2)}'),
+                Text(formatPesos(product.precioUnitario)),
                 const SizedBox(height: 4),
                 // --- Indicador de Stock y Unidad de Medida ---
                 Text(
                   isAgotado
                       ? 'Agotado'
-                      : 'Stock: ${product.stockActual} ${product.unidadStock}',
+                      : 'Stock: ${textoStock(product.stockActual, product.unidadStock)}',
                   key: const ValueKey('product_card_stock_text'),
                   style: TextStyle(
                     color: isAgotado ? Colors.red : Colors.grey[600],
@@ -59,7 +61,7 @@ class ProductCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      product.unidadStock,
+                      UnidadMedida.deCodigo(product.unidadStock)?.nombre ?? product.unidadStock,
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,

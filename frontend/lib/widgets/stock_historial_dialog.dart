@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/stock.dart';
 import '../services/api_service.dart';
 import 'cargando_diferido.dart';
+import 'tabla_ajustada.dart';
 
 /// "Ver historial" de stock de un artículo (Productos y Materia Prima):
 /// cada movimiento con su cantidad, el stock que quedó, el motivo y quién lo
@@ -74,19 +75,18 @@ class _StockHistorialDialogState extends State<StockHistorialDialog> {
         child: Text('No hay movimientos en ese período.', style: TextStyle(color: Color(0xFF64748B))),
       );
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
+    return TablaAjustada(
+      tabla: DataTable(
         key: const Key('tabla_movimientos_stock'),
         columnSpacing: 20,
         headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
         columns: const [
-          DataColumn(label: Text('Fecha', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('Tipo', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('Cantidad', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
-          DataColumn(label: Text('Stock', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
-          DataColumn(label: Text('Motivo', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('Usuario', style: TextStyle(fontWeight: FontWeight.bold))),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Fecha', style: TextStyle(fontWeight: FontWeight.bold))),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Tipo', style: TextStyle(fontWeight: FontWeight.bold))),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Cantidad', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Stock', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
+          DataColumn(columnWidth: columnaFlexible, label: Text('Motivo', style: TextStyle(fontWeight: FontWeight.bold))),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Usuario', style: TextStyle(fontWeight: FontWeight.bold))),
         ],
         rows: [
           for (final m in _filas)
@@ -102,7 +102,7 @@ class _StockHistorialDialogState extends State<StockHistorialDialog> {
                   style: TextStyle(
                       color: m.stockResultante < 0 ? Colors.red.shade700 : null,
                       fontWeight: m.stockResultante < 0 ? FontWeight.bold : null))),
-              DataCell(SizedBox(width: 260, child: Text(m.motivo ?? '—', overflow: TextOverflow.ellipsis, maxLines: 2))),
+              DataCell(Text(m.motivo ?? '—', overflow: TextOverflow.ellipsis, maxLines: 2)),
               DataCell(Text(m.usuario ?? '—')),
             ]),
         ],

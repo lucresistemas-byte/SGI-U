@@ -13,6 +13,7 @@ import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/cargando_diferido.dart';
+import '../widgets/tabla_ajustada.dart';
 
 class RecetasScreen extends StatefulWidget {
   final RecetasBloc? recetasBloc;
@@ -393,20 +394,18 @@ class _RecetasScreenState extends State<RecetasScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: SingleChildScrollView(
-                  // Scroll horizontal: con nombres largos o el chip "Producto
-                  // inactivo", la tabla puede ser más ancha que la pantalla.
-                  child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
+                child: TablaAjustada(
+                  tabla: DataTable(
+                    columnSpacing: 20,
+                    horizontalMargin: 16,
                     headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
                     columns: const [
-                      DataColumn(label: Text('Producto Elaborado', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Nombre Receta', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Insumos', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Costos Adic.', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Costo Total', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(columnWidth: columnaAjustable, label: Text('Producto Elaborado', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(columnWidth: columnaFlexible, label: Text('Nombre Receta', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(columnWidth: columnaAjustable, label: Text('Insumos', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(columnWidth: columnaAjustable, label: Text('Costos Adic.', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(columnWidth: columnaAjustable, label: Text('Costo Total', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(columnWidth: columnaAjustable, label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold))),
                     ],
                     rows: state.recetas.map((r) {
                       // La receta siempre se ve; si su producto está
@@ -454,7 +453,6 @@ class _RecetasScreenState extends State<RecetasScreen> {
                         ],
                       );
                     }).toList(),
-                  ),
                   ),
                 ),
               ),
