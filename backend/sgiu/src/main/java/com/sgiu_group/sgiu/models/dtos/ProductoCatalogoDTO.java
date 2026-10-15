@@ -32,7 +32,9 @@ public record ProductoCatalogoDTO(
     /** Precios que cambiaron al guardar (resumen "Se actualizaron N precios"). */
     java.util.List<CambioPrecioDTO> cambiosDePrecio,
     /** Elaborados y paquetes: cuántos se pueden producir con el stock de sus componentes. */
-    Long puedeProducir
+    Long puedeProducir,
+    /** Id interno (el filtro por producto del dashboard lo usa). */
+    Long id
 ) {
     /** Producto de reventa vendible (compatibilidad de tests y fixtures). */
     public ProductoCatalogoDTO(
@@ -49,7 +51,7 @@ public record ProductoCatalogoDTO(
     ) {
         this(codigo, nombre, precioUnitario, precioCosto, porcentajeGanancia, unidadMedida,
                 categoria, stockActual, stockMinimo, activo, TipoArticulo.REVENTA, true, null, "MARGEN", null, null,
-                java.util.List.of(), null);
+                java.util.List.of(), null, null);
     }
 
     public ProductoCatalogoDTO(

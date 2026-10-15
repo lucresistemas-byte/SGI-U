@@ -22,21 +22,36 @@ public interface LineaVentaRepository extends JpaRepository<LineaVenta, Long> {
             @Param("fechaHasta") LocalDateTime fechaHasta);
 
     /**
-     * Productos ordenados por ganancia en pesos (ventas − costo congelado),
-     * con [productoId, nombre, unidades, ventas, costo]. Ante igual ganancia,
-     * primero el que más vendió.
+     * Los más vendidos (por unidades; ante empate, por lo vendido en pesos),
+     * con [productoId, nombre, unidades, ventas, costo congelado]. Con
+     * productoId, solo ese producto.
      */
     @Query("SELECT p.id, p.nombre, SUM(lv.cantidad), SUM(lv.subtotal), " +
            "SUM(COALESCE(lv.costoUnitario, 0) * lv.cantidad) " +
            "FROM LineaVenta lv JOIN lv.venta v JOIN lv.producto p " +
            "WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta " +
+           "AND (:productoId IS NULL OR p.id = :productoId) " +
            "GROUP BY p.id, p.nombre " +
-           "ORDER BY SUM(lv.subtotal) - SUM(COALESCE(lv.costoUnitario, 0) * lv.cantidad) DESC, " +
-           "SUM(lv.subtotal) DESC")
-    List<Object[]> findTopProductosPorGanancia(
+           "ORDER BY SUM(lv.cantidad) DESC, SUM(lv.subtotal) DESC")
+    List<Object[]> findTopProductosConCosto(
             @Param("fechaDesde") LocalDateTime fechaDesde,
             @Param("fechaHasta") LocalDateTime fechaHasta,
+            @Param("productoId") Long productoId,
             Pageable pageable);
+
+    /**
+     * Por venta del rango que incluye el producto: [ventaId, total de la
+     * venta, subtotal del producto, costo congelado del producto].
+     */
+    @Query("SELECT v.id, v.total, SUM(lv.subtotal), SUM(COALESCE(lv.costoUnitario, 0) * lv.cantidad) " +
+           "FROM LineaVenta lv JOIN lv.venta v " +
+           "WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta " +
+           "AND lv.producto.id = :productoId " +
+           "GROUP BY v.id, v.total")
+    List<Object[]> findVentasDeProducto(
+            @Param("fechaDesde") LocalDateTime fechaDesde,
+            @Param("fechaHasta") LocalDateTime fechaHasta,
+            @Param("productoId") Long productoId);
 
     @Query("SELECT c.id, c.nombre, SUM(lv.cantidad), SUM(lv.subtotal) " +
            "FROM LineaVenta lv JOIN lv.venta v JOIN lv.producto p JOIN p.categoria c " +

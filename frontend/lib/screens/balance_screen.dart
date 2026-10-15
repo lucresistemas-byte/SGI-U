@@ -113,7 +113,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Ganancias',
+                  'Balance',
                   style: TextStyle(
                       fontSize: 54,
                       fontWeight: FontWeight.w400,
@@ -172,7 +172,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
   Widget _buildFiltrosCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -180,13 +180,21 @@ class _BalanceScreenState extends State<BalanceScreen> {
           BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
         ],
       ),
-      child: SelectorPeriodo(
-        periodo: _periodo,
-        hoy: widget.hoy,
-        onCambio: (periodo) {
-          setState(() => _periodo = periodo);
-          _cargarBalance();
-        },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Rango de Fechas',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 16),
+          SelectorPeriodo(
+            periodo: _periodo,
+            hoy: widget.hoy,
+            onCambio: (periodo) {
+              setState(() => _periodo = periodo);
+              _cargarBalance();
+            },
+          ),
+        ],
       ),
     );
   }
@@ -205,7 +213,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
         Row(
           children: [
             _buildMetricaCard(
-              titulo: 'Ingresos (entró)',
+              titulo: 'Total de Ingresos',
               valor: ingresos,
               colorValor: const Color(0xFF006B3D),
               icon: Icons.trending_up,
@@ -214,7 +222,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
             ),
             const SizedBox(width: 24),
             _buildMetricaCard(
-              titulo: 'Egresos (salió)',
+              titulo: 'Total de Egresos',
               valor: egresos,
               colorValor: const Color(0xFFFF0000),
               icon: Icons.trending_down,
@@ -223,7 +231,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
             ),
             const SizedBox(width: 24),
             _buildMetricaCard(
-              titulo: 'Caja del período',
+              titulo: 'Margen Neto',
               valor: margenNeto,
               colorValor: colorMargen,
               icon: Icons.wallet_outlined,
@@ -231,129 +239,32 @@ class _BalanceScreenState extends State<BalanceScreen> {
               iconColor: const Color(0xFF006B3D),
             ),
             const SizedBox(width: 24),
-            _buildCostoBeneficioCard(
-              costoTotal: costoTotal,
-              gananciaReal: gananciaReal,
+            _buildMetricaCard(
+              titulo: 'Costo',
+              valor: costoTotal,
+              colorValor: const Color(0xFF555555),
+              icon: Icons.shopping_basket_outlined,
+              iconBgColor: const Color(0xFFF1F1F1),
+              iconColor: const Color(0xFF555555),
+            ),
+            const SizedBox(width: 24),
+            _buildMetricaCard(
+              titulo: 'Ganancia neta',
+              valor: gananciaReal,
+              texto: formatPesosConSigno(gananciaReal),
+              ayuda: 'Lo que te queda después de pagar los gastos (alquiler, '
+                  'luz, sueldos, otros). Las compras de mercadería no se '
+                  'restan: su costo ya está en "Costo".',
+              colorValor: colorResultado(gananciaReal),
+              icon: Icons.show_chart,
+              iconBgColor: const Color(0xFFEAF8EF),
+              iconColor: const Color(0xFF006B3D),
             ),
           ],
         ),
         const SizedBox(height: 24),
         Expanded(child: _buildTablaMovimientos(balance['movimientos'] ?? [])),
       ],
-    );
-  }
-
-  Widget _buildCostoBeneficioCard({
-    required double costoTotal,
-    required double gananciaReal,
-  }) {
-    final formatter =
-        NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
-    final colorGanancia =
-        gananciaReal >= 0 ? const Color(0xFF006B3D) : const Color(0xFFFF0000);
-
-    return Expanded(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final double cardWidth = constraints.maxWidth;
-          final double circleSize = (cardWidth * 0.22).clamp(36.0, 56.0);
-          final double iconSize = circleSize * 0.5;
-          final double titleSize = (cardWidth * 0.08).clamp(14.0, 16.0);
-          final double moneySize = (cardWidth * 0.12).clamp(15.0, 22.0);
-
-          return Container(
-            height: 140,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-                color: Colors.white, borderRadius: BorderRadius.circular(18)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Costo y ganancia',
-                      style: TextStyle(
-                          fontSize: titleSize,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF666666)),
-                    ),
-                    Container(
-                      width: circleSize,
-                      height: circleSize,
-                      decoration: const BoxDecoration(
-                          color: Color(0xFFEAF8EF), shape: BoxShape.circle),
-                      child: Icon(Icons.show_chart,
-                          size: iconSize, color: const Color(0xFF006B3D)),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Te costó',
-                              style: TextStyle(
-                                  fontSize: 11, color: Color(0xFF888888))),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              formatter.format(costoTotal),
-                              style: TextStyle(
-                                  fontSize: moneySize,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF555555)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Flexible(
-                                child: Text('Ganancia neta',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                        fontSize: 11, color: Color(0xFF888888))),
-                              ),
-                              SizedBox(width: 4),
-                              AyudaInfo(
-                                  'Lo que te queda después de pagar los gastos (alquiler, luz, sueldos, otros). Las compras de mercadería no se restan: su costo ya está en "Te costó".'),
-                            ],
-                          ),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              formatPesosConSigno(gananciaReal),
-                              style: TextStyle(
-                                  fontSize: moneySize,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorGanancia),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
     );
   }
 
@@ -364,6 +275,8 @@ class _BalanceScreenState extends State<BalanceScreen> {
     required IconData icon,
     required Color iconBgColor,
     required Color iconColor,
+    String? texto,
+    String? ayuda,
   }) {
     final formatter =
         NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
@@ -385,9 +298,22 @@ class _BalanceScreenState extends State<BalanceScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(titulo,
-                    style: TextStyle(
-                        fontSize: titleSize, color: const Color(0xFF666666))),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(titulo,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: titleSize,
+                              color: const Color(0xFF666666))),
+                    ),
+                    if (ayuda != null) ...[
+                      const SizedBox(width: 4),
+                      AyudaInfo(ayuda),
+                    ],
+                  ],
+                ),
                 const Spacer(),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -398,7 +324,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          formatter.format(valor),
+                          texto ?? formatter.format(valor),
                           style: TextStyle(
                               fontSize: moneySize,
                               fontWeight: FontWeight.bold,

@@ -2,6 +2,7 @@ package com.sgiu_group.sgiu.services;
 
 import com.sgiu_group.sgiu.exceptions.FechasInvalidasException;
 import com.sgiu_group.sgiu.exceptions.FiltroInvalidoException;
+import com.sgiu_group.sgiu.models.dtos.ResultadoPeriodoDTO;
 import com.sgiu_group.sgiu.models.dtos.dashboard.*;
 import com.sgiu_group.sgiu.models.entities.ArticuloStock;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
@@ -24,7 +25,7 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class DashboardService {
 
-    /** "Lo que más plata te deja": los primeros por ganancia en pesos. */
+    /** Cantidad de productos del top de más vendidos. */
     static final int TOP_PRODUCTOS = 5;
 
     private final VentaRepository ventaRepository;
@@ -34,6 +35,7 @@ public class DashboardService {
     private final PagoVentaRepository pagoVentaRepository;
     private final MetodoPagoRepository metodoPagoRepository;
     private final ResultadoService resultadoService;
+    private final EspProductoRepository espProductoRepository;
 
     public DashboardService(VentaRepository ventaRepository,
                              LineaVentaRepository lineaVentaRepository,
@@ -41,7 +43,8 @@ public class DashboardService {
                              ArticuloStockRepository articuloStockRepository,
                              PagoVentaRepository pagoVentaRepository,
                              MetodoPagoRepository metodoPagoRepository,
-                             ResultadoService resultadoService) {
+                             ResultadoService resultadoService,
+                             EspProductoRepository espProductoRepository) {
         this.ventaRepository = ventaRepository;
         this.lineaVentaRepository = lineaVentaRepository;
         this.movFinancieroRepository = movFinancieroRepository;
@@ -49,6 +52,7 @@ public class DashboardService {
         this.pagoVentaRepository = pagoVentaRepository;
         this.metodoPagoRepository = metodoPagoRepository;
         this.resultadoService = resultadoService;
+        this.espProductoRepository = espProductoRepository;
     }
 
     public DashboardResponseDTO obtenerDashboard(LocalDate fechaDesde, LocalDate fechaHasta,
@@ -62,6 +66,9 @@ public class DashboardService {
         // históricos siguen contando).
         if (metodoPagoId != null && !metodoPagoRepository.existsById(metodoPagoId)) {
             throw new FiltroInvalidoException("El método de pago especificado no existe.");
+        }
+        if (productoId != null && !espProductoRepository.existsById(productoId)) {
+            throw new FiltroInvalidoException("El producto especificado no existe.");
         }
 
         LocalDateTime desde = fechaDesde.atStartOfDay();
@@ -87,25 +94,43 @@ public class DashboardService {
         ProductoMasVendidoDTO productoMasVendido = obtenerProductoMasVendido(desde, hasta);
         Long cantidadProductosStockBajo = calcularCantidadStockBajo();
 
+        ResultadoPeriodoDTO resultado;
+        if (productoId == null) {
+            resultado = resultadoService.calcular(desde, hasta, metodoPagoId);
+        } else {
+            // Solo lo de ese producto: lo vendido es su ingreso. Los egresos
+            // no son de un producto: egresos, saldo y ganancia neta van en
+            // null (la app muestra "—").
+            ResultadoService.VentasDeProducto delProducto =
+                    resultadoService.ventasDeProducto(desde, hasta, metodoPagoId, productoId);
+            resultado = resultadoService.calcularDeProducto(delProducto);
+            ingresos = delProducto.ventas();
+            egresos = null;
+            saldoNeto = null;
+            margenNetoPorcentaje = null;
+            cantidadVentas = delProducto.cantidadVentas();
+            ticketPromedio = calcularTicketPromedio(delProducto.ventas(), cantidadVentas);
+        }
+
         DashboardKpisDTO kpis = new DashboardKpisDTO(
                 ingresos, egresos, saldoNeto, margenNetoPorcentaje,
                 cantidadVentas, ticketPromedio, productoMasVendido,
                 cantidadProductosStockBajo);
-        kpis.setResultado(resultadoService.calcular(desde, hasta, metodoPagoId));
+        kpis.setResultado(resultado);
 
         DashboardGraficosDTO graficos = new DashboardGraficosDTO();
         graficos.setIngresosVsEgresosPorDia(generarIngresosVsEgresosPorDia(desde, hasta, metodoPagoId));
         graficos.setVentasPorMetodoPago(generarVentasPorMetodoPago(desde, hasta));
-        graficos.setTopProductosPorGanancia(generarTopPorGanancia(desde, hasta));
+        graficos.setTopProductosMasVendidos(generarTopProductos(desde, hasta, productoId));
         graficos.setEvolucionSaldoNeto(generarEvolucionSaldo(desde, hasta, metodoPagoId));
         graficos.setProductosConMenorStock(generarProductosCriticos());
         graficos.setCategoriaMasVendida(obtenerCategoriaMasVendida(desde, hasta));
 
         boolean hayDatos = ingresos.compareTo(BigDecimal.ZERO) > 0
-                || egresos.compareTo(BigDecimal.ZERO) > 0
+                || (egresos != null && egresos.compareTo(BigDecimal.ZERO) > 0)
                 || cantidadVentas > 0
                 || cantidadProductosStockBajo > 0
-                || !graficos.getTopProductosPorGanancia().isEmpty()
+                || !graficos.getTopProductosMasVendidos().isEmpty()
                 || !graficos.getProductosConMenorStock().isEmpty();
 
         String mensaje = hayDatos
@@ -219,15 +244,13 @@ public class DashboardService {
         return lista;
     }
 
-    private List<ProductoGananciaDTO> generarTopPorGanancia(
-            LocalDateTime desde, LocalDateTime hasta) {
-        List<ProductoGananciaDTO> lista = new ArrayList<>();
-        for (Object[] row : lineaVentaRepository.findTopProductosPorGanancia(
-                desde, hasta, PageRequest.of(0, TOP_PRODUCTOS))) {
-            BigDecimal ventas = decimal(row[3]);
-            BigDecimal costo = decimal(row[4]);
-            lista.add(new ProductoGananciaDTO(((Number) row[0]).longValue(), (String) row[1],
-                    ((Number) row[2]).longValue(), ventas, costo, ventas.subtract(costo)));
+    private List<ProductoMasVendidoDTO> generarTopProductos(
+            LocalDateTime desde, LocalDateTime hasta, Long productoId) {
+        List<ProductoMasVendidoDTO> lista = new ArrayList<>();
+        for (Object[] row : lineaVentaRepository.findTopProductosConCosto(
+                desde, hasta, productoId, PageRequest.of(0, TOP_PRODUCTOS))) {
+            lista.add(new ProductoMasVendidoDTO(((Number) row[0]).longValue(), (String) row[1],
+                    ((Number) row[2]).longValue(), decimal(row[3]), decimal(row[4])));
         }
         return lista;
     }

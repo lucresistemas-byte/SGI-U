@@ -13,6 +13,7 @@ import '../widgets/cargando_diferido.dart';
 import '../models/categoria_movimiento.dart';
 import '../widgets/tabla_ajustada.dart';
 import '../utils/numeros.dart';
+import '../widgets/resultado.dart';
 
 class MovimientosScreen extends StatelessWidget {
   const MovimientosScreen({super.key});
@@ -120,20 +121,24 @@ class _MovimientosContentState extends State<MovimientosContent> {
 
               return Row(
                 children: [
-                  _buildResumenCard('Ingresos de hoy', ingresosHoy,
+                  _buildResumenCard('Ingresos Totales (Hoy)', ingresosHoy,
                       const Color(0xFF006B3D)),
                   const SizedBox(width: 16),
-                  _buildResumenCard('Egresos de hoy', egresosHoy,
+                  _buildResumenCard('Egresos Totales (Hoy)', egresosHoy,
                       const Color(0xFFFF2B2B)),
                   const SizedBox(width: 16),
                   _buildResumenCard(
-                      'Caja de hoy (entró − salió)', saldoNeto, const Color(0xFF222222)),
+                      'Saldo Neto (Hoy)', saldoNeto, const Color(0xFF222222)),
                   const SizedBox(width: 16),
                   _buildResumenCard(
-                      'Caja del mes (entró − salió)', saldoActual, const Color(0xFF222222)),
+                      'Saldo Actual', saldoActual, const Color(0xFF222222)),
                   const SizedBox(width: 16),
-                  _buildCostoBeneficioCard(
-                      'Costo y ganancia de hoy', costoTotalHoy, gananciaRealHoy),
+                  _buildResumenCard(
+                      'Costo', costoTotalHoy, const Color(0xFF555555)),
+                  const SizedBox(width: 16),
+                  _buildResumenCard('Ganancia neta', gananciaRealHoy,
+                      colorResultado(gananciaRealHoy),
+                      texto: formatPesosConSigno(gananciaRealHoy)),
                 ],
               );
             },
@@ -392,7 +397,8 @@ class _MovimientosContentState extends State<MovimientosContent> {
     );
   }
 
-  Widget _buildResumenCard(String titulo, double valor, Color color) {
+  /// [texto] reemplaza el monto formateado (p. ej. la ganancia con signo).
+  Widget _buildResumenCard(String titulo, double valor, Color color, {String? texto}) {
     return Expanded(
       child: Container(
         height: 88,
@@ -418,88 +424,10 @@ class _MovimientosContentState extends State<MovimientosContent> {
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: Text(
-                _formatMonto(valor),
+                texto ?? _formatMonto(valor),
                 style: TextStyle(
                     fontSize: 22, fontWeight: FontWeight.bold, color: color),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCostoBeneficioCard(String titulo, double costo, double ganancia) {
-    final colorGanancia =
-        ganancia >= 0 ? const Color(0xFF006B3D) : const Color(0xFFFF2B2B);
-    return Expanded(
-      child: Container(
-        height: 88,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4)
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              titulo,
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF666666)),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Te costó',
-                          style: TextStyle(fontSize: 10, color: Color(0xFF888888))),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          _formatMonto(costo),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF555555),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Text('Ganancia neta',
-                          style: TextStyle(fontSize: 10, color: Color(0xFF888888))),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          formatPesosConSigno(ganancia),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: colorGanancia,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ),
           ],
         ),

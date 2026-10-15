@@ -73,6 +73,53 @@ public class ResultadoService {
                 otrosIngresos, gastos, compras, neta, porcentaje(neta, ventas));
     }
 
+    /** Lo vendido de un producto: pesos, costo congelado y ventas que lo incluyen. */
+    public record VentasDeProducto(BigDecimal ventas, BigDecimal costo, long cantidadVentas) {}
+
+    /**
+     * Ventas y costo de un solo producto. Con un método de pago, de cada
+     * venta se toma la parte cobrada con él (en proporción, como el costo de
+     * un pago mixto).
+     */
+    public VentasDeProducto ventasDeProducto(LocalDateTime desde, LocalDateTime hasta,
+                                             Long metodoPagoId, Long productoId) {
+        Map<Long, BigDecimal> cobradoConMetodo = new HashMap<>();
+        if (metodoPagoId != null) {
+            for (Object[] fila : pagoVentaRepository.findCobrosConMetodo(desde, hasta, metodoPagoId)) {
+                cobradoConMetodo.put(((Number) fila[0]).longValue(), decimal(fila[1]));
+            }
+        }
+        BigDecimal ventas = BigDecimal.ZERO;
+        BigDecimal costo = BigDecimal.ZERO;
+        long cantidad = 0;
+        for (Object[] fila : lineaVentaRepository.findVentasDeProducto(desde, hasta, productoId)) {
+            BigDecimal subtotal = decimal(fila[2]);
+            BigDecimal costoLinea = decimal(fila[3]);
+            if (metodoPagoId != null) {
+                BigDecimal cobrado = cobradoConMetodo.get(((Number) fila[0]).longValue());
+                BigDecimal total = decimal(fila[1]);
+                if (cobrado == null || total.signum() == 0) continue;
+                subtotal = subtotal.multiply(cobrado).divide(total, 2, RoundingMode.HALF_UP);
+                costoLinea = costoLinea.multiply(cobrado).divide(total, 2, RoundingMode.HALF_UP);
+            }
+            ventas = ventas.add(subtotal);
+            costo = costo.add(costoLinea);
+            cantidad++;
+        }
+        return new VentasDeProducto(ventas, costo, cantidad);
+    }
+
+    /**
+     * Resultado de un solo producto: ventas, costo y ganancia bruta. Los
+     * gastos no son de un producto, así que gastos, compras y ganancia neta
+     * van en null.
+     */
+    public ResultadoPeriodoDTO calcularDeProducto(VentasDeProducto v) {
+        BigDecimal bruta = v.ventas().subtract(v.costo());
+        return new ResultadoPeriodoDTO(v.ventas(), v.costo(), bruta, porcentaje(bruta, v.ventas()),
+                null, null, null, null, null);
+    }
+
     /** Filas [ventaId, cobrado con el método, total de la venta]. */
     private BigDecimal costoProporcional(List<Object[]> cobros) {
         if (cobros.isEmpty()) return BigDecimal.ZERO;

@@ -17,14 +17,15 @@ class DashboardResponse {
 
 class DashboardKpis {
   final double ingresosPeriodo;
-  final double egresosPeriodo;
-  final double saldoNeto;
-  final double margenNetoPorcentaje; // El ajuste de rentabilidad
+  // Null con el filtro por producto: los egresos no son de un producto.
+  final double? egresosPeriodo;
+  final double? saldoNeto;
+  final double? margenNetoPorcentaje; // El ajuste de rentabilidad
   final int cantidadVentas;
   final double ticketPromedio;
   final int cantidadProductosStockBajo;
 
-  /// Vendiste, te costó, ganancia bruta y neta.
+  /// Costo de lo vendido, ganancia bruta y ganancia neta.
   final ResultadoPeriodo resultado;
 
   DashboardKpis({
@@ -41,9 +42,9 @@ class DashboardKpis {
   factory DashboardKpis.fromJson(Map<String, dynamic> json) {
     return DashboardKpis(
       ingresosPeriodo: (json['ingresosPeriodo'] ?? 0).toDouble(),
-      egresosPeriodo: (json['egresosPeriodo'] ?? 0).toDouble(),
-      saldoNeto: (json['saldoNeto'] ?? 0).toDouble(),
-      margenNetoPorcentaje: (json['margenNetoPorcentaje'] ?? 0).toDouble(),
+      egresosPeriodo: (json['egresosPeriodo'] as num?)?.toDouble(),
+      saldoNeto: (json['saldoNeto'] as num?)?.toDouble(),
+      margenNetoPorcentaje: (json['margenNetoPorcentaje'] as num?)?.toDouble(),
       cantidadVentas: json['cantidadVentas'] ?? 0,
       ticketPromedio: (json['ticketPromedio'] ?? 0).toDouble(),
       cantidadProductosStockBajo: json['cantidadProductosStockBajo'] ?? 0,
@@ -54,12 +55,12 @@ class DashboardKpis {
 
 class DashboardGraficos {
   final List<ProductoStock> productosConMenorStock;
-  final List<ProductoGanancia> topProductosPorGanancia;
+  final List<TopProducto> topProductosMasVendidos;
   final List<EvolucionDiaria> ingresosVsEgresosPorDia;
 
   DashboardGraficos({
     required this.productosConMenorStock,
-    required this.topProductosPorGanancia,
+    required this.topProductosMasVendidos,
     required this.ingresosVsEgresosPorDia,
   });
 
@@ -68,8 +69,8 @@ class DashboardGraficos {
       productosConMenorStock: (json['productosConMenorStock'] as List? ?? [])
           .map((e) => ProductoStock.fromJson(e))
           .toList(),
-      topProductosPorGanancia: (json['topProductosPorGanancia'] as List? ?? [])
-          .map((e) => ProductoGanancia.fromJson(e))
+      topProductosMasVendidos: (json['topProductosMasVendidos'] as List? ?? [])
+          .map((e) => TopProducto.fromJson(e))
           .toList(),
       ingresosVsEgresosPorDia: (json['ingresosVsEgresosPorDia'] as List? ?? [])
           .map((e) => EvolucionDiaria.fromJson(e))
@@ -101,26 +102,27 @@ class ProductoStock {
   }
 }
 
-/// Lo que dejó un producto en el período ("Lo que más plata te deja").
-class ProductoGanancia {
+class TopProducto {
   final String nombre;
   final int cantidadVendida;
-  final double ventas;
-  final double ganancia;
+  final double montoTotal;
 
-  ProductoGanancia({
-    required this.nombre,
-    required this.cantidadVendida,
-    required this.ventas,
-    required this.ganancia,
+  /// Lo vendido menos su costo congelado (null si el backend no la manda).
+  final double? ganancia;
+
+  TopProducto({
+    required this.nombre, 
+    required this.cantidadVendida, 
+    required this.montoTotal,
+    this.ganancia,
   });
 
-  factory ProductoGanancia.fromJson(Map<String, dynamic> json) {
-    return ProductoGanancia(
+  factory TopProducto.fromJson(Map<String, dynamic> json) {
+    return TopProducto(
       nombre: json['nombre'] ?? 'Desconocido',
-      cantidadVendida: (json['cantidadVendida'] ?? 0 as num).toInt(),
-      ventas: (json['ventas'] ?? 0).toDouble(),
-      ganancia: (json['ganancia'] ?? 0).toDouble(),
+      cantidadVendida: json['cantidadVendida'] ?? 0,
+      montoTotal: (json['montoTotal'] ?? 0).toDouble(),
+      ganancia: (json['ganancia'] as num?)?.toDouble(),
     );
   }
 }

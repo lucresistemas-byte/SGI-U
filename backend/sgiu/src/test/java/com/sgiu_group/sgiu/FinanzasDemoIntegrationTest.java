@@ -3,7 +3,7 @@ package com.sgiu_group.sgiu;
 import com.sgiu_group.sgiu.models.dtos.BalanceResponseDTO;
 import com.sgiu_group.sgiu.models.dtos.ResultadoPeriodoDTO;
 import com.sgiu_group.sgiu.models.dtos.dashboard.DashboardResponseDTO;
-import com.sgiu_group.sgiu.models.dtos.dashboard.ProductoGananciaDTO;
+import com.sgiu_group.sgiu.models.dtos.dashboard.ProductoMasVendidoDTO;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.models.entities.LineaVenta;
 import com.sgiu_group.sgiu.models.entities.MovFinanciero;
@@ -80,23 +80,64 @@ class FinanzasDemoIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void loQueMasPlataTeDeja_top5PorGananciaEnPesos() {
+    void topProductos_losCincoMasVendidosConSuGanancia() {
         DashboardResponseDTO mes = dashboardService.obtenerDashboard(INICIO_MES, HOY, null, null, null);
 
-        assertThat(mes.getGraficos().getTopProductosPorGanancia())
-                .extracting(ProductoGananciaDTO::nombre)
-                // El agua (ganancia 800) queda afuera; la Coca-Cola, que es la
-                // que más unidades vendió, es la quinta.
-                .containsExactly("Torta de chocolate", "Tarta de coco", "Caja de bombones 100 g",
-                        "Alfajor de maicena", "Coca-Cola 500 ml");
-        ProductoGananciaDTO primero = mes.getGraficos().getTopProductosPorGanancia().getFirst();
-        assertThat(primero.cantidadVendida()).isEqualTo(2L);
-        assertThat(primero.ventas()).isEqualByComparingTo("42400");
-        assertThat(primero.costo()).isEqualByComparingTo("20190");
-        assertThat(primero.ganancia()).isEqualByComparingTo("22210");
-        ProductoGananciaDTO coca = mes.getGraficos().getTopProductosPorGanancia().getLast();
-        assertThat(coca.cantidadVendida()).isEqualTo(3L);
-        assertThat(coca.ganancia()).isEqualByComparingTo("1800");
+        // Por unidades; con igual cantidad, primero el que más vendió en pesos.
+        assertThat(mes.getGraficos().getTopProductosMasVendidos())
+                .extracting(ProductoMasVendidoDTO::getNombre)
+                .containsExactly("Coca-Cola 500 ml", "Torta de chocolate", "Caja de bombones 100 g",
+                        "Agua mineral 500 ml", "Tarta de coco");
+        ProductoMasVendidoDTO coca = mes.getGraficos().getTopProductosMasVendidos().getFirst();
+        assertThat(coca.getCantidadVendida()).isEqualTo(3L);
+        assertThat(coca.getMontoTotal()).isEqualByComparingTo("4500");
+        assertThat(coca.getGanancia()).isEqualByComparingTo("1800");
+        ProductoMasVendidoDTO torta = mes.getGraficos().getTopProductosMasVendidos().get(1);
+        assertThat(torta.getCosto()).isEqualByComparingTo("20190");
+        assertThat(torta.getGanancia()).isEqualByComparingTo("22210");
+    }
+
+    @Test
+    void filtroPorProducto_kpisYTopSoloDeEseProducto() {
+        DashboardResponseDTO mes = dashboardService.obtenerDashboard(INICIO_MES, HOY, null, torta.getId(), null);
+
+        // Torta de chocolate: ventas 2 (21.200 cada una), costo 10.095 cada una.
+        assertThat(mes.getKpis().getIngresosPeriodo()).isEqualByComparingTo("42400");
+        assertThat(mes.getKpis().getCantidadVentas()).isEqualTo(2L);
+        assertThat(mes.getKpis().getTicketPromedio()).isEqualByComparingTo("21200");
+        // Los gastos no son de un producto.
+        assertThat(mes.getKpis().getEgresosPeriodo()).isNull();
+        assertThat(mes.getKpis().getSaldoNeto()).isNull();
+        ResultadoPeriodoDTO r = mes.getKpis().getResultado();
+        assertThat(r.ventas()).isEqualByComparingTo("42400");
+        assertThat(r.costoVendido()).isEqualByComparingTo("20190");
+        assertThat(r.gananciaBruta()).isEqualByComparingTo("22210");
+        assertThat(r.margenBrutoPorcentaje()).isEqualByComparingTo("52.38");
+        assertThat(r.gananciaNeta()).isNull();
+        assertThat(r.gastos()).isNull();
+        assertThat(mes.getGraficos().getTopProductosMasVendidos())
+                .extracting(ProductoMasVendidoDTO::getNombre).containsExactly("Torta de chocolate");
+    }
+
+    @Test
+    void filtroPorProductoYMetodo_soloLaParteCobradaConEseMetodo() {
+        Long efectivo = datos.metodo("Efectivo").getId();
+        // La torta se vendió en la venta 2 (transferencia) y en la 5 (mixta:
+        // 10.000 de 22.700 en efectivo).
+        DashboardResponseDTO mes = dashboardService.obtenerDashboard(INICIO_MES, HOY, efectivo, torta.getId(), null);
+
+        assertThat(mes.getKpis().getCantidadVentas()).isEqualTo(1L);
+        // 21.200 × 10.000 / 22.700 y 10.095 × 10.000 / 22.700.
+        assertThat(mes.getKpis().getResultado().ventas()).isEqualByComparingTo("9339.21");
+        assertThat(mes.getKpis().getResultado().costoVendido()).isEqualByComparingTo("4447.14");
+    }
+
+    @Test
+    void filtroPorProductoInexistente_esUnError() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                        dashboardService.obtenerDashboard(INICIO_MES, HOY, null, 999_999L, null))
+                .isInstanceOf(com.sgiu_group.sgiu.exceptions.FiltroInvalidoException.class)
+                .hasMessage("El producto especificado no existe.");
     }
 
     @Test

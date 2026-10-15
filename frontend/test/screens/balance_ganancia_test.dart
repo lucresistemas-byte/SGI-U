@@ -43,7 +43,7 @@ void main() {
   }
 
   testWidgets(
-      'BalanceScreen renderiza tarjeta Costo vs Beneficio con formato moneda y columnas de costo y ganancia en DataTable',
+      'BalanceScreen renderiza las tarjetas Costo y Ganancia neta con formato moneda y columnas de costo y ganancia en DataTable',
       (tester) async {
     tester.view.physicalSize = const Size(1920, 1080);
     tester.view.devicePixelRatio = 1.0;
@@ -77,8 +77,6 @@ void main() {
     await tester.pumpAndSettle();
 
     // 1. Verificar tarjeta "Costo vs Beneficio"
-    expect(find.text('Costo y ganancia'), findsOneWidget);
-    expect(find.text('Te costó'), findsOneWidget);
     expect(find.text('Ganancia neta'), findsOneWidget);
 
     // 2. Verificar formato de moneda en los valores de la tarjeta
@@ -94,7 +92,7 @@ void main() {
     expect(find.text('Fecha/Hora'), findsOneWidget);
     expect(find.text('Tipo'), findsOneWidget);
     expect(find.text('Monto'), findsOneWidget);
-    expect(find.text('Costo'), findsOneWidget); // Encabezado de columna
+    expect(find.text('Costo'), findsNWidgets(2)); // Tarjeta y encabezado de columna
     expect(find.text('Ganancia'), findsOneWidget); // Encabezado de columna
     expect(find.text('Método de Pago'), findsOneWidget);
 

@@ -18,8 +18,8 @@ enum Seccion {
   insumos(Icons.egg_outlined, 'Materia Prima', 'Materia Prima / Insumos'),
   recetas(Icons.menu_book, 'Recetas y paquetes', 'Recetas y paquetes'),
   pedidos(Icons.assignment_outlined, 'Pedidos', 'Pedidos con Seña'),
-  balance(Icons.balance, 'Ganancias', 'Ganancias'),
-  dashboard(Icons.home_outlined, 'Inicio', 'Inicio'),
+  balance(Icons.balance, 'Balance', 'Balance'),
+  dashboard(Icons.dashboard_outlined, 'Dashboard', 'Dashboard'),
   settings(Icons.settings_outlined, 'Configuración', 'Configuración');
 
   const Seccion(this.icono, this.etiqueta, this.titulo);
