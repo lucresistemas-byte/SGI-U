@@ -8,6 +8,7 @@ import '../widgets/app_scaffold.dart';
 import '../services/pdf_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/parsers.dart';
+import '../models/categoria_movimiento.dart';
 import '../widgets/cargando_diferido.dart';
 import '../widgets/tabla_ajustada.dart';
 
@@ -144,7 +145,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Balance',
+                  'Ganancias',
                   style: TextStyle(
                       fontSize: 54,
                       fontWeight: FontWeight.w400,
@@ -288,7 +289,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
         Row(
           children: [
             _buildMetricaCard(
-              titulo: 'Total de Ingresos',
+              titulo: 'Ingresos (entró)',
               valor: ingresos,
               colorValor: const Color(0xFF006B3D),
               icon: Icons.trending_up,
@@ -297,7 +298,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
             ),
             const SizedBox(width: 24),
             _buildMetricaCard(
-              titulo: 'Total de Egresos',
+              titulo: 'Egresos (salió)',
               valor: egresos,
               colorValor: const Color(0xFFFF0000),
               icon: Icons.trending_down,
@@ -306,7 +307,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
             ),
             const SizedBox(width: 24),
             _buildMetricaCard(
-              titulo: 'Margen Neto',
+              titulo: 'Caja del período',
               valor: margenNeto,
               colorValor: colorMargen,
               icon: Icons.wallet_outlined,
@@ -547,8 +548,8 @@ class _BalanceScreenState extends State<BalanceScreen> {
                   double ganancia = parseDouble(mov['ganancia']);
                   String fechaHora =
                       _formatFechaHora(parseString(mov['fechaHora']));
-                  String categoria =
-                      parseString(mov['categoria'], 'Sin categoría');
+                  String categoria = CategoriaMovimiento.etiquetaDe(
+                      mov['categoria']?.toString());
                   String descripcion =
                       parseString(mov['descripcion'], '-');
 
@@ -591,25 +592,6 @@ class _BalanceScreenState extends State<BalanceScreen> {
                   ]);
                 }).toList(),
               ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-            decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey.shade200))),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text('Página 1 de 1',
-                    style: TextStyle(color: Colors.grey)),
-                SizedBox(width: 16),
-                IconButton(
-                    icon: Icon(Icons.chevron_left, color: Colors.grey),
-                    onPressed: null),
-                IconButton(
-                    icon: Icon(Icons.chevron_right, color: Colors.grey),
-                    onPressed: null),
-              ],
             ),
           ),
         ],

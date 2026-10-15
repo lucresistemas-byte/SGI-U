@@ -119,17 +119,17 @@ class _MovimientosContentState extends State<MovimientosContent> {
 
               return Row(
                 children: [
-                  _buildResumenCard('Ingresos Totales (Hoy)', ingresosHoy,
+                  _buildResumenCard('Ingresos de hoy', ingresosHoy,
                       const Color(0xFF006B3D)),
                   const SizedBox(width: 16),
-                  _buildResumenCard('Egresos Totales (Hoy)', egresosHoy,
+                  _buildResumenCard('Egresos de hoy', egresosHoy,
                       const Color(0xFFFF2B2B)),
                   const SizedBox(width: 16),
                   _buildResumenCard(
-                      'Saldo Neto (Hoy)', saldoNeto, const Color(0xFF222222)),
+                      'Caja de hoy (entró − salió)', saldoNeto, const Color(0xFF222222)),
                   const SizedBox(width: 16),
                   _buildResumenCard(
-                      'Saldo Actual', saldoActual, const Color(0xFF222222)),
+                      'Caja del mes (entró − salió)', saldoActual, const Color(0xFF222222)),
                   const SizedBox(width: 16),
                   _buildCostoBeneficioCard(
                       'Costo vs Beneficio del día', costoTotalHoy, gananciaRealHoy),

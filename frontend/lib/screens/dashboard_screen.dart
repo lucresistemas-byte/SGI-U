@@ -7,6 +7,8 @@ import '../models/dashboard_models.dart';
 import '../models/metodo_pago.dart';
 import '../theme/app_colors.dart';
 import '../widgets/cargando_diferido.dart';
+import '../navigation/ir_a_seccion.dart';
+import '../navigation/seccion.dart';
 
 class DashboardScreen extends StatefulWidget {
   final ApiService? apiService;
@@ -176,27 +178,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onTap: _seleccionarRangoFechas,
                 ),
                 _buildMetodoPagoDropdown(),
-                _buildFiltroDropdown(Icons.inventory_2_outlined, 'Todos los productos'),
               ],
             );
 
-            final titulo = Column(
+            const titulo = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'SGI-U - Tablero de Control',
+                Text(
+                  'Inicio',
                   style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF111111)),
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Text(
-                      'Resumen Ejecutivo',
-                      style: TextStyle(fontSize: 18, color: Color(0xFF555555)),
-                    ),
-                    const SizedBox(width: 8),
-                    Icon(Icons.info_outline, size: 18, color: Colors.grey.shade500),
-                  ],
+                SizedBox(height: 6),
+                Text(
+                  'Cómo le va a tu negocio',
+                  style: TextStyle(fontSize: 18, color: Color(0xFF555555)),
                 ),
               ],
             );
@@ -216,7 +211,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(flex: 5, child: titulo),
+                const Expanded(flex: 5, child: titulo),
                 const SizedBox(width: 16),
                 Expanded(flex: 7, child: filtros),
               ],
@@ -234,7 +229,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(width: 8),
             const Expanded(
               child: Text(
-                'Visualiza la salud financiera y el desempeño de tu negocio en el período seleccionado.',
+                'Lo que vendiste, lo que te costó y lo que ganaste en el período elegido.',
                 style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
               ),
             ),
@@ -321,28 +316,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Expanded(
               child: _buildStandardCard(
-                titulo: 'Ingresos del Período',
+                titulo: 'Ingresos del período',
                 monto: formatter.format(kpis.ingresosPeriodo),
-                subtitulo: 'Total dinero entrante',
+                subtitulo: 'Todo lo que entró',
                 montoColor: const Color(0xFF008A3D),
               ),
             ),
             const SizedBox(width: 20),
             Expanded(
               child: _buildStandardCard(
-                titulo: 'Egresos del Período',
+                titulo: 'Egresos del período',
                 monto: formatter.format(kpis.egresosPeriodo),
-                subtitulo: 'Total dinero saliente',
+                subtitulo: 'Todo lo que salió',
                 montoColor: const Color(0xFFD32F2F),
               ),
             ),
             const SizedBox(width: 20),
             Expanded(
               child: _buildSaldoCard(
-                titulo: 'Saldo Neto de Caja',
+                titulo: 'Caja del período',
                 monto: formatter.format(kpis.saldoNeto),
-                subtitulo: 'Capital disponible',
-                margen: '${kpis.margenNetoPorcentaje >= 0 ? '+' : ''}${kpis.margenNetoPorcentaje.toStringAsFixed(1)}%',
+                subtitulo: 'Entró menos salió',
               ),
             ),
           ],
@@ -372,7 +366,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSaldoCard({required String titulo, required String monto, required String subtitulo, required String margen}) {
+  Widget _buildSaldoCard({required String titulo, required String monto, required String subtitulo}) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -387,13 +381,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 12),
           Text(monto, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(subtitulo, style: const TextStyle(fontSize: 13, color: Colors.white70)),
-              Text('Margen Neto: $margen', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-            ],
-          ),
+          Text(subtitulo, style: const TextStyle(fontSize: 13, color: Colors.white70)),
         ],
       ),
     );
@@ -416,31 +404,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              flex: 4,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildMetricCard(
-                      titulo: 'Cantidad de Ventas',
-                      valor: kpis.cantidadVentas.toString(),
-                      subtitulo: 'Transacciones',
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: _buildMetricCard(
-                      titulo: 'Ticket Promedio',
-                      valor: formatter.format(kpis.ticketPromedio),
-                      subtitulo: 'por compra',
-                    ),
-                  ),
-                ],
+              child: _buildMetricCard(
+                titulo: 'Ventas',
+                valor: kpis.cantidadVentas.toString(),
+                subtitulo: 'en el período',
               ),
             ),
             const SizedBox(width: 20),
             Expanded(
-              flex: 6,
-              child: _buildChartPlaceholder(),
+              child: _buildMetricCard(
+                titulo: 'Promedio por venta',
+                valor: formatter.format(kpis.ticketPromedio),
+                subtitulo: 'lo que gasta cada cliente',
+              ),
             ),
           ],
         ),
@@ -468,55 +444,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildChartPlaceholder() {
-    return Container(
-      height: 185,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Evolución del Dinero', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6)),
-                child: const Row(
-                  children: [Text('Diario', style: TextStyle(fontSize: 12)), SizedBox(width: 4), Icon(Icons.keyboard_arrow_down, size: 14)],
-                ),
-              )
-            ],
-          ),
-          const Spacer(),
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.bar_chart, size: 48, color: Colors.grey.shade300),
-                const SizedBox(height: 8),
-                Text('Gráfico de barras próximamente...', style: TextStyle(color: Colors.grey.shade500)),
-              ],
-            ),
-          ),
-          const Spacer(),
-        ],
-      ),
-    );
-  }
-
   // --- BLOQUE 3: ALERTAS OPERATIVAS ---
   Widget _buildAlertasOperativas() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Alertas Operativas (El Día a Día)',
+          'Para tener en cuenta',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF008A3D)),
         ),
         const SizedBox(height: 16),
@@ -545,7 +479,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Stock Crítico - Reposición Urgente', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
+          const Text('Productos con poco stock', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
           const Divider(height: 32, color: Color(0xFFEEEEEE)),
           DataTable(
             headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF666666)),
@@ -576,8 +510,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 16),
           Center(
             child: TextButton.icon(
-              onPressed: () {},
-              icon: const Text('Ver inventario completo', style: TextStyle(color: Color(0xFF008A3D))),
+              key: const Key('inicio_ver_productos'),
+              onPressed: () => IrASeccion.de(context)?.call(Seccion.catalogo),
+              icon: const Text('Ver en Productos', style: TextStyle(color: Color(0xFF008A3D))),
               label: const Icon(Icons.arrow_forward, size: 16, color: Color(0xFF008A3D)),
             ),
           )
@@ -616,7 +551,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Top Productos Más Vendidos', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
+          const Text('Los más vendidos', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
           const Divider(height: 32, color: Color(0xFFEEEEEE)),
           DataTable(
             headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF666666)),
@@ -648,8 +583,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 16),
           Center(
             child: TextButton.icon(
-              onPressed: () {},
-              icon: const Text('Ver reporte completo', style: TextStyle(color: Color(0xFF008A3D))),
+              key: const Key('inicio_ver_ganancias'),
+              onPressed: () => IrASeccion.de(context)?.call(Seccion.balance),
+              icon: const Text('Ver detalle en Ganancias', style: TextStyle(color: Color(0xFF008A3D))),
               label: const Icon(Icons.arrow_forward, size: 16, color: Color(0xFF008A3D)),
             ),
           )

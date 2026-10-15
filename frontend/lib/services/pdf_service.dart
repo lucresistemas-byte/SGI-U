@@ -135,7 +135,7 @@ class PdfService {
                   _buildKpiCard('Total Egresos', totalEgresos,
                       const PdfColor.fromInt(0xFFFF2E2E)),
                   _buildKpiCard(
-                    'Margen Neto',
+                    'Caja del período',
                     margenNeto,
                     margenNeto >= 0
                         ? const PdfColor.fromInt(0xFF008A3D)

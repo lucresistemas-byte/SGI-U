@@ -6,6 +6,7 @@ import '../widgets/cambios_precio_dialog.dart';
 import '../utils/es_mobile.dart';
 import '../widgets/marca_negocio.dart';
 import '../widgets/side_menu.dart';
+import 'ir_a_seccion.dart';
 import 'seccion.dart';
 
 /// Contenedor de la app autenticada: menú lateral fijo y área de contenido
@@ -72,9 +73,12 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final construir = widget.construirSeccion ?? (s) => s.construir();
     // La key fuerza a crear la sección de nuevo al volver a mostrarla.
-    final contenido = KeyedSubtree(
-      key: ValueKey(_seccion),
-      child: construir(_seccion),
+    final contenido = IrASeccion(
+      ir: _seleccionar,
+      child: KeyedSubtree(
+        key: ValueKey(_seccion),
+        child: construir(_seccion),
+      ),
     );
     final menu = SideMenu(seccionActual: _seccion, onSeleccionar: _seleccionar);
 
