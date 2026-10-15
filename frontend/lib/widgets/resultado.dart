@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../utils/numeros.dart';
 
 /// Verde si es positivo o cero, rojo si es negativo (ganancias).
 Color colorResultado(double valor) =>
-    valor < 0 ? const Color(0xFFD32F2F) : const Color(0xFF008A3D);
+    valor < 0 ? AppColors.error : AppColors.exito;
 
 /// Porcentaje chico al lado de un monto: 50.64 → "50,6 %", -50.92 →
 /// "−50,9 %" (mismo signo menos que [formatPesosConSigno]).
@@ -17,7 +20,7 @@ class AyudaInfo extends StatelessWidget {
   final String texto;
   final Color color;
 
-  const AyudaInfo(this.texto, {super.key, this.color = const Color(0xFF888888)});
+  const AyudaInfo(this.texto, {super.key, this.color = AppColors.textoTerciario});
 
   @override
   Widget build(BuildContext context) {
@@ -49,8 +52,8 @@ class ExplicacionMonto extends StatelessWidget {
     this.siNegativo,
     this.negativo = false,
     this.extras = const [],
-    this.color = const Color(0xFF666666),
-    this.colorNegativo = const Color(0xFFB71C1C),
+    this.color = AppColors.textoTerciario,
+    this.colorNegativo = AppColors.error,
     this.textAlign = TextAlign.start,
   });
 
@@ -61,20 +64,24 @@ class ExplicacionMonto extends StatelessWidget {
           textAlign == TextAlign.center ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(texto, textAlign: textAlign, style: TextStyle(fontSize: 12, height: 1.3, color: color)),
+        Text(texto,
+            textAlign: textAlign,
+            style: AppTypography.etiqueta.copyWith(height: 1.3, color: color)),
         if (negativo && siNegativo != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(siNegativo!,
                 textAlign: textAlign,
-                style: TextStyle(fontSize: 12, height: 1.3, fontWeight: FontWeight.w600, color: colorNegativo)),
+                style: AppTypography.etiqueta.copyWith(
+                    height: 1.3, fontWeight: FontWeight.w600, color: colorNegativo)),
           ),
         for (final extra in extras)
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(extra,
                 textAlign: textAlign,
-                style: TextStyle(fontSize: 12, height: 1.3, fontStyle: FontStyle.italic, color: color)),
+                style: AppTypography.etiqueta
+                    .copyWith(height: 1.3, fontStyle: FontStyle.italic, color: color)),
           ),
       ],
     );

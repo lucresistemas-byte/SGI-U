@@ -3,6 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../navigation/seccion.dart';
+import '../theme/app_breakpoints.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_widths.dart';
 import 'marca_negocio.dart';
 
 /// Menú lateral. No navega: avisa la sección elegida a AppShell, que cambia
@@ -28,14 +33,16 @@ class _SideMenuState extends State<SideMenu> {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
-      width: _isCollapsed ? 80 : 260,
-      color: const Color(0xFFF8F9FA),
+      width: _isCollapsed
+          ? AppWidths.anchoMenuColapsado
+          : AppWidths.anchoMenuExpandido,
+      color: AppColors.fondoMenu,
       clipBehavior: Clip.hardEdge,
       // El diseño compacto depende del ancho REAL (no del flag): durante la
       // animación el ancho pasa por valores intermedios y el contenido
       // expandido no entraba (franjas de overflow).
       child: LayoutBuilder(builder: (context, constraints) {
-        final compacto = constraints.maxWidth < 180;
+        final compacto = constraints.maxWidth < AppBreakpoints.corteMenuColapsado;
         return SingleChildScrollView(
           // Con poca altura, los ítems se desplazan en vez de desbordar.
           child: ConstrainedBox(
@@ -56,8 +63,8 @@ class _SideMenuState extends State<SideMenu> {
         children: [
           Padding(
             padding: EdgeInsets.symmetric(
-              horizontal: compacto ? 12.0 : 24.0,
-              vertical: 24.0,
+              horizontal: compacto ? AppSpacing.espacioMedio : AppSpacing.espacioSeccion,
+              vertical: AppSpacing.espacioSeccion,
             ),
             // La marca escucha la configuración: un logo o nombre nuevo
             // guardado en Configuración se ve acá en el momento.
@@ -66,9 +73,9 @@ class _SideMenuState extends State<SideMenu> {
                     children: [
                       InkWell(
                         onTap: () => setState(() => _isCollapsed = !_isCollapsed),
-                        child: const Icon(Icons.menu, color: Color(0xFF455A64)),
+                        child: const Icon(Icons.menu, color: AppColors.menuTexto),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.espacioEstandar),
                       const MarcaNegocio(estilo: EstiloMarca.menuCompacto),
                     ],
                   )
@@ -76,15 +83,15 @@ class _SideMenuState extends State<SideMenu> {
                     children: [
                       InkWell(
                         onTap: () => setState(() => _isCollapsed = !_isCollapsed),
-                        child: const Icon(Icons.menu, color: Color(0xFF455A64)),
+                        child: const Icon(Icons.menu, color: AppColors.menuTexto),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: AppSpacing.espacioEstandar),
                       const Expanded(child: MarcaNegocio(estilo: EstiloMarca.menu)),
                     ],
                   ),
           ),
           const SizedBox(height: 10),
-          
+
           for (final seccion in Seccion.values)
             if (seccion != Seccion.settings) _buildSeccionItem(seccion, compacto),
 
@@ -97,7 +104,7 @@ class _SideMenuState extends State<SideMenu> {
             // La navegación al login la hace el listener global de main.dart.
             context.read<AuthBloc>().add(LogoutRequested());
           }),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.espacioGrande),
         ],
       );
   }
@@ -112,30 +119,36 @@ class _SideMenuState extends State<SideMenu> {
 
   Widget _buildMenuItem(IconData icon, String title, bool isSelected, bool compacto, VoidCallback onTap) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: compacto ? 8 : 16, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: compacto ? AppSpacing.espacioChico : AppSpacing.espacioEstandar,
+        vertical: AppSpacing.espacioMinimo,
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.bordeTarjeta,
         child: Container(
           width: double.infinity,
-          padding: EdgeInsets.symmetric(vertical: 12, horizontal: compacto ? 0 : 16),
+          padding: EdgeInsets.symmetric(
+            vertical: AppSpacing.espacioMedio,
+            horizontal: compacto ? 0 : AppSpacing.espacioEstandar,
+          ),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFC8E6C9) : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+            color: isSelected ? AppColors.seleccionFondo : Colors.transparent,
+            borderRadius: AppRadii.bordeTarjeta,
           ),
           child: compacto
               ? Icon(icon,
-              color: isSelected ? const Color(0xFF004D40) : const Color(0xFF455A64))
+              color: isSelected ? AppColors.marcaActiva : AppColors.menuTexto)
               : Row(
             children: [
               Icon(icon,
-                  color: isSelected ? const Color(0xFF004D40) : const Color(0xFF455A64)),
-              const SizedBox(width: 16),
+                  color: isSelected ? AppColors.marcaActiva : AppColors.menuTexto),
+              const SizedBox(width: AppSpacing.espacioEstandar),
               Expanded(
                 child: Text(
                   title,
                   style: TextStyle(
-                    color: isSelected ? const Color(0xFF004D40) : const Color(0xFF455A64),
+                    color: isSelected ? AppColors.marcaActiva : AppColors.menuTexto,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
                   overflow: TextOverflow.ellipsis,
