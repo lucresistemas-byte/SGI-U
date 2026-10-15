@@ -42,11 +42,13 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
-                // 2. Rutas públicas
-                .requestMatchers("/api/auth/**", "/v2/api-docs", "/swagger-ui/**").permitAll()
+                // 2. Rutas públicas (solo login y documentación)
+                .requestMatchers("/api/auth/login", "/v2/api-docs", "/swagger-ui/**").permitAll()
                 // Nombre y logo para la pantalla de login (antes de tener token).
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/configuracion/marca").permitAll()
-                // 3. Todo lo demás (como /api/productos) requiere token JWT válido
+                // Registro de usuarios: restringido a rol ADMIN
+                .requestMatchers("/api/auth/register").hasRole("ADMIN")
+                // 3. Todo lo demás (como /api/productos, /api/auth/cambiar-password) requiere token JWT válido
                 .anyRequest().authenticated()
             )
             // 4. Configuración del Entry Point para devolver 401 en JSON

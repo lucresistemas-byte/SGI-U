@@ -23,6 +23,7 @@ public class BackupDumpJob {
 
     private final BackupUploader backupUploader;
     private final ConfiguracionNegocioRepository configuracionRepository;
+    private final EncryptionService encryptionService;
 
     @Value("${spring.datasource.username:sgiu_user}")
     private String dbUser;
@@ -85,10 +86,25 @@ public class BackupDumpJob {
                 .orElse("SGIU-DEFAULT");
 
         File dump = generarDumpComprimido(codigoCliente);
-        String ubicacion = backupUploader.subirABucket(dump, codigoCliente);
-        log.info("[BACKUP JOB] Backup completado exitosamente: {}", ubicacion);
+
+        // A8: Cifra el dump con AES-256-GCM antes de subirlo
+        File dumpCifrado;
+        try {
+            dumpCifrado = encryptionService.cifrar(dump);
+            dump.delete(); // elimina el .sql.gz sin cifrar una vez que el .enc está listo
+        } catch (Exception e) {
+            log.error("[BACKUP A8] Error al cifrar el dump: {}", e.getMessage(), e);
+            throw new IOException("Error al cifrar el backup: " + e.getMessage(), e);
+        }
+
+        String ubicacion = backupUploader.subirABucket(dumpCifrado, codigoCliente);
+        log.info("[BACKUP JOB] Backup cifrado y almacenado exitosamente: {}", ubicacion);
         return ubicacion;
     }
+
+    /** A6: Propiedad opcional para forzar la ruta de mariadb-dump.exe (útil en tests). */
+    @Value("${sgiu.backup.dump.path:}")
+    private String dumpPathConfig;
 
     public File generarDumpComprimido(String codigoCliente) throws IOException, InterruptedException {
         File dirBackups = new File("backups");
@@ -98,11 +114,14 @@ public class BackupDumpJob {
 
         String timestamp = LocalDateTime.now()
                 .format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        // A8: extensión .sql.gz.enc cuando el cifrado esté habilitado; por ahora .sql.gz
         File archivoSalida = new File(dirBackups, "sgiu_" + timestamp + ".sql.gz");
 
-        // Comando según arquitectura: mariadb-dump --databases sgiu_db --routines --triggers --single-transaction
+        // A6: resolución determinística de mariadb-dump.exe
+        String dumpExe = resolverRutaDump();
+
         List<String> comando = new ArrayList<>(List.of(
-                "mariadb-dump",
+                dumpExe,
                 "--databases", "sgiu_db",
                 "--routines",
                 "--triggers",
@@ -112,53 +131,106 @@ public class BackupDumpJob {
                 "-P3307"
         ));
 
-        boolean ejecutadoConExito = false;
-        try {
-            ProcessBuilder pb = new ProcessBuilder(comando);
-            Process proceso = pb.start();
+        ProcessBuilder pb = new ProcessBuilder(comando);
+        pb.redirectErrorStream(false); // stderr separado para loguear errores del proceso
+        Process proceso = pb.start();
 
-            try (InputStream in = proceso.getInputStream();
-                 FileOutputStream fos = new FileOutputStream(archivoSalida);
-                 GZIPOutputStream gzos = new GZIPOutputStream(fos)) {
-
-                byte[] buffer = new byte[8192];
-                int read;
-                while ((read = in.read(buffer)) != -1) {
-                    gzos.write(buffer, 0, read);
+        // Lee stderr en hilo separado para que no se bloquee el buffer
+        final StringBuilder stderr = new StringBuilder();
+        Thread stderrReader = new Thread(() -> {
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(proceso.getErrorStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    stderr.append(line).append('\n');
                 }
-            }
+            } catch (IOException ignored) { }
+        });
+        stderrReader.setDaemon(true);
+        stderrReader.start();
 
-            int exitCode = proceso.waitFor();
-            if (exitCode == 0 && archivoSalida.length() > 0) {
-                ejecutadoConExito = true;
-                log.info("[BACKUP DUMP] mariadb-dump ejecutado correctamente. Tamaño: {} bytes", archivoSalida.length());
+        try (InputStream in = proceso.getInputStream();
+             FileOutputStream fos = new FileOutputStream(archivoSalida);
+             GZIPOutputStream gzos = new GZIPOutputStream(fos)) {
+
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                gzos.write(buffer, 0, read);
             }
-        } catch (Exception e) {
-            log.warn("[BACKUP DUMP] mariadb-dump no disponible directamente en PATH o falló ({}). Generando volcado de contingencia...", e.getMessage());
         }
 
-        // Si mariadb-dump no está en el PATH del entorno actual, se genera un volcado estructurado
-        if (!ejecutadoConExito) {
-            generarDumpFallback(archivoSalida, codigoCliente, timestamp);
+        int exitCode = proceso.waitFor();
+        stderrReader.join(3000);
+
+        // A6: Validación estricta — no se emite éxito si algo falla
+        if (exitCode != 0) {
+            archivoSalida.delete();
+            throw new IOException("[BACKUP DUMP] mariadb-dump terminó con exitCode=" + exitCode
+                    + ". Stderr: " + stderr);
         }
+
+        long tamanio = archivoSalida.length();
+        if (tamanio < 15_360L) { // < 15 KB → volcado vacío o roto
+            archivoSalida.delete();
+            throw new IOException("[BACKUP DUMP] Volcado demasiado pequeño (" + tamanio
+                    + " bytes). El dump puede estar vacío o corrompido.");
+        }
+
+        // A6: Verificación de cabecera SQL (descomprimiendo solo los primeros bytes)
+        try (java.util.zip.GZIPInputStream gzis = new java.util.zip.GZIPInputStream(
+                new java.io.FileInputStream(archivoSalida))) {
+            byte[] head = gzis.readNBytes(20);
+            String header = new String(head, StandardCharsets.UTF_8);
+            if (!header.startsWith("-- MariaDB dump") && !header.startsWith("-- MySQL dump")) {
+                archivoSalida.delete();
+                throw new IOException("[BACKUP DUMP] El archivo no contiene una cabecera SQL válida.");
+            }
+        }
+
+        // A6: Checksum SHA-256 (se loguea para trazabilidad)
+        String sha256 = calcularSha256(archivoSalida);
+        log.info("[BACKUP DUMP] Dump OK. Tamaño={} bytes, SHA-256={}, archivo={}",
+                tamanio, sha256, archivoSalida.getName());
 
         return archivoSalida;
     }
 
-    private void generarDumpFallback(File salida, String codigoCliente, String timestamp) throws IOException {
-        try (FileOutputStream fos = new FileOutputStream(salida);
-             GZIPOutputStream gzos = new GZIPOutputStream(fos);
-             OutputStreamWriter writer = new OutputStreamWriter(gzos, StandardCharsets.UTF_8)) {
-
-            writer.write("-- SGI-U Backup Dump\n");
-            writer.write("-- Código de Cliente: " + codigoCliente + "\n");
-            writer.write("-- Fecha: " + timestamp + "\n");
-            writer.write("-- Base de datos: sgiu_db\n\n");
-            writer.write("SET FOREIGN_KEY_CHECKS=0;\n");
-            writer.write("-- Respaldo consistente generado\n");
-            writer.write("SET FOREIGN_KEY_CHECKS=1;\n");
-            writer.flush();
+    /**
+     * A6: Resuelve la ruta de mariadb-dump.exe: primero usa la propiedad sgiu.backup.dump.path,
+     * luego busca junto al instalador (content/bin/), y por último el PATH del sistema.
+     */
+    private String resolverRutaDump() throws IOException {
+        if (dumpPathConfig != null && !dumpPathConfig.isBlank()) {
+            File f = new File(dumpPathConfig);
+            if (f.exists()) return f.getAbsolutePath();
         }
-        log.info("[BACKUP DUMP] Volcado fallback generado exitosamente en: {}", salida.getAbsolutePath());
+        // Busca en content/bin/ (ruta del instalador)
+        String javaHome = System.getProperty("java.home");
+        if (javaHome != null) {
+            File installer = new File(javaHome).getParentFile();
+            File candidate = new File(installer, "content" + File.separator + "bin" + File.separator + "mariadb-dump.exe");
+            if (candidate.exists()) return candidate.getAbsolutePath();
+        }
+        // Última opción: PATH del sistema (desarrollo con Docker)
+        return "mariadb-dump";
+    }
+
+    /** A6: Calcula el SHA-256 de un archivo y lo devuelve en hex. */
+    private String calcularSha256(File archivo) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            try (java.io.FileInputStream fis = new java.io.FileInputStream(archivo)) {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = fis.read(buffer)) != -1) md.update(buffer, 0, read);
+            }
+            byte[] digest = md.digest();
+            StringBuilder hex = new StringBuilder();
+            for (byte b : digest) hex.append(String.format("%02x", b));
+            return hex.toString();
+        } catch (Exception e) {
+            return "sha256-error:" + e.getMessage();
+        }
     }
 }

@@ -32,11 +32,16 @@ class SeguridadEndpointsIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.error").value("Token inválido o expirado"));
     }
 
+    @Autowired
+    private com.sgiu_group.sgiu.support.TestDataFactory datos;
+
     @Test
     void endpointProtegido_tokenValido_dejaPasar() throws Exception {
-        String body = mockMvc.perform(post("/api/auth/register")
+        datos.crearUsuario("user_token_valido", "clave123", true);
+
+        String body = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\": \"user_token\", \"password\": \"clave123\"}"))
+                        .content("{\"username\": \"user_token_valido\", \"password\": \"clave123\"}"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
