@@ -49,4 +49,10 @@ void main() {
     expect(textoStock(-2, 'UNIDAD'), '−2 unidades');
     expect(textoStock(5, null), '5 unidades');
   });
+
+  test('formatPesosConSigno: signo explícito y menos tipográfico', () {
+    expect(formatPesosConSigno(38895), '+\$ 38.895,00');
+    expect(formatPesosConSigno(-39105), '\u2212\$ 39.105,00');
+    expect(formatPesosConSigno(0), '\$ 0,00');
+  });
 }

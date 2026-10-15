@@ -29,6 +29,15 @@ String formatPesos(double valor, {int decimales = 2}) {
   return '\$ ${NumberFormat(patron, 'es_AR').format(valor)}';
 }
 
+/// Resultado en pesos con signo explícito: 38895 → "+\$ 38.895,00",
+/// -39105 → "−\$ 39.105,00" (signo menos tipográfico), 0 → "\$ 0,00".
+String formatPesosConSigno(double valor) {
+  final pesos = formatPesos(valor.abs());
+  if (valor > 0) return '+$pesos';
+  if (valor < 0) return '\u2212$pesos';
+  return pesos;
+}
+
 /// Cantidad en unidad base mostrada en una unidad dada: 2500 g en kilo →
 /// "2,5 kg". Las unidades que se cuentan van con su nombre: "4 unidades".
 String textoEn(double cantidadBase, UnidadMedida unidad) {

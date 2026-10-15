@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import '../blocs/finanzas/finanzas_bloc.dart';
 import '../blocs/finanzas/finanzas_event.dart';
 import '../blocs/finanzas/finanzas_state.dart';
@@ -22,6 +23,9 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
   String _categoria = CategoriaMovimiento.ingreso.first.codigo;
   int? _metodoPagoId;
   List<MetodoPago> _metodosPago = const [];
+
+  /// Día del movimiento (por defecto hoy, sin fechas futuras).
+  DateTime _fecha = DateUtils.dateOnly(DateTime.now());
 
   final TextEditingController _montoController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
@@ -83,7 +87,27 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
           metodoPagoId: _metodoPagoId!,
           categoria: _categoria,
           descripcion: _descripcionController.text.trim(),
+          fechaHora: _fechaHora(),
         ));
+  }
+
+  /// Hoy: el momento actual. Otro día: ese día a la hora actual, así queda
+  /// ordenado dentro del día igual que un alta hecha en el momento.
+  DateTime _fechaHora() {
+    final ahora = DateTime.now();
+    if (DateUtils.isSameDay(_fecha, ahora)) return ahora;
+    return DateTime(_fecha.year, _fecha.month, _fecha.day, ahora.hour, ahora.minute, ahora.second);
+  }
+
+  Future<void> _elegirFecha() async {
+    final elegida = await showDatePicker(
+      context: context,
+      initialDate: _fecha,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      helpText: 'Fecha del movimiento',
+    );
+    if (elegida != null) setState(() => _fecha = elegida);
   }
 
   String _limpiarMensaje(String mensaje) {
@@ -131,22 +155,50 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Tipo
-                      DropdownButtonFormField<String>(
-                        initialValue: _tipo,
-                        decoration: const InputDecoration(
-                            labelText: 'Tipo', border: OutlineInputBorder()),
-                        items: _tipos
-                            .map((tipo) => DropdownMenuItem(
-                                value: tipo, child: Text(tipo)))
-                            .toList(),
-                        // Cada tipo tiene sus categorías: al cambiarlo se
-                        // reinicia la categoría a la primera del nuevo tipo.
-                        onChanged: (value) => setState(() {
-                          _tipo = value!;
-                          _categoria =
-                              CategoriaMovimiento.paraTipo(_tipo).first.codigo;
-                        }),
+                      // Fecha y tipo en una fila (el diálogo no crece).
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              key: const Key('movimiento_fecha'),
+                              onTap: _guardando ? null : _elegirFecha,
+                              child: InputDecorator(
+                                decoration: const InputDecoration(
+                                  labelText: 'Fecha',
+                                  border: OutlineInputBorder(),
+                                  suffixIcon: Icon(Icons.calendar_today, size: 18),
+                                ),
+                                child: Text(
+                                  DateUtils.isSameDay(_fecha, DateTime.now())
+                                      ? 'Hoy (${DateFormat('dd/MM').format(_fecha)})'
+                                      : DateFormat('dd/MM/yyyy').format(_fecha),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _tipo,
+                              decoration: const InputDecoration(
+                                  labelText: 'Tipo', border: OutlineInputBorder()),
+                              items: _tipos
+                                  .map((tipo) => DropdownMenuItem(
+                                      value: tipo, child: Text(tipo)))
+                                  .toList(),
+                              // Cada tipo tiene sus categorías: al cambiarlo se
+                              // reinicia la categoría a la primera del nuevo tipo.
+                              onChanged: (value) => setState(() {
+                                _tipo = value!;
+                                _categoria =
+                                    CategoriaMovimiento.paraTipo(_tipo).first.codigo;
+                              }),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
 

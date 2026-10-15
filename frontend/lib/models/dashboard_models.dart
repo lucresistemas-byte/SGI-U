@@ -1,4 +1,5 @@
 // lib/models/dashboard_models.dart
+import 'resultado_periodo.dart';
 
 class DashboardResponse {
   final DashboardKpis kpis;
@@ -16,12 +17,16 @@ class DashboardResponse {
 
 class DashboardKpis {
   final double ingresosPeriodo;
-  final double egresosPeriodo;
-  final double saldoNeto;
-  final double margenNetoPorcentaje; // El ajuste de rentabilidad
+  // Null con el filtro por producto: los egresos no son de un producto.
+  final double? egresosPeriodo;
+  final double? saldoNeto;
+  final double? margenNetoPorcentaje; // El ajuste de rentabilidad
   final int cantidadVentas;
   final double ticketPromedio;
   final int cantidadProductosStockBajo;
+
+  /// Costo de lo vendido, ganancia bruta y ganancia neta.
+  final ResultadoPeriodo resultado;
 
   DashboardKpis({
     required this.ingresosPeriodo,
@@ -31,17 +36,19 @@ class DashboardKpis {
     required this.cantidadVentas,
     required this.ticketPromedio,
     required this.cantidadProductosStockBajo,
+    this.resultado = const ResultadoPeriodo(),
   });
 
   factory DashboardKpis.fromJson(Map<String, dynamic> json) {
     return DashboardKpis(
       ingresosPeriodo: (json['ingresosPeriodo'] ?? 0).toDouble(),
-      egresosPeriodo: (json['egresosPeriodo'] ?? 0).toDouble(),
-      saldoNeto: (json['saldoNeto'] ?? 0).toDouble(),
-      margenNetoPorcentaje: (json['margenNetoPorcentaje'] ?? 0).toDouble(),
+      egresosPeriodo: (json['egresosPeriodo'] as num?)?.toDouble(),
+      saldoNeto: (json['saldoNeto'] as num?)?.toDouble(),
+      margenNetoPorcentaje: (json['margenNetoPorcentaje'] as num?)?.toDouble(),
       cantidadVentas: json['cantidadVentas'] ?? 0,
       ticketPromedio: (json['ticketPromedio'] ?? 0).toDouble(),
       cantidadProductosStockBajo: json['cantidadProductosStockBajo'] ?? 0,
+      resultado: ResultadoPeriodo.fromJson(json['resultado'] as Map<String, dynamic>?),
     );
   }
 }
@@ -100,10 +107,14 @@ class TopProducto {
   final int cantidadVendida;
   final double montoTotal;
 
+  /// Lo vendido menos su costo congelado (null si el backend no la manda).
+  final double? ganancia;
+
   TopProducto({
     required this.nombre, 
     required this.cantidadVendida, 
-    required this.montoTotal
+    required this.montoTotal,
+    this.ganancia,
   });
 
   factory TopProducto.fromJson(Map<String, dynamic> json) {
@@ -111,6 +122,7 @@ class TopProducto {
       nombre: json['nombre'] ?? 'Desconocido',
       cantidadVendida: json['cantidadVendida'] ?? 0,
       montoTotal: (json['montoTotal'] ?? 0).toDouble(),
+      ganancia: (json['ganancia'] as num?)?.toDouble(),
     );
   }
 }

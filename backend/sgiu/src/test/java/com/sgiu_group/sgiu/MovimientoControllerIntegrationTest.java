@@ -55,6 +55,36 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void crear_conFechaPasada_guardaEsaFecha() throws Exception {
+        LocalDateTime ayer = LocalDateTime.now().minusDays(1).withNano(0);
+        MovimientoRequestDTO dto = new MovimientoRequestDTO(
+                "EGRESO", new BigDecimal("60000.00"), datos.metodo("TRANSFERENCIA").getId(),
+                "ALQUILER", "Alquiler pagado ayer", ayer);
+
+        mockMvc.perform(post("/api/movimientos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(dto)))
+                .andExpect(status().isCreated());
+
+        assertThat(repository.findAll().getFirst().getFechaHora()).isEqualTo(ayer);
+    }
+
+    @Test
+    void crear_conFechaFutura_devuelve400() throws Exception {
+        MovimientoRequestDTO dto = new MovimientoRequestDTO(
+                "EGRESO", new BigDecimal("100.00"), datos.metodo("EFECTIVO").getId(),
+                "OTRO", "Mañana", LocalDateTime.now().plusDays(1));
+
+        mockMvc.perform(post("/api/movimientos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("La fecha del movimiento no puede ser posterior a hoy."));
+
+        assertThat(repository.count()).isZero();
+    }
+
+    @Test
     void crear_tipoInvalido_devuelve400() throws Exception {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
                 "CRIPTO", new BigDecimal("10.00"), datos.metodo("EFECTIVO").getId(), "Otro", null, null);
@@ -104,6 +134,24 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].categoria").value("POSTERIOR"))
                 .andExpect(jsonPath("$[1].categoria").value("ANTERIOR"));
+    }
+
+    @Test
+    void listar_egresoSinCostoNiGanancia() throws Exception {
+        datos.crearMovimiento(TipoMovimiento.EGRESO, new BigDecimal("60000.00"), "TRANSFERENCIA",
+                "ALQUILER", LocalDateTime.of(2026, 10, 9, 10, 0));
+        datos.crearMovimiento(TipoMovimiento.INGRESO, new BigDecimal("500.00"), "EFECTIVO",
+                "OTRO_INGRESO", LocalDateTime.of(2026, 10, 8, 10, 0));
+
+        // Un gasto no tiene costo de mercadería ni ganancia: van en null (la
+        // app muestra "—"). Un ingreso manual sigue con costo 0.
+        mockMvc.perform(get("/api/movimientos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].tipo").value("EGRESO"))
+                .andExpect(jsonPath("$[0].costo").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$[0].ganancia").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$[1].costo").value(0))
+                .andExpect(jsonPath("$[1].ganancia").value(500.00));
     }
 
     @Test

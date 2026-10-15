@@ -1,5 +1,7 @@
 package com.sgiu_group.sgiu.models.dtos.dashboard;
 
+import com.sgiu_group.sgiu.models.dtos.ResultadoPeriodoDTO;
+
 import java.math.BigDecimal;
 
 public class DashboardKpisDTO {
@@ -11,6 +13,8 @@ public class DashboardKpisDTO {
     private BigDecimal ticketPromedio;
     private ProductoMasVendidoDTO productoMasVendido;
     private Long cantidadProductosStockBajo;
+    /** Vendiste, te costó, ganancia bruta y neta (lo que muestra Inicio). */
+    private ResultadoPeriodoDTO resultado;
 
     public DashboardKpisDTO(BigDecimal ingresosPeriodo, BigDecimal egresosPeriodo,
                              BigDecimal saldoNeto, BigDecimal margenNetoPorcentaje,
@@ -35,4 +39,6 @@ public class DashboardKpisDTO {
     public BigDecimal getTicketPromedio() { return ticketPromedio; }
     public ProductoMasVendidoDTO getProductoMasVendido() { return productoMasVendido; }
     public Long getCantidadProductosStockBajo() { return cantidadProductosStockBajo; }
+    public ResultadoPeriodoDTO getResultado() { return resultado; }
+    public void setResultado(ResultadoPeriodoDTO resultado) { this.resultado = resultado; }
 }

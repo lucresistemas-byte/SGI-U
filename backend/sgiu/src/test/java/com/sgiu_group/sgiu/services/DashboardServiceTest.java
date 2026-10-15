@@ -45,6 +45,8 @@ class DashboardServiceTest {
     private PagoVentaRepository pagoVentaRepository;
     @Mock
     private MetodoPagoRepository metodoPagoRepository;
+    @Mock
+    private ResultadoService resultadoService;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -83,6 +85,8 @@ class DashboardServiceTest {
         when(ventaRepository.sumTotalVentasEnRango(any(), any())).thenReturn(new BigDecimal("600.00"));
         when(lineaVentaRepository.findTopProductosVendidos(any(), any()))
                 .thenReturn(fila(new Object[]{1L, "Producto A", 4L, new BigDecimal("250.00")}));
+        when(lineaVentaRepository.findTopProductosConCosto(any(), any(), any(), any()))
+                .thenReturn(fila(new Object[]{1L, "Producto A", 4L, new BigDecimal("250.00"), new BigDecimal("100.00")}));
         when(movFinancieroRepository.findIngresosEgresosPorDia(any(), any(), any()))
                 .thenReturn(fila(new Object[]{fechaSql, new BigDecimal("1000.00"), new BigDecimal("400.00")}));
         when(pagoVentaRepository.findVentasAgrupadasPorMetodoPago(any(), any()))
@@ -107,7 +111,8 @@ class DashboardServiceTest {
         assertThat(response.getGraficos().getIngresosVsEgresosPorDia()).hasSize(1);
         assertThat(response.getGraficos().getVentasPorMetodoPago()).hasSize(1);
         assertThat(response.getGraficos().getVentasPorMetodoPago().get(0).getMetodoPago()).isEqualTo("Efectivo");
-        assertThat(response.getGraficos().getTopProductosMasVendidos()).hasSize(1);
+        assertThat(response.getGraficos().getTopProductosMasVendidos()).singleElement()
+                .satisfies(p -> assertThat(p.getGanancia()).isEqualByComparingTo("150.00"));
         assertThat(response.getGraficos().getEvolucionSaldoNeto()).hasSize(1);
         assertThat(response.getGraficos().getProductosConMenorStock()).hasSize(2);
         assertThat(response.getGraficos().getProductosConMenorStock().get(0).getEstado()).isEqualTo("BAJO");

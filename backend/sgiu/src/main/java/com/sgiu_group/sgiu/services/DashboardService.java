@@ -2,12 +2,14 @@ package com.sgiu_group.sgiu.services;
 
 import com.sgiu_group.sgiu.exceptions.FechasInvalidasException;
 import com.sgiu_group.sgiu.exceptions.FiltroInvalidoException;
+import com.sgiu_group.sgiu.models.dtos.ResultadoPeriodoDTO;
 import com.sgiu_group.sgiu.models.dtos.dashboard.*;
 import com.sgiu_group.sgiu.models.entities.ArticuloStock;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
 import com.sgiu_group.sgiu.repositories.*;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,30 +25,48 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class DashboardService {
 
+    /** Cantidad de productos del top de más vendidos. */
+    static final int TOP_PRODUCTOS = 5;
+
     private final VentaRepository ventaRepository;
     private final LineaVentaRepository lineaVentaRepository;
     private final MovFinancieroRepository movFinancieroRepository;
     private final ArticuloStockRepository articuloStockRepository;
     private final PagoVentaRepository pagoVentaRepository;
     private final MetodoPagoRepository metodoPagoRepository;
+    private final ResultadoService resultadoService;
 
     public DashboardService(VentaRepository ventaRepository,
                              LineaVentaRepository lineaVentaRepository,
                              MovFinancieroRepository movFinancieroRepository,
                              ArticuloStockRepository articuloStockRepository,
                              PagoVentaRepository pagoVentaRepository,
-                             MetodoPagoRepository metodoPagoRepository) {
+                             MetodoPagoRepository metodoPagoRepository,
+                             ResultadoService resultadoService) {
         this.ventaRepository = ventaRepository;
         this.lineaVentaRepository = lineaVentaRepository;
         this.movFinancieroRepository = movFinancieroRepository;
         this.articuloStockRepository = articuloStockRepository;
         this.pagoVentaRepository = pagoVentaRepository;
         this.metodoPagoRepository = metodoPagoRepository;
+        this.resultadoService = resultadoService;
     }
 
     public DashboardResponseDTO obtenerDashboard(LocalDate fechaDesde, LocalDate fechaHasta,
                                                   Long metodoPagoId, Long productoId,
                                                   String tipoTransaccion) {
+        return obtenerDashboard(fechaDesde, fechaHasta, metodoPagoId, productoId, tipoTransaccion, null);
+    }
+
+    /**
+     * @param tipoProducto null = todos. Con un tipo, las ventas, el costo, la
+     *        ganancia, la cantidad de ventas, el ticket y el top son solo de los
+     *        productos de ese tipo. Los gastos son de todo el negocio: egresos,
+     *        saldo de caja y ganancia neta no cambian.
+     */
+    public DashboardResponseDTO obtenerDashboard(LocalDate fechaDesde, LocalDate fechaHasta,
+                                                  Long metodoPagoId, Long productoId,
+                                                  String tipoTransaccion, TipoArticulo tipoProducto) {
         if (fechaDesde.isAfter(fechaHasta)) {
             throw new FechasInvalidasException("La fecha desde no puede ser mayor que la fecha hasta");
         }
@@ -56,12 +76,16 @@ public class DashboardService {
         if (metodoPagoId != null && !metodoPagoRepository.existsById(metodoPagoId)) {
             throw new FiltroInvalidoException("El método de pago especificado no existe.");
         }
+        if (tipoProducto != null && !TipoArticulo.vendibles().contains(tipoProducto)) {
+            throw new FiltroInvalidoException("El tipo de producto especificado no se vende.");
+        }
 
         LocalDateTime desde = fechaDesde.atStartOfDay();
         LocalDateTime hasta = fechaHasta.plusDays(1).atStartOfDay();
 
         DashboardFiltrosDTO filtros = new DashboardFiltrosDTO(
-                fechaDesde, fechaHasta, metodoPagoId, productoId, tipoTransaccion);
+                fechaDesde, fechaHasta, metodoPagoId, productoId, tipoTransaccion,
+                tipoProducto != null ? tipoProducto.name() : null);
 
         // Con método de pago, los montos son solo los cobrados/pagados con él
         // (antes el filtro se validaba pero no se aplicaba).
@@ -80,21 +104,34 @@ public class DashboardService {
         ProductoMasVendidoDTO productoMasVendido = obtenerProductoMasVendido(desde, hasta);
         Long cantidadProductosStockBajo = calcularCantidadStockBajo();
 
+        ResultadoPeriodoDTO resultado = resultadoService.calcular(desde, hasta, metodoPagoId);
+        if (tipoProducto != null) {
+            // Lo vendido del tipo es su ingreso; egresos, saldo de caja y
+            // ganancia neta siguen siendo de todo el negocio.
+            ResultadoService.VentasDeTipo delTipo =
+                    resultadoService.ventasDeTipo(desde, hasta, metodoPagoId, tipoProducto);
+            resultado = resultadoService.conVentasDeTipo(resultado, delTipo);
+            ingresos = delTipo.ventas();
+            cantidadVentas = delTipo.cantidadVentas();
+            ticketPromedio = calcularTicketPromedio(delTipo.ventas(), cantidadVentas);
+        }
+
         DashboardKpisDTO kpis = new DashboardKpisDTO(
                 ingresos, egresos, saldoNeto, margenNetoPorcentaje,
                 cantidadVentas, ticketPromedio, productoMasVendido,
                 cantidadProductosStockBajo);
+        kpis.setResultado(resultado);
 
         DashboardGraficosDTO graficos = new DashboardGraficosDTO();
         graficos.setIngresosVsEgresosPorDia(generarIngresosVsEgresosPorDia(desde, hasta, metodoPagoId));
         graficos.setVentasPorMetodoPago(generarVentasPorMetodoPago(desde, hasta));
-        graficos.setTopProductosMasVendidos(generarTopProductos(desde, hasta));
+        graficos.setTopProductosMasVendidos(generarTopProductos(desde, hasta, tipoProducto));
         graficos.setEvolucionSaldoNeto(generarEvolucionSaldo(desde, hasta, metodoPagoId));
         graficos.setProductosConMenorStock(generarProductosCriticos());
         graficos.setCategoriaMasVendida(obtenerCategoriaMasVendida(desde, hasta));
 
         boolean hayDatos = ingresos.compareTo(BigDecimal.ZERO) > 0
-                || egresos.compareTo(BigDecimal.ZERO) > 0
+                || (egresos != null && egresos.compareTo(BigDecimal.ZERO) > 0)
                 || cantidadVentas > 0
                 || cantidadProductosStockBajo > 0
                 || !graficos.getTopProductosMasVendidos().isEmpty()
@@ -212,17 +249,20 @@ public class DashboardService {
     }
 
     private List<ProductoMasVendidoDTO> generarTopProductos(
-            LocalDateTime desde, LocalDateTime hasta) {
-        List<Object[]> resultados = lineaVentaRepository.findTopProductosVendidos(desde, hasta);
+            LocalDateTime desde, LocalDateTime hasta, TipoArticulo tipoProducto) {
         List<ProductoMasVendidoDTO> lista = new ArrayList<>();
-        for (Object[] row : resultados) {
-            Long productoId = ((Number) row[0]).longValue();
-            String nombre = (String) row[1];
-            Long cantidadVendida = ((Number) row[2]).longValue();
-            BigDecimal montoTotal = (BigDecimal) row[3];
-            lista.add(new ProductoMasVendidoDTO(productoId, nombre, cantidadVendida, montoTotal));
+        for (Object[] row : lineaVentaRepository.findTopProductosConCosto(
+                desde, hasta, tipoProducto, PageRequest.of(0, TOP_PRODUCTOS))) {
+            lista.add(new ProductoMasVendidoDTO(((Number) row[0]).longValue(), (String) row[1],
+                    ((Number) row[2]).longValue(), decimal(row[3]), decimal(row[4])));
         }
         return lista;
+    }
+
+    /** Las sumas de precio × cantidad pueden volver como BigDecimal o Double. */
+    private static BigDecimal decimal(Object valor) {
+        if (valor == null) return BigDecimal.ZERO;
+        return valor instanceof BigDecimal b ? b : new BigDecimal(valor.toString());
     }
 
     private List<EvolucionSaldoDTO> generarEvolucionSaldo(

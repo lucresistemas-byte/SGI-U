@@ -1,4 +1,5 @@
 // lib/blocs/finanzas/finanzas_bloc.dart
+import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/metodo_pago.dart';
 import 'finanzas_event.dart';
@@ -36,6 +37,10 @@ class FinanzasBloc extends Bloc<FinanzasEvent, FinanzasState> {
         'saldoActual': dataMes['margenNeto'] ?? 0.0,
         'costoTotalHoy': dataHoy['costoTotal'] ?? 0.0,
         'gananciaRealHoy': dataHoy['gananciaReal'] ?? 0.0,
+        // Para la explicación de Ganancia neta ("después de pagar $ X de
+        // gastos") y su %.
+        'gastosHoy': (dataHoy['resultado'] as Map?)?['gastos'] ?? 0.0,
+        'margenNetoHoy': (dataHoy['resultado'] as Map?)?['margenNetoPorcentaje'],
       };
 
       // 3. Emitimos un ÚNICO estado con todo empaquetado
@@ -57,6 +62,9 @@ class FinanzasBloc extends Bloc<FinanzasEvent, FinanzasState> {
         'metodoPagoId': event.metodoPagoId,
         'categoria': event.categoria,
         'descripcion': event.descripcion,
+        // Hora local sin zona, como la espera el LocalDateTime del backend.
+        if (event.fechaHora != null)
+          'fechaHora': DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(event.fechaHora!),
       });
       emit(const OperacionExitosa('Movimiento registrado correctamente'));
       // Recarga la tabla y las tarjetas (que salen de /api/balance).

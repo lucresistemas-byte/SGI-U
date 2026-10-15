@@ -3,6 +3,7 @@ package com.sgiu_group.sgiu.services;
 import com.sgiu_group.sgiu.models.dtos.BalanceResponseDTO;
 import com.sgiu_group.sgiu.models.dtos.MovimientoRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.MovimientoResponseDTO;
+import com.sgiu_group.sgiu.models.dtos.ResultadoPeriodoDTO;
 import com.sgiu_group.sgiu.models.entities.CategoriaMovimiento;
 import com.sgiu_group.sgiu.models.entities.MovFinanciero;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
@@ -26,13 +27,16 @@ public class MovimientoService {
     private final MovFinancieroRepository repository;
     private final LineaVentaRepository lineaVentaRepository;
     private final MetodoPagoService metodoPagoService;
+    private final ResultadoService resultadoService;
 
     public MovimientoService(MovFinancieroRepository repository,
                              LineaVentaRepository lineaVentaRepository,
-                             MetodoPagoService metodoPagoService) {
+                             MetodoPagoService metodoPagoService,
+                             ResultadoService resultadoService) {
         this.repository = repository;
         this.lineaVentaRepository = lineaVentaRepository;
         this.metodoPagoService = metodoPagoService;
+        this.resultadoService = resultadoService;
     }
 
     @Transactional
@@ -46,6 +50,11 @@ public class MovimientoService {
 
         String categoria = validarCategoria(tipo, dto.categoria());
         LocalDateTime fechaHora = dto.fechaHora() != null ? dto.fechaHora() : LocalDateTime.now();
+        // Se compara por día: un reloj de la caja unos minutos adelantado no
+        // hace fallar un alta de hoy.
+        if (fechaHora.toLocalDate().isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("La fecha del movimiento no puede ser posterior a hoy.");
+        }
 
         MovFinanciero mov = new MovFinanciero(
                 tipo,
@@ -91,15 +100,18 @@ public class MovimientoService {
                 .map(m -> m.costo() != null ? m.costo() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal gananciaReal = ingresos.subtract(costoTotal).subtract(egresos);
+        // La ganancia no resta las compras de mercadería (ya están en el
+        // costo de lo vendido): es la ganancia neta del resultado.
+        ResultadoPeriodoDTO resultado = resultadoService.calcular(desde, hasta, null);
 
         return new BalanceResponseDTO(
                 ingresos,
                 egresos,
                 ingresos.subtract(egresos),
                 costoTotal,
-                gananciaReal,
-                movimientosDTO
+                resultado.gananciaNeta(),
+                movimientosDTO,
+                resultado
         );
     }
 

@@ -11,12 +11,12 @@ import java.util.List;
 
 public interface VentaRepository extends JpaRepository<Venta, Long> {
 
-    @Query("SELECT COUNT(v) FROM Venta v WHERE v.fechaHora BETWEEN :fechaDesde AND :fechaHasta")
+    @Query("SELECT COUNT(v) FROM Venta v WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta")
     Long countVentasEnRango(@Param("fechaDesde") LocalDateTime fechaDesde, @Param("fechaHasta") LocalDateTime fechaHasta);
 
-    @Query("SELECT SUM(v.total) FROM Venta v WHERE v.fechaHora BETWEEN :fechaDesde AND :fechaHasta")
+    @Query("SELECT SUM(v.total) FROM Venta v WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta")
     BigDecimal sumTotalVentasEnRango(@Param("fechaDesde") LocalDateTime fechaDesde, @Param("fechaHasta") LocalDateTime fechaHasta);
 
-    @Query("SELECT FUNCTION('DATE', v.fechaHora), COUNT(v), SUM(v.total) FROM Venta v WHERE v.fechaHora BETWEEN :fechaDesde AND :fechaHasta GROUP BY FUNCTION('DATE', v.fechaHora) ORDER BY FUNCTION('DATE', v.fechaHora)")
+    @Query("SELECT FUNCTION('DATE', v.fechaHora), COUNT(v), SUM(v.total) FROM Venta v WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta GROUP BY FUNCTION('DATE', v.fechaHora) ORDER BY FUNCTION('DATE', v.fechaHora)")
     List<Object[]> findVentasAgrupadasPorDia(@Param("fechaDesde") LocalDateTime fechaDesde, @Param("fechaHasta") LocalDateTime fechaHasta);
 }

@@ -8,21 +8,28 @@ import '../widgets/app_scaffold.dart';
 import '../services/pdf_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/parsers.dart';
+import '../models/categoria_movimiento.dart';
 import '../widgets/cargando_diferido.dart';
 import '../widgets/tabla_ajustada.dart';
+import '../widgets/resultado.dart';
+import '../widgets/alto_minimo.dart';
+import '../utils/textos_finanzas.dart';
+import '../widgets/selector_periodo.dart';
+import '../utils/periodo.dart';
+import '../utils/numeros.dart';
 
 class BalanceScreen extends StatefulWidget {
-  const BalanceScreen({super.key});
+  /// Para tests: el día que se toma como hoy en el selector de período.
+  final DateTime? hoy;
+
+  const BalanceScreen({super.key, this.hoy});
 
   @override
   State<BalanceScreen> createState() => _BalanceScreenState();
 }
 
 class _BalanceScreenState extends State<BalanceScreen> {
-  DateTime _fechaInicio =
-      DateTime(DateTime.now().year, DateTime.now().month, 1);
-  DateTime _fechaFin = DateTime.now();
-  final _formatter = DateFormat('dd/MM/yyyy');
+  late Periodo _periodo = Periodo.porDefecto(widget.hoy);
 
   @override
   void initState() {
@@ -31,43 +38,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
   }
 
   void _cargarBalance() {
-    if (_fechaInicio.isAfter(_fechaFin)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('La fecha de inicio no puede ser mayor a la fecha de fin'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-    context.read<FinanzasBloc>().add(CargarBalance(_fechaInicio, _fechaFin));
-  }
-
-  Future<void> _seleccionarFechaInicio() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _fechaInicio,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      locale: const Locale('es', 'AR'),
-    );
-    if (picked != null && picked != _fechaInicio) {
-      setState(() => _fechaInicio = picked);
-    }
-  }
-
-  Future<void> _seleccionarFechaFin() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _fechaFin,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      locale: const Locale('es', 'AR'),
-    );
-    if (picked != null && picked != _fechaFin) {
-      setState(() => _fechaFin = picked);
-    }
+    context.read<FinanzasBloc>().add(CargarBalance(_periodo.desde, _periodo.hasta));
   }
 
   Future<void> _exportarReportePdf() async {
@@ -102,8 +73,8 @@ class _BalanceScreenState extends State<BalanceScreen> {
 
     try {
       await PdfService.generarYDescargarBalance(
-        fechaInicio: _fechaInicio,
-        fechaFin: _fechaFin,
+        fechaInicio: _periodo.desde,
+        fechaFin: _periodo.hasta,
         totalIngresos: parseDouble(state.balance['totalIngresos']),
         totalEgresos: parseDouble(state.balance['totalEgresos']),
         margenNeto: parseDouble(state.balance['margenNeto']),
@@ -135,7 +106,10 @@ class _BalanceScreenState extends State<BalanceScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      body: Padding(
+      // En ventanas bajas se desplaza entera (dos filas de tarjetas + tabla).
+      body: AltoMinimo(
+        minimo: 900,
+        child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,11 +171,13 @@ class _BalanceScreenState extends State<BalanceScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
   Widget _buildFiltrosCard() {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -216,60 +192,15 @@ class _BalanceScreenState extends State<BalanceScreen> {
           const Text('Rango de Fechas',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              _buildFechaField(
-                  label: 'Fecha Inicio',
-                  fecha: _fechaInicio,
-                  onTap: _seleccionarFechaInicio),
-              _buildFechaField(
-                  label: 'Fecha Fin',
-                  fecha: _fechaFin,
-                  onTap: _seleccionarFechaFin),
-              ElevatedButton(
-                onPressed: _cargarBalance,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.verdePrincipal,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  minimumSize: const Size(120, 48),
-                ),
-                child: const Text('Filtrar'),
-              ),
-            ],
+          SelectorPeriodo(
+            periodo: _periodo,
+            hoy: widget.hoy,
+            onCambio: (periodo) {
+              setState(() => _periodo = periodo);
+              _cargarBalance();
+            },
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildFechaField(
-      {required String label,
-      required DateTime fecha,
-      required VoidCallback onTap}) {
-    return SizedBox(
-      width: 270,
-      height: 48,
-      child: OutlinedButton(
-        onPressed: onTap,
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFFDADADA)),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(_formatter.format(fecha),
-                style: const TextStyle(color: Color(0xFF111111))),
-            const Icon(Icons.calendar_today,
-                size: 20, color: Color(0xFF666666)),
-          ],
-        ),
       ),
     );
   }
@@ -280,16 +211,29 @@ class _BalanceScreenState extends State<BalanceScreen> {
     final margenNeto = parseDouble(balance['margenNeto']);
     final costoTotal = parseDouble(balance['costoTotal']);
     final gananciaReal = parseDouble(balance['gananciaReal']);
+    final resultado = balance['resultado'] is Map
+        ? Map<String, dynamic>.from(balance['resultado'] as Map)
+        : const <String, dynamic>{};
+    final gastos = parseDouble(resultado['gastos']);
+    final margenGanancia = resultado['margenNetoPorcentaje'] == null
+        ? null
+        : parseDouble(resultado['margenNetoPorcentaje']);
     final colorMargen =
         margenNeto >= 0 ? const Color(0xFF006B3D) : const Color(0xFFFF0000);
+    const cuando = TextosFinanzas.entreFechas;
 
+    // Dos filas: entró / salió / saldo de caja, y costo / ganancia neta. El
+    // saldo de caja y la ganancia neta son más anchos y más altos.
     return Column(
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildMetricaCard(
+              key: const Key('balance_ingresos'),
               titulo: 'Total de Ingresos',
               valor: ingresos,
+              explicacion: ExplicacionMonto(TextosFinanzas.ingresos(cuando)),
               colorValor: const Color(0xFF006B3D),
               icon: Icons.trending_up,
               iconBgColor: const Color(0xFFEAF8EF),
@@ -297,8 +241,10 @@ class _BalanceScreenState extends State<BalanceScreen> {
             ),
             const SizedBox(width: 24),
             _buildMetricaCard(
+              key: const Key('balance_egresos'),
               titulo: 'Total de Egresos',
               valor: egresos,
+              explicacion: ExplicacionMonto(TextosFinanzas.egresos(cuando)),
               colorValor: const Color(0xFFFF0000),
               icon: Icons.trending_down,
               iconBgColor: const Color(0xFFFFEAEA),
@@ -306,17 +252,56 @@ class _BalanceScreenState extends State<BalanceScreen> {
             ),
             const SizedBox(width: 24),
             _buildMetricaCard(
-              titulo: 'Margen Neto',
+              key: const Key('balance_saldo_caja'),
+              grande: true,
+              titulo: 'Saldo de caja del período',
               valor: margenNeto,
+              explicacion: ExplicacionMonto(
+                TextosFinanzas.saldoCaja(cuando),
+                siNegativo: TextosFinanzas.saldoCajaNegativo,
+                negativo: margenNeto < 0,
+              ),
               colorValor: colorMargen,
               icon: Icons.wallet_outlined,
               iconBgColor: const Color(0xFFEAF1FF),
               iconColor: const Color(0xFF006B3D),
             ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildMetricaCard(
+              key: const Key('balance_costo'),
+              titulo: 'Costo',
+              valor: costoTotal,
+              explicacion: const ExplicacionMonto(TextosFinanzas.costo),
+              colorValor: const Color(0xFF555555),
+              icon: Icons.shopping_basket_outlined,
+              iconBgColor: const Color(0xFFF1F1F1),
+              iconColor: const Color(0xFF555555),
+            ),
             const SizedBox(width: 24),
-            _buildCostoBeneficioCard(
-              costoTotal: costoTotal,
-              gananciaReal: gananciaReal,
+            _buildMetricaCard(
+              key: const Key('balance_ganancia_neta'),
+              grande: true,
+              titulo: 'Ganancia neta',
+              valor: gananciaReal,
+              texto: formatPesosConSigno(gananciaReal),
+              porcentaje: margenGanancia,
+              ayuda: 'Lo que te queda después de pagar los gastos (alquiler, '
+                  'luz, sueldos, otros). Las compras de mercadería no se '
+                  'restan: su costo ya está en "Costo".',
+              explicacion: ExplicacionMonto(
+                TextosFinanzas.gananciaNeta(formatPesos(gastos)),
+                siNegativo: TextosFinanzas.gananciaNetaNegativa,
+                negativo: gananciaReal < 0,
+              ),
+              colorValor: colorResultado(gananciaReal),
+              icon: Icons.show_chart,
+              iconBgColor: const Color(0xFFEAF8EF),
+              iconColor: const Color(0xFF006B3D),
             ),
           ],
         ),
@@ -326,140 +311,60 @@ class _BalanceScreenState extends State<BalanceScreen> {
     );
   }
 
-  Widget _buildCostoBeneficioCard({
-    required double costoTotal,
-    required double gananciaReal,
-  }) {
-    final formatter =
-        NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
-    final colorGanancia =
-        gananciaReal >= 0 ? const Color(0xFF006B3D) : const Color(0xFFFF0000);
-
-    return Expanded(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final double cardWidth = constraints.maxWidth;
-          final double circleSize = (cardWidth * 0.22).clamp(36.0, 56.0);
-          final double iconSize = circleSize * 0.5;
-          final double titleSize = (cardWidth * 0.08).clamp(14.0, 16.0);
-          final double moneySize = (cardWidth * 0.12).clamp(15.0, 22.0);
-
-          return Container(
-            height: 140,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-                color: Colors.white, borderRadius: BorderRadius.circular(18)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Costo vs Beneficio',
-                      style: TextStyle(
-                          fontSize: titleSize,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF666666)),
-                    ),
-                    Container(
-                      width: circleSize,
-                      height: circleSize,
-                      decoration: const BoxDecoration(
-                          color: Color(0xFFEAF8EF), shape: BoxShape.circle),
-                      child: Icon(Icons.show_chart,
-                          size: iconSize, color: const Color(0xFF006B3D)),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Costo',
-                              style: TextStyle(
-                                  fontSize: 11, color: Color(0xFF888888))),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              formatter.format(costoTotal),
-                              style: TextStyle(
-                                  fontSize: moneySize,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF555555)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text('Ganancia Real',
-                              style: TextStyle(
-                                  fontSize: 11, color: Color(0xFF888888))),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              formatter.format(gananciaReal),
-                              style: TextStyle(
-                                  fontSize: moneySize,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorGanancia),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
+  /// [grande]: saldo de caja y ganancia neta, más anchas y más altas.
   Widget _buildMetricaCard({
+    Key? key,
     required String titulo,
     required double valor,
+    required Widget explicacion,
     required Color colorValor,
     required IconData icon,
     required Color iconBgColor,
     required Color iconColor,
+    String? texto,
+    double? porcentaje,
+    String? ayuda,
+    bool grande = false,
   }) {
     final formatter =
         NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
     return Expanded(
+      flex: grande ? 3 : 2,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final double cardWidth = constraints.maxWidth;
           final double circleSize = (cardWidth * 0.22).clamp(36.0, 56.0);
           final double iconSize = circleSize * 0.5;
           final double titleSize = (cardWidth * 0.08).clamp(14.0, 16.0);
-          final double moneySize = (cardWidth * 0.15).clamp(20.0, 28.0);
+          final double moneySize =
+              grande ? 30 : (cardWidth * 0.15).clamp(20.0, 28.0);
 
           return Container(
-            height: 140,
-            padding: const EdgeInsets.all(20),
+            key: key,
+            constraints: BoxConstraints(minHeight: grande ? 170 : 140),
+            padding: EdgeInsets.all(grande ? 24 : 20),
             decoration: BoxDecoration(
                 color: Colors.white, borderRadius: BorderRadius.circular(18)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(titulo,
-                    style: TextStyle(
-                        fontSize: titleSize, color: const Color(0xFF666666))),
-                const Spacer(),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(titulo,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: titleSize,
+                              color: const Color(0xFF666666))),
+                    ),
+                    if (ayuda != null) ...[
+                      const SizedBox(width: 4),
+                      AyudaInfo(ayuda),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -468,12 +373,26 @@ class _BalanceScreenState extends State<BalanceScreen> {
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
-                        child: Text(
-                          formatter.format(valor),
-                          style: TextStyle(
-                              fontSize: moneySize,
-                              fontWeight: FontWeight.bold,
-                              color: colorValor),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              texto ?? formatter.format(valor),
+                              style: TextStyle(
+                                  fontSize: moneySize,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorValor),
+                            ),
+                            if (porcentaje != null) ...[
+                              const SizedBox(width: 8),
+                              Text(formatPorcentaje(porcentaje),
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: colorValor)),
+                            ],
+                          ],
                         ),
                       ),
                     ),
@@ -487,6 +406,8 @@ class _BalanceScreenState extends State<BalanceScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 10),
+                explicacion,
               ],
             ),
           );
@@ -543,12 +464,16 @@ class _BalanceScreenState extends State<BalanceScreen> {
                   String metodoDisplay = _parseMetodoPago(metodoRaw);
 
                   double monto = parseDouble(mov['monto']);
-                  double costo = parseDouble(mov['costo']);
-                  double ganancia = parseDouble(mov['ganancia']);
+                  // Null en los egresos: un gasto no tiene costo ni ganancia.
+                  final double? costo =
+                      mov['costo'] == null ? null : parseDouble(mov['costo']);
+                  final double? ganancia = mov['ganancia'] == null
+                      ? null
+                      : parseDouble(mov['ganancia']);
                   String fechaHora =
                       _formatFechaHora(parseString(mov['fechaHora']));
-                  String categoria =
-                      parseString(mov['categoria'], 'Sin categoría');
+                  String categoria = CategoriaMovimiento.etiquetaDe(
+                      mov['categoria']?.toString());
                   String descripcion =
                       parseString(mov['descripcion'], '-');
 
@@ -569,17 +494,21 @@ class _BalanceScreenState extends State<BalanceScreen> {
                     ),
                     DataCell(
                       Text(
-                        _formatMonto(costo),
+                        costo == null ? '—' : _formatMonto(costo),
                         style: const TextStyle(color: Color(0xFF666666)),
                       ),
                     ),
                     DataCell(
                       Text(
-                        (ganancia >= 0 ? '+ ' : '') + _formatMonto(ganancia),
+                        ganancia == null
+                            ? '—'
+                            : (ganancia >= 0 ? '+ ' : '') + _formatMonto(ganancia),
                         style: TextStyle(
-                          color: ganancia >= 0
-                              ? const Color(0xFF008A3D)
-                              : const Color(0xFFFF2E2E),
+                          color: ganancia == null
+                              ? const Color(0xFF666666)
+                              : ganancia >= 0
+                                  ? const Color(0xFF008A3D)
+                                  : const Color(0xFFFF2E2E),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -591,25 +520,6 @@ class _BalanceScreenState extends State<BalanceScreen> {
                   ]);
                 }).toList(),
               ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-            decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey.shade200))),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text('Página 1 de 1',
-                    style: TextStyle(color: Colors.grey)),
-                SizedBox(width: 16),
-                IconButton(
-                    icon: Icon(Icons.chevron_left, color: Colors.grey),
-                    onPressed: null),
-                IconButton(
-                    icon: Icon(Icons.chevron_right, color: Colors.grey),
-                    onPressed: null),
-              ],
             ),
           ),
         ],

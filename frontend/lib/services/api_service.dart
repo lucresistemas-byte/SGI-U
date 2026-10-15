@@ -353,6 +353,8 @@ class ApiService implements PosApi {
     required DateTime fechaHasta,
     int? metodoPagoId,
     int? productoId,
+    /// ELABORADO, REVENTA, REVENTA_MATERIA_PRIMA o PAQUETE; null = todos.
+    String? tipoProducto,
   }) async {
     // Formateamos las fechas a yyyy-MM-dd como exige el contrato
     final String desdeStr =
@@ -367,6 +369,7 @@ class ApiService implements PosApi {
         // Solo mandamos estos parámetros si el usuario eligió un filtro específico
         if (metodoPagoId != null) 'metodoPagoId': metodoPagoId,
         if (productoId != null) 'productoId': productoId,
+        if (tipoProducto != null) 'tipoProducto': tipoProducto,
       });
 
       if (response.statusCode == 200) {

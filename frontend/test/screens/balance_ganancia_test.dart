@@ -9,6 +9,7 @@ import 'package:sgi_u_frontend/blocs/finanzas/finanzas_bloc.dart';
 import 'package:sgi_u_frontend/blocs/finanzas/finanzas_event.dart';
 import 'package:sgi_u_frontend/blocs/finanzas/finanzas_state.dart';
 import 'package:sgi_u_frontend/screens/balance_screen.dart';
+import 'package:sgi_u_frontend/utils/numeros.dart';
 
 class MockFinanzasBloc extends MockBloc<FinanzasEvent, FinanzasState>
     implements FinanzasBloc {}
@@ -42,7 +43,7 @@ void main() {
   }
 
   testWidgets(
-      'BalanceScreen renderiza tarjeta Costo vs Beneficio con formato moneda y columnas de costo y ganancia en DataTable',
+      'BalanceScreen renderiza las tarjetas Costo y Ganancia neta con formato moneda y columnas de costo y ganancia en DataTable',
       (tester) async {
     tester.view.physicalSize = const Size(1920, 1080);
     tester.view.devicePixelRatio = 1.0;
@@ -76,8 +77,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 1. Verificar tarjeta "Costo vs Beneficio"
-    expect(find.text('Costo vs Beneficio'), findsOneWidget);
-    expect(find.text('Ganancia Real'), findsOneWidget);
+    expect(find.text('Ganancia neta'), findsOneWidget);
 
     // 2. Verificar formato de moneda en los valores de la tarjeta
     final formattedCosto = currencyFormatter.format(1500.0);
@@ -85,13 +85,14 @@ void main() {
 
     // Debe encontrarse el costo y la ganancia formateados
     expect(find.text(formattedCosto), findsWidgets);
-    expect(find.text(formattedGanancia), findsWidgets);
+    // La ganancia neta va con signo explícito.
+    expect(find.text(formatPesosConSigno(3500)), findsOneWidget);
 
     // 3. Verificar columnas de DataTable
     expect(find.text('Fecha/Hora'), findsOneWidget);
     expect(find.text('Tipo'), findsOneWidget);
     expect(find.text('Monto'), findsOneWidget);
-    expect(find.text('Costo'), findsWidgets); // En tarjeta y en encabezado de columna
+    expect(find.text('Costo'), findsNWidgets(2)); // Tarjeta y encabezado de columna
     expect(find.text('Ganancia'), findsOneWidget); // Encabezado de columna
     expect(find.text('Método de Pago'), findsOneWidget);
 
