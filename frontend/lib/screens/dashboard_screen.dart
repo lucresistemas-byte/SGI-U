@@ -1,6 +1,5 @@
 // lib/screens/dashboard_screen.dart
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../widgets/app_scaffold.dart';
 import '../services/api_service.dart';
 import '../models/dashboard_models.dart';
@@ -11,12 +10,17 @@ import '../navigation/ir_a_seccion.dart';
 import '../navigation/seccion.dart';
 import '../utils/numeros.dart';
 import '../widgets/resultado.dart';
+import '../widgets/selector_periodo.dart';
+import '../utils/periodo.dart';
 import '../widgets/tabla_ajustada.dart';
 
 class DashboardScreen extends StatefulWidget {
   final ApiService? apiService;
 
-  const DashboardScreen({super.key, this.apiService});
+  /// Para tests: el día que se toma como hoy en el selector de período.
+  final DateTime? hoy;
+
+  const DashboardScreen({super.key, this.apiService, this.hoy});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -26,8 +30,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   late final ApiService _apiService = widget.apiService ?? ApiService();
 
   // --- VARIABLES DE ESTADO ---
-  DateTime _fechaDesde = DateTime(DateTime.now().year, DateTime.now().month, 1);
-  DateTime _fechaHasta = DateTime.now();
+  late Periodo _periodo = Periodo.porDefecto(widget.hoy);
   int? _filtroMetodoPagoId;
 
   /// Métodos activos de Configuración (los del filtro).
@@ -63,8 +66,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       final data = await _apiService.getDashboardData(
-        fechaDesde: _fechaDesde,
-        fechaHasta: _fechaHasta,
+        fechaDesde: _periodo.desde,
+        fechaHasta: _periodo.hasta,
         metodoPagoId: _filtroMetodoPagoId,
       );
       setState(() {
@@ -79,47 +82,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _seleccionarRangoFechas() async {
-    final DateTimeRange? rangoSeleccionado = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2024),
-      lastDate: DateTime.now(),
-      initialDateRange: DateTimeRange(start: _fechaDesde, end: _fechaHasta),
-      builder: (context, child) {
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 450,
-              maxHeight: 580,
-            ),
-            child: Theme(
-              data: Theme.of(context).copyWith(
-                colorScheme: const ColorScheme.light(
-                  primary: Color(0xFF008A3D),
-                  onPrimary: Colors.white,
-                  onSurface: Color(0xFF222222),
-                ),
-              ),
-              child: child!,
-            ),
-          ),
-        );
-      },
-    );
-
-    if (rangoSeleccionado != null) {
-      setState(() {
-        _fechaDesde = rangoSeleccionado.start;
-        _fechaHasta = rangoSeleccionado.end;
-      });
-      _cargarDatos(); // Re-carga los datos automáticamente al cambiar la fecha
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      body: _isLoading
+      // Al cambiar el período quedan los datos anteriores a la vista (con una
+      // barra de carga) en vez de vaciar la pantalla.
+      body: _isLoading && _dashboardData == null
           ? const CargandoDiferido(color: AppColors.verdeClaro)
           : _errorMessage != null
               ? _buildErrorWidget()
@@ -128,6 +96,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      SizedBox(
+                        height: 3,
+                        child: _isLoading
+                            ? const LinearProgressIndicator(color: AppColors.verdeClaro)
+                            : null,
+                      ),
                       _buildCabecera(),
                       const SizedBox(height: 32),
                       _buildTarjetasFinancieras(),
@@ -167,57 +141,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final filtros = Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                _buildFiltroDropdown(
-                  Icons.calendar_today_outlined,
-                  '${DateFormat('dd/MM/yyyy').format(_fechaDesde)} - ${DateFormat('dd/MM/yyyy').format(_fechaHasta)}',
-                  onTap: _seleccionarRangoFechas,
-                ),
-                _buildMetodoPagoDropdown(),
-              ],
-            );
-
-            const titulo = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Inicio',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF111111)),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Cómo le va a tu negocio',
-                  style: TextStyle(fontSize: 18, color: Color(0xFF555555)),
-                ),
-              ],
-            );
-
-            if (constraints.maxWidth < 700) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  titulo,
-                  const SizedBox(height: 16),
-                  filtros,
-                ],
-              );
-            }
-
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Expanded(flex: 5, child: titulo),
-                const SizedBox(width: 16),
-                Expanded(flex: 7, child: filtros),
-              ],
-            );
-          },
+        const Text(
+          'Inicio',
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF111111)),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Cómo le va a tu negocio',
+          style: TextStyle(fontSize: 18, color: Color(0xFF555555)),
+        ),
+        const SizedBox(height: 20),
+        Wrap(
+          spacing: 24,
+          runSpacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.start,
+          children: [
+            SelectorPeriodo(
+              periodo: _periodo,
+              hoy: widget.hoy,
+              onCambio: (periodo) {
+                setState(() => _periodo = periodo);
+                _cargarDatos();
+              },
+            ),
+            _buildMetodoPagoDropdown(),
+          ],
         ),
         const SizedBox(height: 16),
         Row(
@@ -237,35 +185,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildFiltroDropdown(IconData icon, String texto, {VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18, color: Colors.grey.shade700),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text(texto,
-                  style: const TextStyle(fontSize: 14, color: Color(0xFF333333), fontWeight: FontWeight.w500),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false),
-            ),
-            const SizedBox(width: 10),
-            Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey.shade700),
-          ],
-        ),
-      ),
     );
   }
 

@@ -12,20 +12,22 @@ import '../models/categoria_movimiento.dart';
 import '../widgets/cargando_diferido.dart';
 import '../widgets/tabla_ajustada.dart';
 import '../widgets/resultado.dart';
+import '../widgets/selector_periodo.dart';
+import '../utils/periodo.dart';
 import '../utils/numeros.dart';
 
 class BalanceScreen extends StatefulWidget {
-  const BalanceScreen({super.key});
+  /// Para tests: el día que se toma como hoy en el selector de período.
+  final DateTime? hoy;
+
+  const BalanceScreen({super.key, this.hoy});
 
   @override
   State<BalanceScreen> createState() => _BalanceScreenState();
 }
 
 class _BalanceScreenState extends State<BalanceScreen> {
-  DateTime _fechaInicio =
-      DateTime(DateTime.now().year, DateTime.now().month, 1);
-  DateTime _fechaFin = DateTime.now();
-  final _formatter = DateFormat('dd/MM/yyyy');
+  late Periodo _periodo = Periodo.porDefecto(widget.hoy);
 
   @override
   void initState() {
@@ -34,43 +36,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
   }
 
   void _cargarBalance() {
-    if (_fechaInicio.isAfter(_fechaFin)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('La fecha de inicio no puede ser mayor a la fecha de fin'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-    context.read<FinanzasBloc>().add(CargarBalance(_fechaInicio, _fechaFin));
-  }
-
-  Future<void> _seleccionarFechaInicio() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _fechaInicio,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      locale: const Locale('es', 'AR'),
-    );
-    if (picked != null && picked != _fechaInicio) {
-      setState(() => _fechaInicio = picked);
-    }
-  }
-
-  Future<void> _seleccionarFechaFin() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _fechaFin,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      locale: const Locale('es', 'AR'),
-    );
-    if (picked != null && picked != _fechaFin) {
-      setState(() => _fechaFin = picked);
-    }
+    context.read<FinanzasBloc>().add(CargarBalance(_periodo.desde, _periodo.hasta));
   }
 
   Future<void> _exportarReportePdf() async {
@@ -105,8 +71,8 @@ class _BalanceScreenState extends State<BalanceScreen> {
 
     try {
       await PdfService.generarYDescargarBalance(
-        fechaInicio: _fechaInicio,
-        fechaFin: _fechaFin,
+        fechaInicio: _periodo.desde,
+        fechaFin: _periodo.hasta,
         totalIngresos: parseDouble(state.balance['totalIngresos']),
         totalEgresos: parseDouble(state.balance['totalEgresos']),
         margenNeto: parseDouble(state.balance['margenNeto']),
@@ -205,7 +171,8 @@ class _BalanceScreenState extends State<BalanceScreen> {
 
   Widget _buildFiltrosCard() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -213,66 +180,13 @@ class _BalanceScreenState extends State<BalanceScreen> {
           BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Rango de Fechas',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              _buildFechaField(
-                  label: 'Fecha Inicio',
-                  fecha: _fechaInicio,
-                  onTap: _seleccionarFechaInicio),
-              _buildFechaField(
-                  label: 'Fecha Fin',
-                  fecha: _fechaFin,
-                  onTap: _seleccionarFechaFin),
-              ElevatedButton(
-                onPressed: _cargarBalance,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.verdePrincipal,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  minimumSize: const Size(120, 48),
-                ),
-                child: const Text('Filtrar'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFechaField(
-      {required String label,
-      required DateTime fecha,
-      required VoidCallback onTap}) {
-    return SizedBox(
-      width: 270,
-      height: 48,
-      child: OutlinedButton(
-        onPressed: onTap,
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFFDADADA)),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(_formatter.format(fecha),
-                style: const TextStyle(color: Color(0xFF111111))),
-            const Icon(Icons.calendar_today,
-                size: 20, color: Color(0xFF666666)),
-          ],
-        ),
+      child: SelectorPeriodo(
+        periodo: _periodo,
+        hoy: widget.hoy,
+        onCambio: (periodo) {
+          setState(() => _periodo = periodo);
+          _cargarBalance();
+        },
       ),
     );
   }
