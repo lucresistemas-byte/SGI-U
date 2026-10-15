@@ -7,41 +7,49 @@ import '../theme/app_colors.dart';
 /// semántica. [danger] sobreescribe el color con [AppColors.error].
 abstract final class AppButton {
   static Widget primary({
+    Key? key,
     required VoidCallback? onPressed,
     required Widget child,
     IconData? icono,
   }) =>
       ElevatedButton(
+        key: key,
         onPressed: onPressed,
         child: _conIcono(icono, child),
       );
 
   static Widget secondary({
+    Key? key,
     required VoidCallback? onPressed,
     required Widget child,
     IconData? icono,
   }) =>
       OutlinedButton(
+        key: key,
         onPressed: onPressed,
         child: _conIcono(icono, child),
       );
 
   static Widget ghost({
+    Key? key,
     required VoidCallback? onPressed,
     required Widget child,
     IconData? icono,
   }) =>
       TextButton(
+        key: key,
         onPressed: onPressed,
         child: _conIcono(icono, child),
       );
 
   static Widget danger({
+    Key? key,
     required VoidCallback? onPressed,
     required Widget child,
     IconData? icono,
   }) =>
       ElevatedButton(
+        key: key,
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.error,

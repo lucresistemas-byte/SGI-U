@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../models/metodo_pago.dart';
 import '../../services/api_service.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_elevations.dart';
+import '../../theme/app_radii.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_typography.dart';
+import '../app_button.dart';
+import '../app_dialog.dart';
+import '../app_snack_bar.dart';
 
 /// Configuración > Métodos de pago: crear, renombrar, ordenar y
 /// desactivar/reactivar. No se eliminan: uno desactivado no se ofrece, pero
@@ -51,13 +59,12 @@ class _MetodosPagoCardState extends State<MetodosPagoCard> {
       await accion();
       if (!mounted) return;
       if (exito != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(exito)));
+        AppSnackBar.exito(context, exito);
       }
       await _cargar();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.redAccent));
+      AppSnackBar.error(context, e.toString());
     }
   }
 
@@ -65,9 +72,21 @@ class _MetodosPagoCardState extends State<MetodosPagoCard> {
     final ctrl = TextEditingController(text: inicial);
     return showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(titulo),
-        content: TextField(
+      builder: (dialogContext) => AppDialog(
+        titulo: titulo,
+        tamano: TamanoDialogo.chico,
+        acciones: [
+          AppButton.ghost(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancelar'),
+          ),
+          AppButton.primary(
+            key: const Key('metodo_pago_guardar_nombre'),
+            onPressed: () => Navigator.of(dialogContext).pop(ctrl.text.trim()),
+            child: const Text('Guardar'),
+          ),
+        ],
+        child: TextField(
           key: const Key('metodo_pago_nombre_input'),
           controller: ctrl,
           autofocus: true,
@@ -75,14 +94,6 @@ class _MetodosPagoCardState extends State<MetodosPagoCard> {
           decoration: const InputDecoration(labelText: 'Nombre'),
           onSubmitted: (v) => Navigator.of(dialogContext).pop(v.trim()),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancelar')),
-          ElevatedButton(
-            key: const Key('metodo_pago_guardar_nombre'),
-            onPressed: () => Navigator.of(dialogContext).pop(ctrl.text.trim()),
-            child: const Text('Guardar'),
-          ),
-        ],
       ),
     );
   }
@@ -115,20 +126,23 @@ class _MetodosPagoCardState extends State<MetodosPagoCard> {
   Widget build(BuildContext context) {
     return Card(
       key: const Key('config_metodos_pago'),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      elevation: AppElevations.sombraTarjeta,
+      shape: const RoundedRectangleBorder(
+        borderRadius: AppRadii.bordeCampo,
+        side: BorderSide(color: AppColors.bordeSuave),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(AppSpacing.espacioGrande),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Expanded(
-                  child: Text('Métodos de pago', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Expanded(
+                  child: Text('Métodos de pago',
+                      style: AppTypography.texto.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textoPrincipal)),
                 ),
                 TextButton.icon(
                   key: const Key('metodo_pago_nuevo_btn'),
@@ -138,16 +152,21 @@ class _MetodosPagoCardState extends State<MetodosPagoCard> {
                 ),
               ],
             ),
-            const Text(
+            Text(
               'Se ofrecen en este orden en el punto de venta, Pedidos y Movimientos. '
               'No se eliminan: se desactivan. Efectivo es fijo.',
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              style: AppTypography.etiqueta
+                  .copyWith(color: AppColors.textoInactivo),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.espacioChico),
             if (_cargando)
-              const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator())
+              const Padding(
+                  padding: EdgeInsets.all(AppSpacing.espacioMedio),
+                  child: LinearProgressIndicator())
             else if (_error != null)
-              Text(_error!, style: const TextStyle(color: Colors.red))
+              Text(_error!,
+                  style: AppTypography.textoChico
+                      .copyWith(color: AppColors.error))
             else
               for (var i = 0; i < _metodos.length; i++) _fila(i, _metodos[i]),
           ],
@@ -159,7 +178,10 @@ class _MetodosPagoCardState extends State<MetodosPagoCard> {
   Widget _fila(int i, MetodoPago m) => ListTile(
         key: Key('metodo_pago_${m.id}'),
         contentPadding: EdgeInsets.zero,
-        title: Text(m.nombre, style: m.activo ? null : const TextStyle(color: Color(0xFF94A3B8))),
+        title: Text(m.nombre,
+            style: m.activo
+                ? null
+                : AppTypography.texto.copyWith(color: AppColors.textoInactivo)),
         subtitle: m.fijo
             ? const Text('Fijo: no se renombra ni se desactiva')
             : (m.activo ? null : const Text('Inactivo')),
@@ -189,7 +211,9 @@ class _MetodosPagoCardState extends State<MetodosPagoCard> {
                 key: Key('metodo_pago_estado_${m.id}'),
                 tooltip: m.activo ? 'Desactivar' : 'Reactivar',
                 icon: Icon(m.activo ? Icons.toggle_on : Icons.toggle_off,
-                    color: m.activo ? const Color(0xFF13894E) : const Color(0xFF94A3B8)),
+                    color: m.activo
+                        ? AppColors.estadoActivo
+                        : AppColors.textoInactivo),
                 onPressed: () => _cambiarEstado(m),
               ),
             ],

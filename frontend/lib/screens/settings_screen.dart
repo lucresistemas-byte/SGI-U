@@ -4,7 +4,13 @@ import 'package:file_picker/file_picker.dart';
 import '../models/configuracion_negocio.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_elevations.dart';
+import '../theme/app_radii.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/app_button.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/app_snack_bar.dart';
 import '../widgets/cargando_diferido.dart';
 import '../widgets/configuracion/categorias_card.dart';
 import '../widgets/configuracion/metodos_pago_card.dart';
@@ -95,9 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al seleccionar imagen: $e')),
-      );
+      AppSnackBar.error(context, 'Error al seleccionar imagen: $e');
     }
   }
 
@@ -125,21 +129,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _apiService.saveConfiguracion(config);
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Configuración guardada correctamente'),
-          backgroundColor: AppColors.verdePrincipal,
-        ),
-      );
+      AppSnackBar.exito(context, 'Configuración guardada correctamente');
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar configuración: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, 'Error al guardar configuración: $e');
     }
   }
 
@@ -153,9 +147,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
+                      Text(_errorMessage!,
+                          style: AppTypography.texto
+                              .copyWith(color: AppColors.error)),
+                      const SizedBox(height: AppSpacing.espacioEstandar),
+                      AppButton.primary(
                         onPressed: _cargarConfiguracion,
                         child: const Text('Reintentar'),
                       ),
@@ -163,57 +159,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 )
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
                   child: Form(
                     key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Personalización del Negocio',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E293B),
-                          ),
+                          style: AppTypography.tituloPantalla
+                              .copyWith(color: AppColors.textoPrincipal),
                         ),
-                        const SizedBox(height: 8),
-                        const Text(
+                        const SizedBox(height: AppSpacing.espacioChico),
+                        Text(
                           'Configure los datos e imagen corporativa que aparecerán en la interfaz y en los comprobantes.',
-                          style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+                          style: AppTypography.textoChico
+                              .copyWith(color: AppColors.textoInactivo),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: AppSpacing.espacioSeccion),
 
                         // Tarjeta Identidad Visual (Logo)
                         Card(
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          elevation: AppElevations.sombraTarjeta,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: AppRadii.bordeCampo,
+                            side: BorderSide(color: AppColors.bordeSuave),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(20.0),
+                            padding: const EdgeInsets.all(AppSpacing.espacioGrande),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Logo del Negocio',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF1E293B),
-                                  ),
+                                  style: AppTypography.texto.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textoPrincipal),
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: AppSpacing.espacioMedio),
                                 Row(
                                   children: [
                                     Container(
                                       width: 100,
                                       height: 100,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                                        color: AppColors.fondoApp,
+                                        borderRadius: AppRadii.bordeTarjeta,
+                                        border: Border.all(color: AppColors.bordeSuave),
                                       ),
                                       clipBehavior: Clip.antiAlias,
                                       child: _logoBytes != null && _logoBytes!.isNotEmpty
@@ -225,31 +217,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               child: Icon(
                                                 Icons.storefront_outlined,
                                                 size: 40,
-                                                color: Color(0xFF94A3B8),
+                                                color: AppColors.textoInactivo,
                                               ),
                                             ),
                                     ),
-                                    const SizedBox(width: 20),
+                                    const SizedBox(width: AppSpacing.espacioGrande),
                                     Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        ElevatedButton.icon(
+                                        AppButton.primary(
                                           key: const Key('settings_pick_logo_btn'),
                                           onPressed: _seleccionarLogo,
-                                          icon: const Icon(Icons.upload, size: 18),
-                                          label: const Text('Subir Logo'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.verdePrincipal,
-                                            foregroundColor: Colors.white,
-                                          ),
+                                          icono: Icons.upload,
+                                          child: const Text('Subir Logo'),
                                         ),
                                         if (_logoBytes != null) ...[
-                                          const SizedBox(height: 8),
-                                          OutlinedButton.icon(
+                                          const SizedBox(height: AppSpacing.espacioChico),
+                                          AppButton.danger(
                                             key: const Key('settings_remove_logo_btn'),
                                             onPressed: _eliminarLogo,
-                                            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                                            label: const Text('Quitar Logo', style: TextStyle(color: Colors.red)),
+                                            icono: Icons.delete_outline,
+                                            child: const Text('Quitar Logo'),
                                           ),
                                         ],
                                       ],
@@ -260,36 +248,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: AppSpacing.espacioSeccion),
 
                         // Tarjeta Datos del Comercio
                         Card(
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          elevation: AppElevations.sombraTarjeta,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: AppRadii.bordeCampo,
+                            side: BorderSide(color: AppColors.bordeSuave),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(20.0),
+                            padding: const EdgeInsets.all(AppSpacing.espacioGrande),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Datos Generales',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF1E293B),
-                                  ),
+                                  style: AppTypography.texto.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textoPrincipal),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: AppSpacing.espacioEstandar),
                                 TextFormField(
                                   key: const Key('settings_nombre_field'),
                                   controller: _nombreCtrl,
                                   decoration: const InputDecoration(
                                     labelText: 'Nombre del Negocio *',
                                     hintText: 'Ej: Almacén Don Juan',
-                                    border: OutlineInputBorder(),
                                   ),
                                   validator: (v) {
                                     if (v == null || v.trim().isEmpty) {
@@ -298,17 +283,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     return null;
                                   },
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: AppSpacing.espacioEstandar),
                                 TextFormField(
                                   key: const Key('settings_codigo_field'),
                                   controller: _codigoCtrl,
                                   decoration: const InputDecoration(
                                     labelText: 'Código de Cliente',
                                     hintText: 'Ej: SGIU-CLI-001',
-                                    border: OutlineInputBorder(),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: AppSpacing.espacioEstandar),
                                 Row(
                                   children: [
                                     Expanded(
@@ -318,11 +302,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         decoration: const InputDecoration(
                                           labelText: 'Teléfono de Contacto',
                                           hintText: 'Ej: +54 9 11 1234-5678',
-                                          border: OutlineInputBorder(),
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 16),
+                                    const SizedBox(width: AppSpacing.espacioEstandar),
                                     Expanded(
                                       child: TextFormField(
                                         key: const Key('settings_direccion_field'),
@@ -330,13 +313,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         decoration: const InputDecoration(
                                           labelText: 'Dirección Comercial',
                                           hintText: 'Ej: Av. San Martín 1234',
-                                          border: OutlineInputBorder(),
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: AppSpacing.espacioEstandar),
                                 TextFormField(
                                   key: const Key('settings_descripcion_field'),
                                   controller: _descripcionCtrl,
@@ -344,47 +326,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   decoration: const InputDecoration(
                                     labelText: 'Descripción / Slogan',
                                     hintText: 'Ej: Calidad y servicio desde 1995',
-                                    border: OutlineInputBorder(),
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: AppSpacing.espacioSeccion),
 
                         // Botón Guardar
                         Align(
                           alignment: Alignment.centerRight,
-                          child: ElevatedButton.icon(
+                          child: AppButton.primary(
                             key: const Key('settings_guardar_btn'),
                             onPressed: _isSaving ? null : _guardarConfiguracion,
-                            icon: _isSaving
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
+                            child: _isSaving
+                                ? const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          color: AppColors.sobreMarca,
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      SizedBox(width: AppSpacing.espacioChico),
+                                      Text('Guardando...'),
+                                    ],
                                   )
-                                : const Icon(Icons.save),
-                            label: Text(_isSaving ? 'Guardando...' : 'Guardar Cambios'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.verdePrincipal,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
+                                : const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.save, size: 18),
+                                      SizedBox(width: AppSpacing.espacioChico),
+                                      Text('Guardar Cambios'),
+                                    ],
+                                  ),
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: AppSpacing.espacioPantalla),
                         const TiposProductoCard(),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.espacioEstandar),
                         CategoriasCard(apiService: _apiService),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: AppSpacing.espacioSeccion),
                         MetodosPagoCard(apiService: _apiService),
                       ],
                     ),
