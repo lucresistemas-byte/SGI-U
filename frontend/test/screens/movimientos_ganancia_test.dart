@@ -91,4 +91,64 @@ void main() {
     expect(find.text('Ganancia'), findsWidgets);
     expect(find.text('Venta salón'), findsOneWidget);
   });
+
+  testWidgets(
+      'F-2: sin ventas hoy, "Costo vs Beneficio del día" muestra 0 / 0 aunque haya historia',
+      (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    // Hoy no hubo movimientos: el balance del día viene en cero.
+    final resumen = {
+      'ingresosHoy': 0.0,
+      'egresosHoy': 0.0,
+      'saldoActual': -46200.0,
+      'costoTotalHoy': 0.0,
+      'gananciaRealHoy': 0.0,
+    };
+    // Movimientos de días anteriores (antes se sumaban como "del día").
+    final movimientos = [
+      {
+        'id': 1,
+        'tipo': 'INGRESO',
+        'monto': 13800.0,
+        'costo': 6695.0,
+        'ganancia': 7105.0,
+        'metodoPago': 'Efectivo',
+        'categoria': 'VENTA',
+        'descripcion': 'Venta de productos - ID: 1',
+        'fechaHora': '2026-10-11T23:45:00.000',
+      },
+      {
+        'id': 7,
+        'tipo': 'EGRESO',
+        'monto': 60000.0,
+        'costo': 60000.0,
+        'ganancia': -60000.0,
+        'metodoPago': 'Transferencia',
+        'categoria': 'ALQUILER',
+        'descripcion': 'Alquiler del local',
+        'fechaHora': '2026-10-09T23:45:00.000',
+      },
+    ];
+
+    when(() => mockFinanzasBloc.state).thenReturn(
+      MovimientosLoaded(movimientos, resumen, pagina: 1, totalPaginas: 1),
+    );
+
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    final tarjeta = find.ancestor(
+      of: find.text('Costo vs Beneficio del día'),
+      matching: find.byType(Container),
+    ).first;
+    final cero = currencyFormatter.format(0);
+    expect(find.descendant(of: tarjeta, matching: find.text(cero)), findsOneWidget);
+    expect(find.descendant(of: tarjeta, matching: find.text('+ $cero')), findsOneWidget);
+    // Nada de la historia: ni 66.695 de costo ni −52.895 de ganancia.
+    expect(find.descendant(of: tarjeta, matching: find.textContaining('66.695')), findsNothing);
+    expect(find.descendant(of: tarjeta, matching: find.textContaining('52.895')), findsNothing);
+  });
 }

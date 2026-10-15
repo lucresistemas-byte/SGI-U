@@ -9,7 +9,6 @@ import '../widgets/movimiento_form_dialog.dart';
 import '../widgets/app_scaffold.dart';
 import '../theme/app_colors.dart';
 import '../utils/parsers.dart';
-import '../utils/finanzas_calculator.dart';
 import '../widgets/cargando_diferido.dart';
 import '../models/categoria_movimiento.dart';
 import '../widgets/tabla_ajustada.dart';
@@ -113,10 +112,8 @@ class _MovimientosContentState extends State<MovimientosContent> {
                 saldoActual = parseDouble(state.resumen['saldoActual']);
                 costoTotalHoy = parseDouble(state.resumen['costoTotalHoy'] ?? state.resumen['costoTotal']);
                 gananciaRealHoy = parseDouble(state.resumen['gananciaRealHoy'] ?? state.resumen['gananciaReal']);
-                if (costoTotalHoy == 0.0 && gananciaRealHoy == 0.0 && state.movimientos.isNotEmpty) {
-                  costoTotalHoy = FinanzasCalculator.calcularCostoTotalRaw(state.movimientos);
-                  gananciaRealHoy = FinanzasCalculator.calcularGananciaTotalRaw(state.movimientos);
-                }
+                // Sin ventas hoy se ve 0 / 0: antes se caía a la suma de
+                // todos los movimientos (la historia completa).
               }
               final saldoNeto = ingresosHoy - egresosHoy;
 
