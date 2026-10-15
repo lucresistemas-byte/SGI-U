@@ -78,11 +78,11 @@ class _InsumosScreenState extends State<InsumosScreen> {
             : null,
       );
 
-  /// "36 Caja · 50 g sueltos" (solo reventa + materia prima).
+  /// "36 cajas · 50 g sueltos" (solo reventa + materia prima).
   String? _detalleUnidadesVenta(Insumo insumo) {
     if (!insumo.esReventaMateriaPrima || insumo.stockUnidadesVenta == null) return null;
     final suelto = insumo.stockSuelto ?? 0;
-    return '${insumo.stockUnidadesVenta} ${insumo.ventaUnidadNombre ?? ''}'
+    return '${textoStock(insumo.stockUnidadesVenta!, insumo.ventaUnidadNombre ?? 'UNIDAD')}'
         '${suelto > 0 ? ' · ${textoEn(suelto, insumo.familia.base)} sueltos' : ''}';
   }
 

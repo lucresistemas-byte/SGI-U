@@ -66,7 +66,7 @@ void main() {
     await t.pumpAndSettle();
 
     expect(t.widget<Text>(find.byKey(const Key('stock_insumo_RMP-0001'))).data, '3.650 g');
-    expect(t.widget<Text>(find.byKey(const Key('unidades_venta_insumo_RMP-0001'))).data, '36 Caja · 50 g sueltos');
+    expect(t.widget<Text>(find.byKey(const Key('unidades_venta_insumo_RMP-0001'))).data, '36 cajas · 50 g sueltos');
     expect(t.widget<Text>(find.byKey(const Key('precio_venta_insumo_RMP-0001'))).data, contains('3.600'));
 
     await t.ensureVisible(find.byKey(const Key('ajustar_stock_RMP-0001')));
