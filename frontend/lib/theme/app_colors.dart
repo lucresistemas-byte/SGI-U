@@ -49,6 +49,7 @@ abstract final class AppColors {
   static const Color alerta = Color(0xFFB45309);
   static const Color alertaFondo = Color(0xFFFFE0B2);
   static const Color info = Color(0xFF0284C7);
+  static const Color transparente = Color(0x00000000);
 
   // --- Compatibilidad temporal (la Etapa 2 migra los usos y las borra) ---
   static const Color verdePrincipal = marca;

@@ -133,7 +133,7 @@ class _SideMenuState extends State<SideMenu> {
             horizontal: compacto ? 0 : AppSpacing.espacioEstandar,
           ),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.seleccionFondo : Colors.transparent,
+            color: isSelected ? AppColors.seleccionFondo : AppColors.transparente,
             borderRadius: AppRadii.bordeTarjeta,
           ),
           child: compacto
