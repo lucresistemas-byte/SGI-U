@@ -8,6 +8,7 @@ import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
 import com.sgiu_group.sgiu.repositories.*;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,9 @@ import java.util.Optional;
 @Service
 @Transactional(readOnly = true)
 public class DashboardService {
+
+    /** "Lo que más plata te deja": los primeros por ganancia en pesos. */
+    static final int TOP_PRODUCTOS = 5;
 
     private final VentaRepository ventaRepository;
     private final LineaVentaRepository lineaVentaRepository;
@@ -88,7 +92,7 @@ public class DashboardService {
         DashboardGraficosDTO graficos = new DashboardGraficosDTO();
         graficos.setIngresosVsEgresosPorDia(generarIngresosVsEgresosPorDia(desde, hasta, metodoPagoId));
         graficos.setVentasPorMetodoPago(generarVentasPorMetodoPago(desde, hasta));
-        graficos.setTopProductosMasVendidos(generarTopProductos(desde, hasta));
+        graficos.setTopProductosPorGanancia(generarTopPorGanancia(desde, hasta));
         graficos.setEvolucionSaldoNeto(generarEvolucionSaldo(desde, hasta, metodoPagoId));
         graficos.setProductosConMenorStock(generarProductosCriticos());
         graficos.setCategoriaMasVendida(obtenerCategoriaMasVendida(desde, hasta));
@@ -97,7 +101,7 @@ public class DashboardService {
                 || egresos.compareTo(BigDecimal.ZERO) > 0
                 || cantidadVentas > 0
                 || cantidadProductosStockBajo > 0
-                || !graficos.getTopProductosMasVendidos().isEmpty()
+                || !graficos.getTopProductosPorGanancia().isEmpty()
                 || !graficos.getProductosConMenorStock().isEmpty();
 
         String mensaje = hayDatos
@@ -211,18 +215,23 @@ public class DashboardService {
         return lista;
     }
 
-    private List<ProductoMasVendidoDTO> generarTopProductos(
+    private List<ProductoGananciaDTO> generarTopPorGanancia(
             LocalDateTime desde, LocalDateTime hasta) {
-        List<Object[]> resultados = lineaVentaRepository.findTopProductosVendidos(desde, hasta);
-        List<ProductoMasVendidoDTO> lista = new ArrayList<>();
-        for (Object[] row : resultados) {
-            Long productoId = ((Number) row[0]).longValue();
-            String nombre = (String) row[1];
-            Long cantidadVendida = ((Number) row[2]).longValue();
-            BigDecimal montoTotal = (BigDecimal) row[3];
-            lista.add(new ProductoMasVendidoDTO(productoId, nombre, cantidadVendida, montoTotal));
+        List<ProductoGananciaDTO> lista = new ArrayList<>();
+        for (Object[] row : lineaVentaRepository.findTopProductosPorGanancia(
+                desde, hasta, PageRequest.of(0, TOP_PRODUCTOS))) {
+            BigDecimal ventas = decimal(row[3]);
+            BigDecimal costo = decimal(row[4]);
+            lista.add(new ProductoGananciaDTO(((Number) row[0]).longValue(), (String) row[1],
+                    ((Number) row[2]).longValue(), ventas, costo, ventas.subtract(costo)));
         }
         return lista;
+    }
+
+    /** Las sumas de precio × cantidad pueden volver como BigDecimal o Double. */
+    private static BigDecimal decimal(Object valor) {
+        if (valor == null) return BigDecimal.ZERO;
+        return valor instanceof BigDecimal b ? b : new BigDecimal(valor.toString());
     }
 
     private List<EvolucionSaldoDTO> generarEvolucionSaldo(

@@ -1,6 +1,7 @@
 package com.sgiu_group.sgiu.repositories;
 
 import com.sgiu_group.sgiu.models.entities.LineaVenta;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,6 +20,23 @@ public interface LineaVentaRepository extends JpaRepository<LineaVenta, Long> {
     List<Object[]> findTopProductosVendidos(
             @Param("fechaDesde") LocalDateTime fechaDesde,
             @Param("fechaHasta") LocalDateTime fechaHasta);
+
+    /**
+     * Productos ordenados por ganancia en pesos (ventas − costo congelado),
+     * con [productoId, nombre, unidades, ventas, costo]. Ante igual ganancia,
+     * primero el que más vendió.
+     */
+    @Query("SELECT p.id, p.nombre, SUM(lv.cantidad), SUM(lv.subtotal), " +
+           "SUM(COALESCE(lv.costoUnitario, 0) * lv.cantidad) " +
+           "FROM LineaVenta lv JOIN lv.venta v JOIN lv.producto p " +
+           "WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta " +
+           "GROUP BY p.id, p.nombre " +
+           "ORDER BY SUM(lv.subtotal) - SUM(COALESCE(lv.costoUnitario, 0) * lv.cantidad) DESC, " +
+           "SUM(lv.subtotal) DESC")
+    List<Object[]> findTopProductosPorGanancia(
+            @Param("fechaDesde") LocalDateTime fechaDesde,
+            @Param("fechaHasta") LocalDateTime fechaHasta,
+            Pageable pageable);
 
     @Query("SELECT c.id, c.nombre, SUM(lv.cantidad), SUM(lv.subtotal) " +
            "FROM LineaVenta lv JOIN lv.venta v JOIN lv.producto p JOIN p.categoria c " +

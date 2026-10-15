@@ -48,12 +48,12 @@ class DashboardKpis {
 
 class DashboardGraficos {
   final List<ProductoStock> productosConMenorStock;
-  final List<TopProducto> topProductosMasVendidos;
+  final List<ProductoGanancia> topProductosPorGanancia;
   final List<EvolucionDiaria> ingresosVsEgresosPorDia;
 
   DashboardGraficos({
     required this.productosConMenorStock,
-    required this.topProductosMasVendidos,
+    required this.topProductosPorGanancia,
     required this.ingresosVsEgresosPorDia,
   });
 
@@ -62,8 +62,8 @@ class DashboardGraficos {
       productosConMenorStock: (json['productosConMenorStock'] as List? ?? [])
           .map((e) => ProductoStock.fromJson(e))
           .toList(),
-      topProductosMasVendidos: (json['topProductosMasVendidos'] as List? ?? [])
-          .map((e) => TopProducto.fromJson(e))
+      topProductosPorGanancia: (json['topProductosPorGanancia'] as List? ?? [])
+          .map((e) => ProductoGanancia.fromJson(e))
           .toList(),
       ingresosVsEgresosPorDia: (json['ingresosVsEgresosPorDia'] as List? ?? [])
           .map((e) => EvolucionDiaria.fromJson(e))
@@ -95,22 +95,26 @@ class ProductoStock {
   }
 }
 
-class TopProducto {
+/// Lo que dejó un producto en el período ("Lo que más plata te deja").
+class ProductoGanancia {
   final String nombre;
   final int cantidadVendida;
-  final double montoTotal;
+  final double ventas;
+  final double ganancia;
 
-  TopProducto({
-    required this.nombre, 
-    required this.cantidadVendida, 
-    required this.montoTotal
+  ProductoGanancia({
+    required this.nombre,
+    required this.cantidadVendida,
+    required this.ventas,
+    required this.ganancia,
   });
 
-  factory TopProducto.fromJson(Map<String, dynamic> json) {
-    return TopProducto(
+  factory ProductoGanancia.fromJson(Map<String, dynamic> json) {
+    return ProductoGanancia(
       nombre: json['nombre'] ?? 'Desconocido',
-      cantidadVendida: json['cantidadVendida'] ?? 0,
-      montoTotal: (json['montoTotal'] ?? 0).toDouble(),
+      cantidadVendida: (json['cantidadVendida'] ?? 0 as num).toInt(),
+      ventas: (json['ventas'] ?? 0).toDouble(),
+      ganancia: (json['ganancia'] ?? 0).toDouble(),
     );
   }
 }

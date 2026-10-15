@@ -9,6 +9,8 @@ import '../theme/app_colors.dart';
 import '../widgets/cargando_diferido.dart';
 import '../navigation/ir_a_seccion.dart';
 import '../navigation/seccion.dart';
+import '../utils/numeros.dart';
+import '../widgets/tabla_ajustada.dart';
 
 class DashboardScreen extends StatefulWidget {
   final ApiService? apiService;
@@ -488,10 +490,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             horizontalMargin: 0,
             dividerThickness: 1,
             columns: const [
-              DataColumn(label: Text('Producto')),
-              DataColumn(label: Text('Stock Actual')),
-              DataColumn(label: Text('Stock Mínimo')),
-              DataColumn(label: Text('Estado')),
+              DataColumn(columnWidth: columnaFlexible, label: Text('Producto')),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Hay')),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Mínimo')),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Estado')),
             ],
             rows: listaStock.isEmpty
                 ? [
@@ -524,7 +526,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   DataRow _buildStockRow(String nombre, String actual, String minimo, String estado, bool agotado) {
     return DataRow(
       cells: [
-        DataCell(Text(nombre, style: const TextStyle(fontWeight: FontWeight.w500))),
+        DataCell(Text(nombre, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500))),
         DataCell(Text(actual, style: TextStyle(color: agotado ? const Color(0xFFD32F2F) : const Color(0xFFE65100), fontWeight: FontWeight.bold))),
         DataCell(Text(minimo)),
         DataCell(Container(
@@ -537,9 +539,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildTopProductosCard() {
-    final listaTop = _dashboardData!.graficos.topProductosMasVendidos;
-    final formatter = NumberFormat.currency(locale: 'es_AR', symbol: '\$');
-    int ranking = 1;
+    final top = _dashboardData!.graficos.topProductosPorGanancia;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -551,35 +551,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Los más vendidos', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
+          const Text('Lo que más plata te deja', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
+          const SizedBox(height: 4),
+          const Text('Los 5 productos que más ganancia dejaron (lo vendido menos lo que costó)',
+              style: TextStyle(fontSize: 12, color: Color(0xFF666666))),
           const Divider(height: 32, color: Color(0xFFEEEEEE)),
-          DataTable(
-            headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF666666)),
-            dataTextStyle: const TextStyle(fontSize: 13, color: Color(0xFF333333)),
-            columnSpacing: 16,
-            horizontalMargin: 0,
-            dividerThickness: 1,
-            columns: const [
-              DataColumn(label: Text('#')),
-              DataColumn(label: Text('Producto')),
-              DataColumn(label: Text('Cant. Vendida')),
-              DataColumn(label: Text('Monto Generado')),
-            ],
-            rows: listaTop.isEmpty
-                ? [
-                    const DataRow(cells: [
-                      DataCell(Text('-')),
-                      DataCell(Text('Sin ventas en el período')),
-                      DataCell(Text('-')),
-                      DataCell(Text('-')),
-                    ])
-                  ]
-                : listaTop.map((p) {
-                    final fila = _buildTopRow(ranking.toString(), p.nombre, p.cantidadVendida.toString(), formatter.format(p.montoTotal), ranking == 1 ? 1.0 : (ranking == 2 ? 0.8 : 0.5));
-                    ranking++;
-                    return fila;
-                  }).toList(),
-          ),
+          if (top.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('Sin ventas en el período', style: TextStyle(color: Color(0xFF666666))),
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              child: DataTable(
+                key: const Key('inicio_top_ganancia'),
+                headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF666666)),
+                dataTextStyle: const TextStyle(fontSize: 13, color: Color(0xFF333333)),
+                columnSpacing: 16,
+                horizontalMargin: 0,
+                dividerThickness: 1,
+                columns: const [
+                  DataColumn(columnWidth: columnaAjustable, label: Text('#')),
+                  DataColumn(columnWidth: columnaFlexible, label: Text('Producto')),
+                  DataColumn(columnWidth: columnaAjustable, label: Text('Vendidos'), numeric: true),
+                  DataColumn(columnWidth: columnaAjustable, label: Text('Ventas'), numeric: true),
+                  DataColumn(columnWidth: columnaAjustable, label: Text('Ganancia'), numeric: true),
+                ],
+                rows: [
+                  for (final (i, p) in top.indexed)
+                    DataRow(cells: [
+                      DataCell(Text('${i + 1}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(p.nombre, maxLines: 2, overflow: TextOverflow.ellipsis)),
+                      DataCell(Text('${p.cantidadVendida}')),
+                      DataCell(Text(formatPesos(p.ventas))),
+                      DataCell(Text(
+                        formatPesosConSigno(p.ganancia),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: p.ganancia < 0 ? const Color(0xFFD32F2F) : const Color(0xFF008A3D),
+                        ),
+                      )),
+                    ]),
+                ],
+              ),
+            ),
           const SizedBox(height: 16),
           Center(
             child: TextButton.icon(
@@ -591,27 +607,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           )
         ],
       ),
-    );
-  }
-
-  DataRow _buildTopRow(String ranking, String nombre, String cantidad, String monto, double barWidth) {
-    return DataRow(
-      cells: [
-        DataCell(Text(ranking, style: const TextStyle(fontWeight: FontWeight.bold))),
-        DataCell(Text(nombre)),
-        DataCell(Text(cantidad, style: const TextStyle(fontWeight: FontWeight.w600))),
-        DataCell(Row(
-          children: [
-            SizedBox(width: 85, child: Text(monto)),
-            const SizedBox(width: 8),
-            Container(
-              height: 6,
-              width: 40 * barWidth,
-              decoration: BoxDecoration(color: const Color(0xFF4CAF50), borderRadius: BorderRadius.circular(4)),
-            ),
-          ],
-        )),
-      ],
     );
   }
 }
