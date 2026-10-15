@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:sgi_u_frontend/blocs/finanzas/finanzas_bloc.dart';
 import 'package:sgi_u_frontend/blocs/finanzas/finanzas_event.dart';
@@ -145,5 +146,61 @@ void main() {
     expect(find.text('Saldo Actual'), findsNothing);
     expect(find.text('Caja del mes (entró − salió)'), findsOneWidget);
     expect(find.text('Caja de hoy (entró − salió)'), findsOneWidget);
+  });
+
+  group('egresos sin costo ni ganancia', () {
+    const alquiler = {
+      'id': 7,
+      'tipo': 'EGRESO',
+      'monto': 60000.0,
+      'costo': null,
+      'ganancia': null,
+      'metodoPago': 'Transferencia',
+      'categoria': 'ALQUILER',
+      'descripcion': 'Alquiler del local',
+      'fechaHora': '2026-10-09T23:45:00.000',
+    };
+
+    void sinGananciaNegativa(WidgetTester t) {
+      final fila = find.ancestor(of: find.text('Alquiler del local'), matching: find.byType(Table));
+      expect(find.descendant(of: fila, matching: find.text('—')), findsNWidgets(2));
+      // Antes: "Costo $ 60.000,00" y "Ganancia −$ 60.000,00". Ahora el
+      // único 60.000 de la fila es el monto.
+      final pesos = NumberFormat.currency(locale: 'es_AR', symbol: r'$');
+      expect(find.descendant(of: fila, matching: find.textContaining('60.000')), findsOneWidget);
+      expect(find.text('- ${pesos.format(60000)}'), findsOneWidget);
+    }
+
+    testWidgets('en Movimientos se ve "—"', (t) async {
+      pantallaGrande(t);
+      final bloc = _MockFinanzasBloc();
+      addTearDown(bloc.close);
+      when(() => bloc.state).thenReturn(
+          const MovimientosLoaded([alquiler], {}, pagina: 1, totalPaginas: 1));
+      await t.pumpWidget(MaterialApp(
+        home: BlocProvider<FinanzasBloc>.value(value: bloc, child: const MovimientosScreen()),
+      ));
+      await t.pumpAndSettle();
+      sinGananciaNegativa(t);
+    });
+
+    testWidgets('en Ganancias se ve "—"', (t) async {
+      pantallaGrande(t);
+      final bloc = _MockFinanzasBloc();
+      addTearDown(bloc.close);
+      when(() => bloc.state).thenReturn(const BalanceLoaded({
+        'totalIngresos': 0.0,
+        'totalEgresos': 60000.0,
+        'margenNeto': -60000.0,
+        'costoTotal': 0.0,
+        'gananciaReal': 0.0,
+        'movimientos': [alquiler],
+      }));
+      await t.pumpWidget(MaterialApp(
+        home: BlocProvider<FinanzasBloc>.value(value: bloc, child: const BalanceScreen()),
+      ));
+      await t.pumpAndSettle();
+      sinGananciaNegativa(t);
+    });
   });
 }

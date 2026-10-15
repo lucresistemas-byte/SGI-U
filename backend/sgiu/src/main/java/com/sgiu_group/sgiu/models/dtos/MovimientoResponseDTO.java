@@ -49,8 +49,9 @@ public record MovimientoResponseDTO(
             costo = costoVenta != null ? costoVenta : BigDecimal.ZERO;
             ganancia = mov.getMonto().subtract(costo);
         } else if (mov.getTipo() == TipoMovimiento.EGRESO) {
-            costo = mov.getMonto();
-            ganancia = mov.getMonto().negate();
+            // Un gasto no tiene costo de mercadería ni ganancia propia.
+            costo = null;
+            ganancia = null;
         }
 
         return new MovimientoResponseDTO(

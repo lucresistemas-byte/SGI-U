@@ -544,8 +544,12 @@ class _BalanceScreenState extends State<BalanceScreen> {
                   String metodoDisplay = _parseMetodoPago(metodoRaw);
 
                   double monto = parseDouble(mov['monto']);
-                  double costo = parseDouble(mov['costo']);
-                  double ganancia = parseDouble(mov['ganancia']);
+                  // Null en los egresos: un gasto no tiene costo ni ganancia.
+                  final double? costo =
+                      mov['costo'] == null ? null : parseDouble(mov['costo']);
+                  final double? ganancia = mov['ganancia'] == null
+                      ? null
+                      : parseDouble(mov['ganancia']);
                   String fechaHora =
                       _formatFechaHora(parseString(mov['fechaHora']));
                   String categoria = CategoriaMovimiento.etiquetaDe(
@@ -570,17 +574,21 @@ class _BalanceScreenState extends State<BalanceScreen> {
                     ),
                     DataCell(
                       Text(
-                        _formatMonto(costo),
+                        costo == null ? '—' : _formatMonto(costo),
                         style: const TextStyle(color: Color(0xFF666666)),
                       ),
                     ),
                     DataCell(
                       Text(
-                        (ganancia >= 0 ? '+ ' : '') + _formatMonto(ganancia),
+                        ganancia == null
+                            ? '—'
+                            : (ganancia >= 0 ? '+ ' : '') + _formatMonto(ganancia),
                         style: TextStyle(
-                          color: ganancia >= 0
-                              ? const Color(0xFF008A3D)
-                              : const Color(0xFFFF2E2E),
+                          color: ganancia == null
+                              ? const Color(0xFF666666)
+                              : ganancia >= 0
+                                  ? const Color(0xFF008A3D)
+                                  : const Color(0xFFFF2E2E),
                           fontWeight: FontWeight.w600,
                         ),
                       ),

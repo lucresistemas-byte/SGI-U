@@ -107,6 +107,24 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void listar_egresoSinCostoNiGanancia() throws Exception {
+        datos.crearMovimiento(TipoMovimiento.EGRESO, new BigDecimal("60000.00"), "TRANSFERENCIA",
+                "ALQUILER", LocalDateTime.of(2026, 10, 9, 10, 0));
+        datos.crearMovimiento(TipoMovimiento.INGRESO, new BigDecimal("500.00"), "EFECTIVO",
+                "OTRO_INGRESO", LocalDateTime.of(2026, 10, 8, 10, 0));
+
+        // Un gasto no tiene costo de mercadería ni ganancia: van en null (la
+        // app muestra "—"). Un ingreso manual sigue con costo 0.
+        mockMvc.perform(get("/api/movimientos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].tipo").value("EGRESO"))
+                .andExpect(jsonPath("$[0].costo").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$[0].ganancia").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$[1].costo").value(0))
+                .andExpect(jsonPath("$[1].ganancia").value(500.00));
+    }
+
+    @Test
     void listar_ventaConCosto_devuelveCostoYGananciaDeLaVenta() throws Exception {
         EspProducto producto = datos.crearProducto(
                 "MOV-COSTO", "Producto con costo", new BigDecimal("100.00"), 10, 0);

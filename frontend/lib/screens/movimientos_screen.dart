@@ -256,10 +256,15 @@ class _MovimientosContentState extends State<MovimientosContent> {
 
                                     double monto =
                                         parseDouble(mov['monto']);
-                                    double costo =
-                                        parseDouble(mov['costo']);
-                                    double ganancia =
-                                        parseDouble(mov['ganancia']);
+                                    // Null en los egresos: un gasto no
+                                    // tiene costo ni ganancia.
+                                    final double? costo = mov['costo'] == null
+                                        ? null
+                                        : parseDouble(mov['costo']);
+                                    final double? ganancia =
+                                        mov['ganancia'] == null
+                                            ? null
+                                            : parseDouble(mov['ganancia']);
 
                                     String metodoRaw =
                                         mov['metodoPago']?.toString() ??
@@ -296,19 +301,25 @@ class _MovimientosContentState extends State<MovimientosContent> {
                                       ),
                                       DataCell(
                                         Text(
-                                          _formatMonto(costo),
+                                          costo == null
+                                              ? '—'
+                                              : _formatMonto(costo),
                                           style: const TextStyle(
                                               color: Color(0xFF666666)),
                                         ),
                                       ),
                                       DataCell(
                                         Text(
-                                          (ganancia >= 0 ? '+ ' : '') +
-                                              _formatMonto(ganancia),
+                                          ganancia == null
+                                              ? '—'
+                                              : (ganancia >= 0 ? '+ ' : '') +
+                                                  _formatMonto(ganancia),
                                           style: TextStyle(
-                                            color: ganancia >= 0
-                                                ? const Color(0xFF006B3D)
-                                                : const Color(0xFFF53939),
+                                            color: ganancia == null
+                                                ? const Color(0xFF666666)
+                                                : ganancia >= 0
+                                                    ? const Color(0xFF006B3D)
+                                                    : const Color(0xFFF53939),
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
