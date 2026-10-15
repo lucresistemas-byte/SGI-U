@@ -16,5 +16,12 @@ public record AjusteStockMateriaPrimaDTO(
     String unidad,
 
     @NotBlank(message = "El motivo del ajuste es obligatorio")
-    String motivo
-) {}
+    String motivo,
+
+    /** COMPRA (suma), AJUSTE o MERMA (resta). Por defecto: COMPRA si suma y AJUSTE si resta. */
+    String tipo
+) {
+    public AjusteStockMateriaPrimaDTO(BigDecimal cantidad, String unidad, String motivo) {
+        this(cantidad, unidad, motivo, null);
+    }
+}

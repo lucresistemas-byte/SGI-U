@@ -5,6 +5,7 @@ import com.sgiu_group.sgiu.models.dtos.EstadoRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.MateriaPrimaRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.MateriaPrimaResponseDTO;
 import com.sgiu_group.sgiu.services.MateriaPrimaService;
+import com.sgiu_group.sgiu.services.ReintentoStock;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import java.util.List;
 public class MateriaPrimaController {
 
     private final MateriaPrimaService materiaPrimaService;
+    private final ReintentoStock reintento;
 
     @GetMapping
     public ResponseEntity<List<MateriaPrimaResponseDTO>> listarTodos(
@@ -53,6 +55,6 @@ public class MateriaPrimaController {
     @PostMapping("/{id}/ajuste-stock")
     public ResponseEntity<MateriaPrimaResponseDTO> ajustarStock(@PathVariable Long id,
                                                                 @Valid @RequestBody AjusteStockMateriaPrimaDTO dto) {
-        return ResponseEntity.ok(materiaPrimaService.ajustarStock(id, dto));
+        return ResponseEntity.ok(reintento.ejecutar(() -> materiaPrimaService.ajustarStock(id, dto)));
     }
 }

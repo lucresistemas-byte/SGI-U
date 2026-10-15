@@ -56,7 +56,7 @@ class _FakePosApi implements PosApi {
 
   @override
   Future<Product> ajustarStock(String codigo,
-      {required int cantidad, required String motivo}) async {
+      {required int cantidad, required String motivo, String? tipo}) async {
     if (failStockAdjust) {
       throw Exception('El stock no puede quedar negativo.');
     }

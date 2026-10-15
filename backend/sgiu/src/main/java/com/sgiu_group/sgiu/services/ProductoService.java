@@ -8,6 +8,7 @@ import com.sgiu_group.sgiu.models.entities.Categoria;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.models.entities.ModoPrecio;
 import com.sgiu_group.sgiu.models.entities.TipoArticulo;
+import com.sgiu_group.sgiu.models.entities.TipoMovimientoStock;
 import com.sgiu_group.sgiu.exceptions.ProductoInvalidoException;
 import com.sgiu_group.sgiu.models.entities.UnidadMedida;
 import com.sgiu_group.sgiu.repositories.ArticuloStockRepository;
@@ -31,6 +32,8 @@ public class ProductoService {
     private final CategoriaRepository categoriaRepository;
     private final CostosService costosService;
     private final RecetaRepository recetaRepository;
+    private final StockService stockService;
+    private final ProduccionService produccionService;
 
     @Transactional(readOnly = true)
     public List<ProductoCatalogoDTO> getCatalogo(String categoria) {
@@ -160,10 +163,13 @@ public class ProductoService {
         }
         productoRepository.save(nuevoProducto);
 
-        ArticuloStock nuevoStock = new ArticuloStock(nuevoProducto,
-                dto.stockActual() != null ? dto.stockActual() : 0L);
+        ArticuloStock nuevoStock = new ArticuloStock(nuevoProducto, BigDecimal.ZERO);
         nuevoStock.setStockMinimo(BigDecimal.valueOf(dto.stockMinimo() != null ? dto.stockMinimo() : 0));
         stockRepository.save(nuevoStock);
+        if (dto.stockActual() != null && dto.stockActual() > 0) {
+            stockService.mover(nuevoStock, TipoMovimientoStock.AJUSTE, BigDecimal.valueOf(dto.stockActual()),
+                    "Stock inicial", null, null);
+        }
 
         return aDTO(nuevoProducto, nuevoStock, List.of());
     }
@@ -282,31 +288,40 @@ public class ProductoService {
     }
 
     /**
-     * Ajuste en unidades de venta: unidades para elaborados y reventa; para la
-     * reventa + materia prima, unidades de venta enteras (1 caja = 100 g).
+     * Ajuste manual en unidades de venta: unidades para elaborados y reventa;
+     * para la reventa + materia prima, unidades de venta enteras (1 caja =
+     * 100 g). Deja un movimiento (COMPRA, AJUSTE o MERMA) con el motivo. Un
+     * elaborado o un paquete suma stock produciendo (descuenta sus
+     * componentes), salvo una corrección explícita (AJUSTE).
      */
     @Transactional
-    public ProductoCatalogoDTO ajustarStock(String codigo, Integer cantidad) {
+    public ProductoCatalogoDTO ajustarStock(String codigo, Integer cantidad, String motivo, String tipo) {
         EspProducto producto = productoRepository.findByCodigo(codigo)
                 .orElseThrow(() -> new IllegalArgumentException("No se encontró un producto con el código: " + codigo));
+        if (cantidad == 0) {
+            throw new IllegalArgumentException("Indique una cantidad distinta de 0.");
+        }
+        TipoMovimientoStock tipoMovimiento = StockService.tipoDeAjuste(tipo, cantidad);
+        boolean seProduce = producto.getTipo() == TipoArticulo.PAQUETE
+                || producto.getTipo() == TipoArticulo.ELABORADO;
+        if (seProduce && cantidad > 0 && tipoMovimiento != TipoMovimientoStock.AJUSTE) {
+            throw new ProductoInvalidoException("Para sumar stock de " + producto.getNombre()
+                    + " use Producir: descuenta sus ingredientes o insumos.");
+        }
 
         ArticuloStock stock = stockRepository.findByEspProducto(producto)
                 .orElseGet(() -> new ArticuloStock(producto, BigDecimal.ZERO));
-
         BigDecimal ajuste = producto.stockParaVender(Math.abs(cantidad.longValue()));
-        BigDecimal nuevoStock = cantidad < 0 ? stock.getCantidad().subtract(ajuste) : stock.getCantidad().add(ajuste);
-        if (nuevoStock.signum() < 0) {
+        if (cantidad < 0 && stock.getCantidad().subtract(ajuste).signum() < 0) {
             throw new IllegalArgumentException("El stock no puede quedar negativo.");
         }
-
-        stock.setCantidad(nuevoStock);
-        stockRepository.save(stock);
+        stockService.mover(stock, tipoMovimiento, cantidad < 0 ? ajuste.negate() : ajuste, motivo, null, null);
 
         return aDTO(producto, stock, List.of());
     }
 
     /** Stock y stock mínimo en unidades de venta enteras (cajas para la reventa + materia prima). */
-    private static ProductoCatalogoDTO aDTO(EspProducto p, ArticuloStock stock, List<CambioPrecioDTO> cambios) {
+    private ProductoCatalogoDTO aDTO(EspProducto p, ArticuloStock stock, List<CambioPrecioDTO> cambios) {
         BigDecimal cantidad = stock != null ? stock.getCantidad() : BigDecimal.ZERO;
         BigDecimal minimo = stock != null ? stock.getStockMinimo() : BigDecimal.ZERO;
         return new ProductoCatalogoDTO(
@@ -326,7 +341,8 @@ public class ProductoService {
                 p.getModoPrecio().name(),
                 p.esPreparacionBase() ? null : CostosService.ganancia(p.getPrecioUnitario(), p.getPrecioCosto()),
                 p.getMontoFijo(),
-                cambios
+                cambios,
+                produccionService.puedeProducir(p)
         );
     }
 }

@@ -91,14 +91,18 @@ class UpdateProduct extends PosEvent {
   /// Delta de stock (positivo suma, negativo resta). Null si no se ajusta.
   final int? stockAjuste;
   final String? stockMotivo;
+
+  /// COMPRA, AJUSTE o MERMA (null: lo decide el backend según el signo).
+  final String? stockTipo;
   const UpdateProduct(
     this.codigo,
     this.productData, {
     this.stockAjuste,
     this.stockMotivo,
+    this.stockTipo,
   });
   @override
-  List<Object?> get props => [codigo, productData, stockAjuste, stockMotivo];
+  List<Object?> get props => [codigo, productData, stockAjuste, stockMotivo, stockTipo];
 }
 
 // --- EVENTOS DE FILTRADO Y BÚSQUEDA (Tareas 2.4 y 2.5) ---

@@ -36,7 +36,7 @@ class FlywayMariaDbTest {
     void aplicaTodasLasMigracionesYLaDemoYLasEntidadesValidan() {
         assertThat(jdbc.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = 1 ORDER BY installed_rank", String.class))
-                .containsExactly("1", "1.1", "2", "3", "3.1", "4", "5", "5.1", "6", "6.1", "7", "7.1");
+                .containsExactly("1", "1.1", "2", "3", "3.1", "4", "5", "5.1", "6", "6.1", "7", "7.1", "8", "8.1");
 
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM esp_productos WHERE tipo = 'ELABORADO' AND vendible = 0", Integer.class))
@@ -100,5 +100,18 @@ class FlywayMariaDbTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM esp_productos WHERE MOD(precio_unitario, 100) <> 0",
                 Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM historial_precios", Integer.class)).isZero();
+    }
+
+    /** Etapa 5: historial de stock y faltante de coco para la demo. */
+    @Test
+    void stock_historialInicialYFaltanteDeCoco() {
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM producciones", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM movimientos_stock m JOIN articulos_stock s "
+                + "ON s.esp_producto_id = m.articulo_id WHERE m.stock_resultante <> s.cantidad", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT s.cantidad FROM articulos_stock s JOIN esp_productos p "
+                + "ON p.id = s.esp_producto_id WHERE p.codigo = 'MP-0002'", java.math.BigDecimal.class))
+                .isEqualByComparingTo("380");
+        assertThat(jdbc.queryForObject("SELECT cantidad_base FROM recetas_detalles WHERE id = 2",
+                java.math.BigDecimal.class)).isEqualByComparingTo("250");
     }
 }

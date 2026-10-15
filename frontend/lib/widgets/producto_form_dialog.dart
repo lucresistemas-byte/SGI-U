@@ -32,6 +32,18 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   late TextEditingController _ajusteCantidadController;
   late TextEditingController _stockMinimoController;
   String _ajusteTipo = 'sumar';
+
+  /// Tipo del movimiento: COMPRA o AJUSTE al sumar; AJUSTE o MERMA al restar.
+  String _ajusteMovimiento = 'COMPRA';
+  late final TextEditingController _ajusteMotivoController = TextEditingController(text: 'Ajuste manual');
+
+  /// Elaborados y paquetes suman stock produciendo (botón Producir de la lista).
+  bool get _soloResta => _esEdicion && widget.productoAEditar!.seProduce;
+
+  /// Movimientos posibles según sume o reste.
+  Map<String, String> get _movimientos => _ajusteTipo == 'sumar'
+      ? const {'COMPRA': 'Compra', 'AJUSTE': 'Ajuste'}
+      : const {'AJUSTE': 'Ajuste', 'MERMA': 'Merma'};
   int _stockActualMostrado = 0;
 
   static const List<String> unidadesMedidaDisponibles = [
@@ -106,6 +118,10 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
         TextEditingController(text: '${prod?.stockMinimo ?? 0}');
     if (_esEdicion) {
       _stockActualMostrado = prod!.stockActual;
+      if (prod.seProduce) {
+        _ajusteTipo = 'restar';
+        _ajusteMovimiento = 'AJUSTE';
+      }
     }
 
     // Listeners para actualizar estado del diálogo cuando cambian campos
@@ -115,6 +131,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     _porcentajeController.addListener(() => setState(() {}));
     _stockInicialController.addListener(() => setState(() {}));
     _ajusteCantidadController.addListener(() => setState(() {}));
+    _ajusteMotivoController.addListener(() => setState(() {}));
     _stockMinimoController.addListener(() => setState(() {}));
   }
 
@@ -127,6 +144,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     _stockInicialController.dispose();
     _ajusteCantidadController.dispose();
     _stockMinimoController.dispose();
+    _ajusteMotivoController.dispose();
     super.dispose();
   }
 
@@ -173,7 +191,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     if (_ajusteTipo == 'restar' && cantidad > _stockActualMostrado) {
       return false;
     }
-    return true;
+    // Todo cambio de stock lleva motivo.
+    return _ajusteMotivoController.text.trim().isNotEmpty;
   }
 
   bool _isFormValid() {
@@ -255,7 +274,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
             widget.productoAEditar!.codigo,
             productoData,
             stockAjuste: _calcularStockAjuste(),
-            stockMotivo: 'Ajuste manual desde edición',
+            stockMotivo: _ajusteMotivoController.text.trim(),
+            stockTipo: _ajusteMovimiento,
           ));
     } else {
       context.read<PosBloc>().add(CreateProduct(productoData));
@@ -537,17 +557,20 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                                     initialValue: _ajusteTipo,
                                     decoration: const InputDecoration(
                                         labelText: 'Acción'),
-                                    items: const [
-                                      DropdownMenuItem(
-                                          value: 'sumar',
-                                          child: Text('Sumar stock')),
-                                      DropdownMenuItem(
+                                    items: [
+                                      if (!_soloResta)
+                                        const DropdownMenuItem(
+                                            value: 'sumar',
+                                            child: Text('Sumar stock')),
+                                      const DropdownMenuItem(
                                           value: 'restar',
                                           child: Text('Restar stock')),
                                     ],
                                     onChanged: (value) {
-                                      setStateDialog(
-                                          () => _ajusteTipo = value!);
+                                      setStateDialog(() {
+                                        _ajusteTipo = value!;
+                                        _ajusteMovimiento = _movimientos.keys.first;
+                                      });
                                     },
                                   ),
                                 ),
@@ -579,6 +602,42 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: DropdownButtonFormField<String>(
+                                    key: ValueKey('ajuste_movimiento_$_ajusteTipo'),
+                                    initialValue: _ajusteMovimiento,
+                                    decoration: const InputDecoration(labelText: 'Tipo'),
+                                    items: [
+                                      for (final m in _movimientos.entries)
+                                        DropdownMenuItem(value: m.key, child: Text(m.value)),
+                                    ],
+                                    onChanged: (value) => setStateDialog(() => _ajusteMovimiento = value!),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  flex: 2,
+                                  child: TextFormField(
+                                    key: const Key('ajuste_motivo_producto_input'),
+                                    controller: _ajusteMotivoController,
+                                    decoration: const InputDecoration(labelText: 'Motivo *'),
+                                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_soloResta)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 8),
+                                child: Text(
+                                  'Para sumar stock use "Producir" en la lista: descuenta los ingredientes o insumos.',
+                                  key: Key('ajuste_usar_producir'),
+                                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                                ),
+                              ),
                             if (_ajusteCantidadController.text
                                     .trim()
                                     .isNotEmpty &&

@@ -11,6 +11,9 @@ import '../widgets/cargando_diferido.dart';
 import '../services/api_service.dart';
 import '../utils/numeros.dart';
 import 'historial_precios_view.dart';
+import '../models/stock.dart';
+import '../widgets/produccion_dialog.dart';
+import '../widgets/stock_historial_dialog.dart';
 
 class CatalogoScreen extends StatefulWidget {
   /// Para el historial de precios (inyectable en los tests).
@@ -118,6 +121,47 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
         ),
       ),
     );
+  }
+
+  /// Stock en su unidad (negativo en rojo) y, si se produce, cuántos se
+  /// pueden producir con el stock de sus componentes.
+  Widget _stock(Product producto) {
+    final negativo = producto.stockActual < 0;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${negativo ? '−${-producto.stockActual}' : producto.stockActual} ${producto.unidadStock}',
+          key: Key('stock_${producto.codigo}'),
+          style: TextStyle(
+              color: negativo ? Colors.red.shade700 : const Color(0xFF475569),
+              fontWeight: negativo ? FontWeight.bold : FontWeight.normal),
+        ),
+        if (producto.seProduce && producto.puedeProducir != null)
+          Text('Puedo producir hasta ${producto.puedeProducir}',
+              key: Key('puede_producir_${producto.codigo}'),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+      ],
+    );
+  }
+
+  /// Producir: dialogo en dos pasos (faltantes → confirmar). Después recarga
+  /// el catálogo y avisa qué se consumió.
+  Future<void> _producir(Product producto) async {
+    final resultado = await showDialog<ResultadoProduccion>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ProduccionDialog(producto: producto, apiService: widget.apiService),
+    );
+    if (resultado == null || !mounted) return;
+    context.read<PosBloc>().add(const LoadProducts());
+    final consumos = resultado.consumos.map((c) => '${c.nombre} ${c.cantidadTexto}').join(', ');
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      backgroundColor: resultado.conFaltantes ? Colors.orange.shade800 : AppColors.verdeTeal,
+      content: Text('Se produjeron ${formatDecimal(resultado.cantidad)} ${resultado.nombre}'
+          '${resultado.conFaltantes ? ' (con faltantes: hay stock negativo)' : ''}. Consumo: $consumos.'),
+    ));
   }
 
   Widget _productos(BuildContext context) {
@@ -356,10 +400,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                                 style: const TextStyle(
                                                     color: Color(0xFF15803D),
                                                     fontWeight: FontWeight.w600))),
-                                             DataCell(Text(
-                                                 '${producto.stockActual} ${producto.unidadStock}',
-                                                 style: const TextStyle(
-                                                     color: Color(0xFF475569)))),
+                                            DataCell(_stock(producto)),
                                             DataCell(
                                                 _buildBadge(producto.activo)),
                                             DataCell(Row(
@@ -386,6 +427,24 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                                                   producto),
                                                     );
                                                   },
+                                                ),
+                                                // PRODUCIR (elaborados y paquetes: descuenta sus componentes)
+                                                if (producto.seProduce)
+                                                  IconButton(
+                                                    key: Key('producir_${producto.codigo}'),
+                                                    tooltip: 'Producir',
+                                                    icon: const Icon(Icons.soup_kitchen_outlined,
+                                                        color: Color(0xFF004D40), size: 20),
+                                                    onPressed: () => _producir(producto),
+                                                  ),
+                                                // HISTORIAL DE STOCK
+                                                IconButton(
+                                                  key: Key('historial_stock_${producto.codigo}'),
+                                                  tooltip: 'Ver historial de stock',
+                                                  icon: const Icon(Icons.history,
+                                                      color: Color(0xFF004D40), size: 20),
+                                                  onPressed: () => StockHistorialDialog.mostrar(context,
+                                                      codigo: producto.codigo, nombre: producto.nombre),
                                                 ),
                                                 // BOTÓN ARCHIVAR/DESARCHIVAR
                                                 IconButton(

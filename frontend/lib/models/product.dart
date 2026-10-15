@@ -37,6 +37,12 @@ class Product {
 
   bool get esPaquete => tipo == 'PAQUETE';
 
+  /// Elaborados que se venden y paquetes: suman stock produciendo.
+  bool get seProduce => esPaquete || (esElaborado && vendible);
+
+  /// Cuántos se pueden producir con el stock de los componentes (null si no aplica).
+  final int? puedeProducir;
+
   /// % de ganancia real (precio sobre costo); null sin costo.
   double? get porcentajeReal {
     final c = precioCosto ?? 0;
@@ -74,6 +80,7 @@ class Product {
     this.modoPrecio = 'MARGEN',
     this.gananciaPesos,
     this.montoFijo,
+    this.puedeProducir,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -107,6 +114,7 @@ class Product {
       modoPrecio: json['modoPrecio']?.toString() ?? 'MARGEN',
       gananciaPesos: (json['gananciaPesos'] as num?)?.toDouble(),
       montoFijo: (json['montoFijo'] as num?)?.toDouble(),
+      puedeProducir: (json['puedeProducir'] as num?)?.toInt(),
     );
   }
 
