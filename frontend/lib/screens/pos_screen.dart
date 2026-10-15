@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/numeros.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:printing/printing.dart';
@@ -266,7 +267,7 @@ class _SearchAddBarState extends State<SearchAddBar> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              'Stock insuficiente. Quedan ${product.stockActual} unidades de "${product.nombre}".'),
+              'Stock insuficiente. Quedan ${textoStock(product.stockActual, product.unidadStock)} de "${product.nombre}".'),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -314,7 +315,7 @@ class _SearchAddBarState extends State<SearchAddBar> {
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(
-                          '${option.codigo} • Stock: ${option.stockActual} • \$${option.precioUnitario.toStringAsFixed(2)}',
+                          '${option.codigo} • Stock: ${textoStock(option.stockActual, option.unidadStock)} • ${formatPesos(option.precioUnitario)}',
                           style: TextStyle(
                             color: option.stockActual <= 0
                                 ? Colors.red
@@ -452,7 +453,7 @@ class _CartQuantityInputState extends State<CartQuantityInput> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              'Stock máximo para "${widget.item.nombre}" es ${widget.product.stockActual} unidades.'),
+              'Stock máximo para "${widget.item.nombre}" es ${textoStock(widget.product.stockActual, widget.product.unidadStock)}.'),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -605,9 +606,9 @@ class CartTable extends StatelessWidget {
                     ),
                   ),
                   DataCell(
-                      Text('\$${item.precioUnitario.toStringAsFixed(2)}')),
+                      Text(formatPesos(item.precioUnitario))),
                   DataCell(
-                      Text('\$${item.subtotal.toStringAsFixed(2)}')),
+                      Text(formatPesos(item.subtotal))),
                   DataCell(
                     IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
@@ -653,7 +654,7 @@ class RightPanel extends StatelessWidget {
                               fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
                       Text(
-                        '\$${state.totalAmount.toStringAsFixed(2)}',
+                        formatPesos(state.totalAmount),
                         style: const TextStyle(
                             fontSize: 28, fontWeight: FontWeight.bold),
                       ),

@@ -34,6 +34,19 @@ void main() {
     expect(textoAmigable(1500, FamiliaUnidad.volumen), '1,5 l');
     expect(textoAmigable(50, FamiliaUnidad.longitud), '50 cm');
     expect(textoAmigable(1000, FamiliaUnidad.longitud), '10 m');
-    expect(textoAmigable(36, FamiliaUnidad.unidad), '36 u');
+    expect(textoAmigable(36, FamiliaUnidad.unidad), '36 unidades');
+  });
+
+  test('stock con unidades amigables y en plural', () {
+    expect(textoStock(4, 'UNIDAD'), '4 unidades');
+    expect(textoStock(1, 'UNIDAD'), '1 unidad');
+    expect(textoStock(0, 'GRAMO'), '0 g');
+    expect(textoStock(2500, 'GRAMO'), '2,5 kg');
+    expect(textoStock(2.5, 'KILO'), '2,5 kg');
+    expect(textoStock(3, 'Caja'), '3 cajas');
+    expect(textoStock(1, 'Caja'), '1 caja');
+    expect(textoStock(2, 'DOCENA'), '2 docenas');
+    expect(textoStock(-2, 'UNIDAD'), '−2 unidades');
+    expect(textoStock(5, null), '5 unidades');
   });
 }

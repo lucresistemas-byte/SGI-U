@@ -54,7 +54,7 @@ void main() {
   testWidgets('Confirmar cobro se habilita recién cuando los pagos cubren el total', (t) async {
     await montar(t);
     expect(confirmar(t).onPressed, isNull);
-    expect(find.text('Falta: \$300.00'), findsOneWidget);
+    expect(find.text('Falta: \$ 300,00'), findsOneWidget);
 
     // Camino rápido: un toque en Efectivo paga todo.
     await tocar(t, find.byKey(const Key('pagar_restante_1')));
@@ -73,7 +73,7 @@ void main() {
     await tocar(t, find.text('Tarjeta').last);
     await tocar(t, find.byKey(const Key('agregar_pago_button')));
 
-    expect(find.text('Falta: \$200.00'), findsOneWidget);
+    expect(find.text('Falta: \$ 200,00'), findsOneWidget);
     expect(confirmar(t).onPressed, isNull);
 
     await tocar(t, find.byKey(const Key('pagar_restante_1')));
@@ -95,7 +95,7 @@ void main() {
     await t.enterText(find.byKey(const Key('pago_monto_input')), '500');
     await tocar(t, find.byKey(const Key('agregar_pago_button')));
 
-    expect(find.text('Vuelto: \$200.00'), findsOneWidget);
+    expect(find.text('Vuelto: \$ 200,00'), findsOneWidget);
     expect(confirmar(t).onPressed, isNotNull);
   });
 

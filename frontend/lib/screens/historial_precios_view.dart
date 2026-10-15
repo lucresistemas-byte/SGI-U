@@ -4,6 +4,7 @@ import '../models/historial_precio.dart';
 import '../services/api_service.dart';
 import '../utils/numeros.dart';
 import '../widgets/cargando_diferido.dart';
+import '../widgets/tabla_ajustada.dart';
 
 /// Pestaña "Historial de precios" de Productos: cada cambio de costo o
 /// precio, con su causa, filtrable por fechas y por producto (código).
@@ -131,39 +132,38 @@ class _HistorialPreciosViewState extends State<HistorialPreciosView> {
     }
     return Container(
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-      child: SingleChildScrollView(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            key: const Key('tabla_historial_precios'),
-            headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
-            columns: const [
-              DataColumn(label: Text('Fecha', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Producto', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Costo', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Precio', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Modo', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Causa', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Usuario', style: TextStyle(fontWeight: FontWeight.bold))),
-            ],
-            rows: [
-              for (final h in _filas)
-                DataRow(key: ValueKey('historial_${h.id}'), cells: [
-                  DataCell(Text(_fechaHora.format(h.fecha.toLocal()))),
-                  DataCell(Text('${h.nombre} (${h.codigo})')),
-                  DataCell(Text('${_pesos(h.costoAnterior)} → ${_pesos(h.costoNuevo)}')),
-                  DataCell(Text(h.cambioPrecio ? '${_pesos(h.precioAnterior)} → ${_pesos(h.precioNuevo)}' : '—',
-                      style: TextStyle(fontWeight: h.cambioPrecio ? FontWeight.bold : FontWeight.normal))),
-                  DataCell(Text(switch (h.modoPrecio) {
-                    'MANUAL' => 'A mano',
-                    'COSTO_MAS_FIJO' => 'Costo + fijo',
-                    _ => 'Margen',
-                  })),
-                  DataCell(SizedBox(width: 320, child: Text(h.causa, overflow: TextOverflow.ellipsis, maxLines: 2))),
-                  DataCell(Text(h.usuario ?? '—')),
-                ]),
-            ],
-          ),
+      child: TablaAjustada(
+        tabla: DataTable(
+          columnSpacing: 20,
+          horizontalMargin: 16,
+          key: const Key('tabla_historial_precios'),
+          headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
+          columns: const [
+            DataColumn(columnWidth: columnaAjustable, label: Text('Fecha', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(columnWidth: columnaFlexibleSecundaria, label: Text('Producto', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(columnWidth: columnaAjustable, label: Text('Costo', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(columnWidth: columnaAjustable, label: Text('Precio', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(columnWidth: columnaAjustable, label: Text('Modo', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(columnWidth: columnaFlexible, label: Text('Causa', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(columnWidth: columnaAjustable, label: Text('Usuario', style: TextStyle(fontWeight: FontWeight.bold))),
+          ],
+          rows: [
+            for (final h in _filas)
+              DataRow(key: ValueKey('historial_${h.id}'), cells: [
+                DataCell(Text(_fechaHora.format(h.fecha.toLocal()))),
+                DataCell(Text('${h.nombre} (${h.codigo})', maxLines: 2, overflow: TextOverflow.ellipsis)),
+                DataCell(Text('${_pesos(h.costoAnterior)} → ${_pesos(h.costoNuevo)}')),
+                DataCell(Text(h.cambioPrecio ? '${_pesos(h.precioAnterior)} → ${_pesos(h.precioNuevo)}' : '—',
+                    style: TextStyle(fontWeight: h.cambioPrecio ? FontWeight.bold : FontWeight.normal))),
+                DataCell(Text(switch (h.modoPrecio) {
+                  'MANUAL' => 'A mano',
+                  'COSTO_MAS_FIJO' => 'Costo + fijo',
+                  _ => 'Margen',
+                })),
+                DataCell(Text(h.causa, overflow: TextOverflow.ellipsis, maxLines: 2)),
+                DataCell(Text(h.usuario ?? '—')),
+              ]),
+          ],
         ),
       ),
     );

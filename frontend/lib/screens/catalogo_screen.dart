@@ -14,6 +14,7 @@ import 'historial_precios_view.dart';
 import '../models/stock.dart';
 import '../widgets/produccion_dialog.dart';
 import '../widgets/stock_historial_dialog.dart';
+import '../widgets/tabla_ajustada.dart';
 
 class CatalogoScreen extends StatefulWidget {
   /// Para el historial de precios (inyectable en los tests).
@@ -132,7 +133,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '${negativo ? '−${-producto.stockActual}' : producto.stockActual} ${producto.unidadStock}',
+          textoStock(producto.stockActual, producto.unidadStock),
           key: Key('stock_${producto.codigo}'),
           style: TextStyle(
               color: negativo ? Colors.red.shade700 : const Color(0xFF475569),
@@ -344,146 +345,147 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                         children: [
                           // TABLA
                           Expanded(
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                return SingleChildScrollView(
-                                  scrollDirection: Axis.vertical,
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                          minWidth: constraints.maxWidth),
-                                      child: DataTable(
-                                        headingTextStyle: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF1E293B)),
-                                        dataRowMaxHeight: 65,
-                                        columns: const [
-                                          DataColumn(label: Text('Código ↓')),
-                                          DataColumn(
-                                              label:
-                                                  Text('Nombre del Producto')),
-                                          DataColumn(label: Text('Tipo')),
-                                          DataColumn(label: Text('Categoría')),
-                                          DataColumn(
-                                              label: Text('Precio Unit. (\$)')),
-                                          DataColumn(label: Text('Ganancia')),
-                                          DataColumn(label: Text('Stock')),
-                                          DataColumn(label: Text('Estado')),
-                                          DataColumn(label: Text('Acciones')),
-                                        ],
-                                        rows: paginatedProducts.map((producto) {
-                                          return DataRow(cells: [
-                                            DataCell(Text(producto.codigo,
-                                                style: const TextStyle(
-                                                    color: Color(0xFF475569)))),
-                                            DataCell(Text(producto.nombre,
-                                                style: const TextStyle(
-                                                    fontWeight: FontWeight.w500,
-                                                    color: Color(0xFF1E293B)))),
-                                            DataCell(_buildTipo(producto)),
-                                            DataCell(Text(producto.categoria ?? '-',
-                                                style: const TextStyle(
-                                                    color: Color(0xFF475569)))),
-                                            DataCell(Text(
-                                                '\$${producto.precioUnitario.toStringAsFixed(2)}'
-                                                '${producto.precioManual ? ' (a mano)' : ''}',
-                                                style: const TextStyle(
-                                                    color: Color(0xFF475569)))),
-                                            // Ganancia por unidad en $ y en %.
-                                            DataCell(Text(
-                                                producto.gananciaPesos == null
-                                                    ? '—'
-                                                    : '${formatPesos(producto.gananciaPesos!)}'
-                                                        '${producto.porcentajeReal != null ? ' (${formatDecimal(producto.porcentajeReal!, decimales: 1)} %)' : ''}',
-                                                key: Key('ganancia_${producto.codigo}'),
-                                                style: const TextStyle(
-                                                    color: Color(0xFF15803D),
-                                                    fontWeight: FontWeight.w600))),
-                                            DataCell(_stock(producto)),
-                                            DataCell(
-                                                _buildBadge(producto.activo)),
-                                            DataCell(Row(
-                                              children: [
-                                                // BOTÓN EDITAR (la reventa + materia
-                                                // prima se edita en Materia Prima).
-                                                IconButton(
-                                                  key: Key('editar_producto_${producto.codigo}'),
-                                                  tooltip: producto.esReventaMateriaPrima
-                                                      ? 'Se edita en Materia Prima'
-                                                      : producto.esPaquete
-                                                          ? 'Se edita en Recetas y paquetes'
-                                                          : 'Editar',
-                                                  icon: const Icon(Icons.edit,
-                                                      color: Color(0xFF004D40),
-                                                      size: 20),
-                                                  onPressed: producto.esReventaMateriaPrima || producto.esPaquete ? null : () {
-                                                    // ABRE EL MODAL DE EDICIÓN
-                                                    showDialog(
-                                                      context: context,
-                                                      builder: (context) =>
-                                                          ProductoFormDialog(
-                                                              productoAEditar:
-                                                                  producto),
-                                                    );
-                                                  },
-                                                ),
-                                                // PRODUCIR (elaborados y paquetes: descuenta sus componentes)
-                                                if (producto.seProduce)
-                                                  IconButton(
-                                                    key: Key('producir_${producto.codigo}'),
-                                                    tooltip: 'Producir',
-                                                    icon: const Icon(Icons.soup_kitchen_outlined,
-                                                        color: Color(0xFF004D40), size: 20),
-                                                    onPressed: () => _producir(producto),
-                                                  ),
-                                                // HISTORIAL DE STOCK
-                                                IconButton(
-                                                  key: Key('historial_stock_${producto.codigo}'),
-                                                  tooltip: 'Ver historial de stock',
-                                                  icon: const Icon(Icons.history,
-                                                      color: Color(0xFF004D40), size: 20),
-                                                  onPressed: () => StockHistorialDialog.mostrar(context,
-                                                      codigo: producto.codigo, nombre: producto.nombre),
-                                                ),
-                                                // BOTÓN ARCHIVAR/DESARCHIVAR
-                                                IconButton(
-                                                  icon: Icon(
-                                                      producto.activo
-                                                          ? Icons.delete_outline
-                                                          : Icons
-                                                              .restore_from_trash,
-                                                      color: const Color(
-                                                          0xFF004D40),
-                                                      size: 20),
-                                                  onPressed: () {
-                                                    context
-                                                        .read<PosBloc>()
-                                                        .add(UpdateProduct(
-                                                            producto.codigo, {
-                                                          'codigo': producto
-                                                              .codigo, // AGREGADO
-                                                          'nombre':
-                                                              producto.nombre,
-                                                          'precioUnitario':
-                                                              producto
-                                                                  .precioUnitario,
-                                                          'stockActual': producto
-                                                              .stockActual, // ¡EL SALVAVIDAS!
-                                                          'activo':
-                                                              !producto.activo,
-                                                        }));
-                                                  },
-                                                ),
-                                              ],
-                                            )),
-                                          ]);
-                                        }).toList(),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
+                            child: TablaAjustada(
+                              tabla: DataTable(
+                                key: const Key('tabla_productos'),
+                                columnSpacing: 16,
+                                horizontalMargin: 16,
+                                headingTextStyle: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E293B)),
+                                dataRowMaxHeight: double.infinity,
+                                columns: const [
+                                  DataColumn(columnWidth: columnaAjustable, label: Text('Código ↓')),
+                                  DataColumn(
+                                      columnWidth: columnaFlexible,
+                                      label:
+                                          Text('Nombre del Producto')),
+                                  DataColumn(columnWidth: columnaAjustable, label: Text('Tipo')),
+                                  DataColumn(columnWidth: columnaFlexibleSecundaria, label: Text('Categoría')),
+                                  DataColumn(
+                                      columnWidth: columnaAjustable, label: Text('Precio Unit.')),
+                                  DataColumn(columnWidth: columnaAjustable, label: Text('Ganancia')),
+                                  DataColumn(columnWidth: columnaFlexibleSecundaria, label: Text('Stock')),
+                                  DataColumn(columnWidth: columnaAjustable, label: Text('Estado')),
+                                  DataColumn(columnWidth: columnaAjustable, label: Text('Acciones')),
+                                ],
+                                rows: paginatedProducts.map((producto) {
+                                  return DataRow(cells: [
+                                    DataCell(Text(producto.codigo,
+                                        style: const TextStyle(
+                                            color: Color(0xFF475569)))),
+                                    DataCell(Text(producto.nombre,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xFF1E293B)))),
+                                    DataCell(_buildTipo(producto)),
+                                    DataCell(Text(producto.categoria ?? '-',
+                                        maxLines: 2,
+                                        style: const TextStyle(
+                                            color: Color(0xFF475569)))),
+                                    DataCell(Text(
+                                        '${formatPesos(producto.precioUnitario)}'
+                                        '${producto.precioManual ? '\n(a mano)' : ''}',
+                                        key: Key('precio_${producto.codigo}'),
+                                        style: const TextStyle(
+                                            color: Color(0xFF475569)))),
+                                    // Ganancia por unidad en $ y en %.
+                                    DataCell(Text(
+                                        producto.gananciaPesos == null
+                                            ? '—'
+                                            : '${formatPesos(producto.gananciaPesos!)}'
+                                                '${producto.porcentajeReal != null ? '\n${formatDecimal(producto.porcentajeReal!, decimales: 1)} %' : ''}',
+                                        key: Key('ganancia_${producto.codigo}'),
+                                        style: const TextStyle(
+                                            color: Color(0xFF15803D),
+                                            fontWeight: FontWeight.w600))),
+                                    DataCell(_stock(producto)),
+                                    DataCell(
+                                        _buildBadge(producto.activo)),
+                                    DataCell(Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // BOTÓN EDITAR (la reventa + materia
+                                        // prima se edita en Materia Prima).
+                                        IconButton(
+                                          visualDensity: VisualDensity.compact,
+                                          key: Key('editar_producto_${producto.codigo}'),
+                                          tooltip: producto.esReventaMateriaPrima
+                                              ? 'Se edita en Materia Prima'
+                                              : producto.esPaquete
+                                                  ? 'Se edita en Recetas y paquetes'
+                                                  : 'Editar',
+                                          icon: const Icon(Icons.edit,
+                                              color: Color(0xFF004D40),
+                                              size: 20),
+                                          onPressed: producto.esReventaMateriaPrima || producto.esPaquete ? null : () {
+                                            // ABRE EL MODAL DE EDICIÓN
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) =>
+                                                  ProductoFormDialog(
+                                                      productoAEditar:
+                                                          producto),
+                                            );
+                                          },
+                                        ),
+                                        // PRODUCIR (elaborados y paquetes: descuenta sus componentes)
+                                        if (producto.seProduce)
+                                          IconButton(
+                                          visualDensity: VisualDensity.compact,
+                                            key: Key('producir_${producto.codigo}'),
+                                            tooltip: 'Producir',
+                                            icon: const Icon(Icons.soup_kitchen_outlined,
+                                                color: Color(0xFF004D40), size: 20),
+                                            onPressed: () => _producir(producto),
+                                          ),
+                                        // HISTORIAL DE STOCK
+                                        IconButton(
+                                          visualDensity: VisualDensity.compact,
+                                          key: Key('historial_stock_${producto.codigo}'),
+                                          tooltip: 'Ver historial de stock',
+                                          icon: const Icon(Icons.history,
+                                              color: Color(0xFF004D40), size: 20),
+                                          onPressed: () => StockHistorialDialog.mostrar(context,
+                                              codigo: producto.codigo, nombre: producto.nombre),
+                                        ),
+                                        // BOTÓN ARCHIVAR/DESARCHIVAR
+                                        IconButton(
+                                          visualDensity: VisualDensity.compact,
+                                          icon: Icon(
+                                              producto.activo
+                                                  ? Icons.delete_outline
+                                                  : Icons
+                                                      .restore_from_trash,
+                                              color: const Color(
+                                                  0xFF004D40),
+                                              size: 20),
+                                          onPressed: () {
+                                            context
+                                                .read<PosBloc>()
+                                                .add(UpdateProduct(
+                                                    producto.codigo, {
+                                                  'codigo': producto
+                                                      .codigo, // AGREGADO
+                                                  'nombre':
+                                                      producto.nombre,
+                                                  'precioUnitario':
+                                                      producto
+                                                          .precioUnitario,
+                                                  'stockActual': producto
+                                                      .stockActual, // ¡EL SALVAVIDAS!
+                                                  'activo':
+                                                      !producto.activo,
+                                                }));
+                                          },
+                                        ),
+                                      ],
+                                    )),
+                                  ]);
+                                }).toList(),
+                              ),
                             ),
                           ),
                           // FOOTER (PAGINACIÓN)

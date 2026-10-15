@@ -13,6 +13,7 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/cargando_diferido.dart';
 import '../widgets/materia_prima_form_dialog.dart';
 import '../widgets/stock_historial_dialog.dart';
+import '../widgets/tabla_ajustada.dart';
 
 class InsumosScreen extends StatefulWidget {
   final InsumosBloc? insumosBloc;
@@ -77,11 +78,11 @@ class _InsumosScreenState extends State<InsumosScreen> {
             : null,
       );
 
-  /// "36 Caja · 50 g sueltos" (solo reventa + materia prima).
+  /// "36 cajas · 50 g sueltos" (solo reventa + materia prima).
   String? _detalleUnidadesVenta(Insumo insumo) {
     if (!insumo.esReventaMateriaPrima || insumo.stockUnidadesVenta == null) return null;
     final suelto = insumo.stockSuelto ?? 0;
-    return '${insumo.stockUnidadesVenta} ${insumo.ventaUnidadNombre ?? ''}'
+    return '${textoStock(insumo.stockUnidadesVenta!, insumo.ventaUnidadNombre ?? 'UNIDAD')}'
         '${suelto > 0 ? ' · ${textoEn(suelto, insumo.familia.base)} sueltos' : ''}';
   }
 
@@ -427,19 +428,19 @@ class _InsumosScreenState extends State<InsumosScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: SingleChildScrollView(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
+        child: TablaAjustada(
+          tabla: DataTable(
+            columnSpacing: 20,
+            horizontalMargin: 16,
             headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
             columns: const [
-              DataColumn(label: Text('Código', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Costo', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Unidad', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Stock Actual', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Stock Mínimo', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Código', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaFlexible, label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Costo', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Unidad', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Stock Actual', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Stock Mínimo', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold))),
             ],
             rows: items.map((insumo) {
               final esBajoStock =
@@ -458,7 +459,7 @@ class _InsumosScreenState extends State<InsumosScreen> {
                   DataCell(Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(insumo.nombre, style: atenuado),
+                      Flexible(child: Text(insumo.nombre, style: atenuado)),
                       if (!insumo.activo) ...[
                         const SizedBox(width: 8),
                         const Chip(
@@ -592,7 +593,6 @@ class _InsumosScreenState extends State<InsumosScreen> {
                 ],
               );
             }).toList(),
-            ),
           ),
         ),
       ),

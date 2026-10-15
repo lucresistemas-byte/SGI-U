@@ -29,9 +29,40 @@ String formatPesos(double valor, {int decimales = 2}) {
   return '\$ ${NumberFormat(patron, 'es_AR').format(valor)}';
 }
 
-/// Cantidad en unidad base mostrada en una unidad dada: 2500 g en kilo → "2,5 kg".
-String textoEn(double cantidadBase, UnidadMedida unidad) =>
-    '${formatDecimal(unidad.desdeBase(cantidadBase))} ${unidad.abreviatura}';
+/// Cantidad en unidad base mostrada en una unidad dada: 2500 g en kilo →
+/// "2,5 kg". Las unidades que se cuentan van con su nombre: "4 unidades".
+String textoEn(double cantidadBase, UnidadMedida unidad) {
+  final cantidad = unidad.desdeBase(cantidadBase);
+  final contable = unidad.familia == null || unidad.familia == FamiliaUnidad.unidad;
+  return '${formatDecimal(cantidad)} ${contable ? nombreUnidad(unidad.nombre, cantidad) : unidad.abreviatura}';
+}
+
+/// Nombre de una unidad que se cuenta, en minúscula y en plural salvo para 1:
+/// "unidad" → "unidades", "Caja" → "cajas".
+String nombreUnidad(String nombre, num cantidad) {
+  final n = nombre.trim().toLowerCase();
+  if (n.isEmpty || cantidad.abs() == 1) return n;
+  if (RegExp(r'[aeiouáéó]$').hasMatch(n)) return '${n}s';
+  if (n.endsWith('s')) return n;
+  if (n.endsWith('z')) return '${n.substring(0, n.length - 1)}ces';
+  return '${n}es';
+}
+
+/// Stock de un artículo en la unidad que viene de la API ("UNIDAD", "GRAMO",
+/// o el nombre de la unidad de venta, "Caja"), para leer: "4 unidades",
+/// "0 g", "2,5 kg", "3 cajas". El signo menos es "−".
+String textoStock(num cantidad, String? unidad) {
+  final medida = UnidadMedida.deCodigo(unidad ?? 'UNIDAD');
+  final String texto;
+  if (medida == null) {
+    texto = '${formatDecimal(cantidad.toDouble())} ${nombreUnidad(unidad!, cantidad)}';
+  } else if (medida.familia == null || medida.familia == FamiliaUnidad.unidad) {
+    texto = textoEn(medida.aBase(cantidad.toDouble()), medida);
+  } else {
+    texto = textoAmigable(medida.aBase(cantidad.toDouble()), medida.familia!);
+  }
+  return texto.replaceAll('-', '−');
+}
 
 /// Cantidad en unidad base mostrada de forma amigable: la unidad más grande
 /// de la familia que no quede en menos de 1 (2500 g → "2,5 kg"; 800 g → "800 g").

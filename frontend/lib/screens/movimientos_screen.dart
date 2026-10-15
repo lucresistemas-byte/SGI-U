@@ -12,6 +12,7 @@ import '../utils/parsers.dart';
 import '../utils/finanzas_calculator.dart';
 import '../widgets/cargando_diferido.dart';
 import '../models/categoria_movimiento.dart';
+import '../widgets/tabla_ajustada.dart';
 
 class MovimientosScreen extends StatelessWidget {
   const MovimientosScreen({super.key});
@@ -214,130 +215,118 @@ class _MovimientosContentState extends State<MovimientosContent> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Expanded(
-                              child: LayoutBuilder(
-                                  builder: (context, constraints) {
-                                return SingleChildScrollView(
-                                  scrollDirection: Axis.vertical,
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                          minWidth: constraints.maxWidth),
-                                      child: DataTable(
-                                        columnSpacing: 40,
-                                        horizontalMargin: 24,
-                                        headingRowHeight: 42,
-                                        headingRowColor:
-                                            WidgetStateProperty.resolveWith(
-                                                (_) => const Color(0xFFF7F7F7)),
-                                        headingTextStyle: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
-                                            color: Colors.black87),
-                                        dataRowMinHeight: 48,
-                                        dataRowMaxHeight: 48,
-                                        dividerThickness: 1,
-                                        columns: const [
-                                          DataColumn(label: Text('Fecha/Hora')),
-                                          DataColumn(label: Text('Tipo')),
-                                          DataColumn(label: Text('Monto')),
-                                          DataColumn(label: Text('Costo')),
-                                          DataColumn(label: Text('Ganancia')),
-                                          DataColumn(
-                                              label: Text('Método de Pago')),
-                                          DataColumn(label: Text('Categoría')),
-                                          DataColumn(
-                                              label: Text('Descripción')),
-                                        ],
-                                        // Usamos la lista cortada (movimientosPaginados) en vez de la original
-                                        rows: movimientosPaginados
-                                            .map((dynamic item) {
-                                          Map<String, dynamic> mov = item is Map
-                                              ? Map<String, dynamic>.from(item)
-                                              : {};
+                              child: TablaAjustada(
+                                tabla: DataTable(
+                                  columnSpacing: 24,
+                                  horizontalMargin: 24,
+                                  headingRowHeight: 42,
+                                  headingRowColor:
+                                      WidgetStateProperty.resolveWith(
+                                          (_) => const Color(0xFFF7F7F7)),
+                                  headingTextStyle: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                      color: Colors.black87),
+                                  dataRowMinHeight: 48,
+                                  dataRowMaxHeight: 48,
+                                  dividerThickness: 1,
+                                  columns: const [
+                                    DataColumn(columnWidth: columnaAjustable, label: Text('Fecha/Hora')),
+                                    DataColumn(columnWidth: columnaAjustable, label: Text('Tipo')),
+                                    DataColumn(columnWidth: columnaAjustable, label: Text('Monto')),
+                                    DataColumn(columnWidth: columnaAjustable, label: Text('Costo')),
+                                    DataColumn(columnWidth: columnaAjustable, label: Text('Ganancia')),
+                                    DataColumn(
+                                        columnWidth: columnaAjustable, label: Text('Método de Pago')),
+                                    DataColumn(columnWidth: columnaAjustable, label: Text('Categoría')),
+                                    DataColumn(columnWidth: columnaFlexible, label: Text('Descripción')),
+                                  ],
+                                  // Usamos la lista cortada (movimientosPaginados) en vez de la original
+                                  rows: movimientosPaginados
+                                      .map((dynamic item) {
+                                    Map<String, dynamic> mov = item is Map
+                                        ? Map<String, dynamic>.from(item)
+                                        : {};
 
-                                          String tipoRaw =
-                                              mov['tipo']?.toString() ?? '';
-                                          String tipoDisplay =
-                                              tipoRaw.toLowerCase() == 'ingreso'
-                                                  ? 'Ingreso'
-                                                  : 'Egreso';
-                                          bool isIngreso =
-                                              tipoDisplay == 'Ingreso';
+                                    String tipoRaw =
+                                        mov['tipo']?.toString() ?? '';
+                                    String tipoDisplay =
+                                        tipoRaw.toLowerCase() == 'ingreso'
+                                            ? 'Ingreso'
+                                            : 'Egreso';
+                                    bool isIngreso =
+                                        tipoDisplay == 'Ingreso';
 
-                                          double monto =
-                                              parseDouble(mov['monto']);
-                                          double costo =
-                                              parseDouble(mov['costo']);
-                                          double ganancia =
-                                              parseDouble(mov['ganancia']);
+                                    double monto =
+                                        parseDouble(mov['monto']);
+                                    double costo =
+                                        parseDouble(mov['costo']);
+                                    double ganancia =
+                                        parseDouble(mov['ganancia']);
 
-                                          String metodoRaw =
-                                              mov['metodoPago']?.toString() ??
-                                                  '';
-                                          String metodoDisplay =
-                                              _parseMetodoPago(metodoRaw);
+                                    String metodoRaw =
+                                        mov['metodoPago']?.toString() ??
+                                            '';
+                                    String metodoDisplay =
+                                        _parseMetodoPago(metodoRaw);
 
-                                          String fechaHora = _formatFechaHora(
-                                              mov['fechaHora']?.toString() ??
-                                                  '');
-                                          String categoria =
-                                              CategoriaMovimiento.etiquetaDe(
-                                                  mov['categoria']
-                                                      ?.toString());
-                                          String descripcion =
-                                              mov['descripcion']?.toString() ??
-                                                  '-';
+                                    String fechaHora = _formatFechaHora(
+                                        mov['fechaHora']?.toString() ??
+                                            '');
+                                    String categoria =
+                                        CategoriaMovimiento.etiquetaDe(
+                                            mov['categoria']
+                                                ?.toString());
+                                    String descripcion =
+                                        mov['descripcion']?.toString() ??
+                                            '-';
 
-                                          return DataRow(cells: [
-                                            DataCell(Text(fechaHora)),
-                                            DataCell(_buildTipoBadge(
-                                                tipoDisplay, isIngreso)),
-                                            DataCell(
-                                              Text(
-                                                (isIngreso ? '+ ' : '- ') +
-                                                    _formatMonto(monto),
-                                                style: TextStyle(
-                                                  color: isIngreso
-                                                      ? const Color(0xFF006B3D)
-                                                      : const Color(0xFFF53939),
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                            DataCell(
-                                              Text(
-                                                _formatMonto(costo),
-                                                style: const TextStyle(
-                                                    color: Color(0xFF666666)),
-                                              ),
-                                            ),
-                                            DataCell(
-                                              Text(
-                                                (ganancia >= 0 ? '+ ' : '') +
-                                                    _formatMonto(ganancia),
-                                                style: TextStyle(
-                                                  color: ganancia >= 0
-                                                      ? const Color(0xFF006B3D)
-                                                      : const Color(0xFFF53939),
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                            DataCell(_buildMetodoBadge(
-                                                metodoDisplay)),
-                                            DataCell(Text(categoria)),
-                                            DataCell(Text(descripcion,
-                                                maxLines: 1,
-                                                overflow:
-                                                    TextOverflow.ellipsis)),
-                                          ]);
-                                        }).toList(),
+                                    return DataRow(cells: [
+                                      DataCell(Text(fechaHora)),
+                                      DataCell(_buildTipoBadge(
+                                          tipoDisplay, isIngreso)),
+                                      DataCell(
+                                        Text(
+                                          (isIngreso ? '+ ' : '- ') +
+                                              _formatMonto(monto),
+                                          style: TextStyle(
+                                            color: isIngreso
+                                                ? const Color(0xFF006B3D)
+                                                : const Color(0xFFF53939),
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                );
-                              }),
+                                      DataCell(
+                                        Text(
+                                          _formatMonto(costo),
+                                          style: const TextStyle(
+                                              color: Color(0xFF666666)),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          (ganancia >= 0 ? '+ ' : '') +
+                                              _formatMonto(ganancia),
+                                          style: TextStyle(
+                                            color: ganancia >= 0
+                                                ? const Color(0xFF006B3D)
+                                                : const Color(0xFFF53939),
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(_buildMetodoBadge(
+                                          metodoDisplay)),
+                                      DataCell(Text(categoria)),
+                                      DataCell(Text(descripcion,
+                                          maxLines: 2,
+                                          overflow:
+                                              TextOverflow.ellipsis)),
+                                    ]);
+                                  }).toList(),
+                                ),
+                              ),
                             ),
                             // Footer de Paginación Dinámico
                             Container(

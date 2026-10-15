@@ -10,6 +10,7 @@ import '../theme/app_colors.dart';
 import '../widgets/metodo_pago_dropdown.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/cargando_diferido.dart';
+import '../widgets/tabla_ajustada.dart';
 
 class PedidosScreen extends StatefulWidget {
   final PedidosBloc? pedidosBloc;
@@ -578,117 +579,113 @@ class _PedidosScreenState extends State<PedidosScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: SingleChildScrollView(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
-              columns: const [
-                DataColumn(label: Text('Cliente', style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(label: Text('Detalle', style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(label: Text('Entrega', style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(label: Text('Monto Total', style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(label: Text('Abonado', style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(label: Text('Saldo Restante', style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(label: Text('Estado', style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold))),
-              ],
-              rows: items.map((pedido) {
-                final estadoVisual = pedido.estadoCalculado;
-                final estadoColor = _obtenerColorEstado(estadoVisual);
+        child: TablaAjustada(
+          tabla: DataTable(
+            columnSpacing: 14,
+            horizontalMargin: 16,
+            headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
+            columns: const [
+              DataColumn(columnWidth: columnaFlexibleSecundaria, label: Text('Cliente', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaFlexible, label: Text('Detalle', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaFlexibleSecundaria, label: Text('Entrega', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Monto Total', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Abonado', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Saldo Restante', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Estado', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(columnWidth: columnaAjustable, label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold))),
+            ],
+            rows: items.map((pedido) {
+              final estadoVisual = pedido.estadoCalculado;
+              final estadoColor = _obtenerColorEstado(estadoVisual);
 
-                return DataRow(
-                  cells: [
-                    DataCell(
-                      InkWell(
-                        onTap: () => _bloc.add(SeleccionarPedido(pedido)),
-                        child: Text(
-                          pedido.clienteNombre,
-                          style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                        ),
+              return DataRow(
+                cells: [
+                  DataCell(
+                    InkWell(
+                      onTap: () => _bloc.add(SeleccionarPedido(pedido)),
+                      child: Text(
+                        pedido.clienteNombre,
+                        style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
                       ),
                     ),
-                    DataCell(Text(pedido.clienteTelefono)),
-                    DataCell(
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 220),
-                        child: Text(pedido.descripcion, overflow: TextOverflow.ellipsis),
+                  ),
+                  DataCell(Text(pedido.clienteTelefono)),
+                  DataCell(
+                    Text(pedido.descripcion, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ),
+                  DataCell(Text(pedido.fechaEntrega != null
+                      ? DateFormat('dd/MM/yyyy HH:mm').format(pedido.fechaEntrega!)
+                      : '-')),
+                  DataCell(Text(_currencyFormat.format(pedido.montoTotal))),
+                  DataCell(Text(_currencyFormat.format(pedido.totalPagado))),
+                  DataCell(
+                    Text(
+                      _currencyFormat.format(pedido.saldo),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: pedido.saldo > 0 ? const Color(0xFFB45309) : const Color(0xFF16A34A),
                       ),
                     ),
-                    DataCell(Text(pedido.fechaEntrega != null
-                        ? DateFormat('dd/MM/yyyy HH:mm').format(pedido.fechaEntrega!)
-                        : '-')),
-                    DataCell(Text(_currencyFormat.format(pedido.montoTotal))),
-                    DataCell(Text(_currencyFormat.format(pedido.totalPagado))),
-                    DataCell(
-                      Text(
-                        _currencyFormat.format(pedido.saldo),
+                  ),
+                  DataCell(
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: estadoColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: estadoColor.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(
+                        estadoVisual,
                         style: TextStyle(
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: pedido.saldo > 0 ? const Color(0xFFB45309) : const Color(0xFF16A34A),
+                          color: estadoColor,
                         ),
                       ),
                     ),
-                    DataCell(
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: estadoColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: estadoColor.withValues(alpha: 0.3)),
-                        ),
-                        child: Text(
-                          estadoVisual,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: estadoColor,
+                  ),
+                  DataCell(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (pedido.estado.toUpperCase() == 'CANCELADO')
+                          const Text(
+                            'Cancelado',
+                            style: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+                          )
+                        else if (pedido.saldo > 0) ...[
+                          ElevatedButton.icon(
+                            key: Key('abonar_pedido_${pedido.id}'),
+                            icon: const Icon(Icons.attach_money, size: 16),
+                            label: const Text('Abonar'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0284C7),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            ),
+                            onPressed: () => _mostrarDialogoAbono(pedido),
                           ),
-                        ),
-                      ),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            key: Key('cancelar_pedido_${pedido.id}'),
+                            tooltip: 'Cancelar pedido',
+                            icon: const Icon(Icons.cancel_outlined, color: Colors.redAccent),
+                            onPressed: pedido.id == null ? null : () => _confirmarCancelar(pedido),
+                          ),
+                        ] else
+                          const Text(
+                            'Saldado',
+                            style: TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.w600),
+                          ),
+                      ],
                     ),
-                    DataCell(
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (pedido.estado.toUpperCase() == 'CANCELADO')
-                            const Text(
-                              'Cancelado',
-                              style: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
-                            )
-                          else if (pedido.saldo > 0) ...[
-                            ElevatedButton.icon(
-                              key: Key('abonar_pedido_${pedido.id}'),
-                              icon: const Icon(Icons.attach_money, size: 16),
-                              label: const Text('Abonar'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0284C7),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                              ),
-                              onPressed: () => _mostrarDialogoAbono(pedido),
-                            ),
-                            const SizedBox(width: 8),
-                            TextButton(
-                              key: Key('cancelar_pedido_${pedido.id}'),
-                              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-                              onPressed: pedido.id == null ? null : () => _confirmarCancelar(pedido),
-                              child: const Text('Cancelar pedido'),
-                            ),
-                          ] else
-                            const Text(
-                              'Saldado',
-                              style: TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.w600),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              }).toList(),
-            ),
+                  ),
+                ],
+              );
+            }).toList(),
           ),
         ),
       ),

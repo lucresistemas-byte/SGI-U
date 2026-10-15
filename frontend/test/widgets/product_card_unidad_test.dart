@@ -34,11 +34,11 @@ void main() {
     expect(find.text('Queso Barra'), findsOneWidget);
 
     // Verifica que el texto de stock incluya la unidad
-    expect(find.text('Stock: 15 KILO'), findsOneWidget);
+    expect(find.text('Stock: 15 kg'), findsOneWidget);
 
     // Verifica que el badge de unidad esté presente con KILO
     expect(find.byKey(const ValueKey('product_card_unidad_badge')), findsOneWidget);
-    expect(find.text('KILO'), findsWidgets);
+    expect(find.text('Kilo'), findsWidgets);
 
     // Verifica interacción: tap en la tarjeta llama a onAdd(1)
     await tester.tap(find.byType(ProductCard));
