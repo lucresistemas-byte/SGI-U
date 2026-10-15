@@ -23,10 +23,17 @@ public class EspUsuarioDetailsService implements UserDetailsService {
         if (usuario == null) {
             throw new UsernameNotFoundException("Usuario no encontrado: " + username);
         }
+        String rol = (usuario.getRol() != null && !usuario.getRol().isBlank())
+                ? usuario.getRol().trim().toUpperCase()
+                : "USER";
+        if (!rol.startsWith("ROLE_")) {
+            rol = "ROLE_" + rol;
+        }
+
         return org.springframework.security.core.userdetails.User.builder()
                 .username(usuario.getUsername())
                 .password(usuario.getPassword())
-                .authorities("ROLE_USER") // Puedes ajustar los roles según tu necesidad
+                .authorities(rol)
                 .disabled(!usuario.getActivo())
                 .build();
     }

@@ -34,6 +34,8 @@ public class DataSeeder implements CommandLineRunner {
             admin.setUsername("admin");
             admin.setPassword(passwordEncoder.encode("admin123"));
             admin.setActivo(true);
+            admin.setRol("ADMIN");
+            admin.setRequiereCambioPassword(true);
             usuarioRepository.save(admin);
         }
         // En MariaDB los crea la migración V2; esto cubre una base sin

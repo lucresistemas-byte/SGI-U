@@ -27,6 +27,12 @@ public class EspUsuario {
     @Column(nullable = false)
     private Boolean activo;
 
+    @Column(nullable = false, length = 20)
+    private String rol = "ADMIN";
+
+    @Column(name = "requiere_cambio_password", nullable = false)
+    private Boolean requiereCambioPassword = false;
+
     // Constructors
     public EspUsuario() {
     }
@@ -35,6 +41,16 @@ public class EspUsuario {
         this.username = username;
         this.password = password;
         this.activo = activo;
+        this.rol = "USER";
+        this.requiereCambioPassword = false;
+    }
+
+    public EspUsuario(String username, String password, Boolean activo, String rol, Boolean requiereCambioPassword) {
+        this.username = username;
+        this.password = password;
+        this.activo = activo;
+        this.rol = rol;
+        this.requiereCambioPassword = requiereCambioPassword;
     }
 
     // Getters and Setters
@@ -68,5 +84,21 @@ public class EspUsuario {
 
     public void setActivo(Boolean activo) {
         this.activo = activo;
+    }
+
+    public String getRol() {
+        return rol;
+    }
+
+    public void setRol(String rol) {
+        this.rol = rol;
+    }
+
+    public Boolean getRequiereCambioPassword() {
+        return requiereCambioPassword;
+    }
+
+    public void setRequiereCambioPassword(Boolean requiereCambioPassword) {
+        this.requiereCambioPassword = requiereCambioPassword;
     }
 }

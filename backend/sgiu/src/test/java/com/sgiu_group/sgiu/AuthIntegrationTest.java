@@ -22,7 +22,16 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void register_valido_devuelveTokenYUsuarioActivo() throws Exception {
+    void register_sinAutenticar_devuelve401() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\": \"user_anonimo\", \"password\": \"clave123\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @org.springframework.security.test.context.support.WithMockUser(roles = "ADMIN")
+    void register_comoAdmin_valido_devuelveTokenYUsuarioActivo() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\": \"user_nuevo\", \"password\": \"clave123\"}"))
@@ -33,7 +42,8 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void register_usuarioDuplicado_devuelve400() throws Exception {
+    @org.springframework.security.test.context.support.WithMockUser(roles = "ADMIN")
+    void register_comoAdmin_usuarioDuplicado_devuelve400() throws Exception {
         datos.crearUsuario("user_dup", "clave123", true);
 
         mockMvc.perform(post("/api/auth/register")
