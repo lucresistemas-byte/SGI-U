@@ -166,4 +166,44 @@ void main() {
       ],
     );
   });
+
+  group('FinanzasBloc - CrearMovimiento con fecha', () {
+    late MockApiService api;
+
+    blocTest<FinanzasBloc, FinanzasState>(
+      'envía fechaHora como hora local sin zona; sin fecha no la envía',
+      build: () {
+        api = MockApiService();
+        when(() => api.createMovimiento(any())).thenAnswer((_) async {});
+        when(() => api.getMovimientos(
+                pagina: any(named: 'pagina'), limite: any(named: 'limite')))
+            .thenAnswer((_) async => []);
+        when(() => api.getBalance(any(), any())).thenAnswer((_) async => Map.of(_balanceDia));
+        return FinanzasBloc(apiService: api);
+      },
+      act: (bloc) async {
+        bloc.add(CrearMovimiento(
+          tipo: 'EGRESO',
+          monto: 60000,
+          metodoPagoId: 4,
+          categoria: 'ALQUILER',
+          descripcion: 'Alquiler',
+          fechaHora: DateTime(2026, 10, 9, 18, 5, 7),
+        ));
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const CrearMovimiento(
+          tipo: 'EGRESO',
+          monto: 1,
+          metodoPagoId: 4,
+          categoria: 'OTRO',
+          descripcion: 'Sin fecha',
+        ));
+      },
+      verify: (_) {
+        final enviados = verify(() => api.createMovimiento(captureAny())).captured;
+        expect((enviados[0] as Map)['fechaHora'], '2026-10-09T18:05:07');
+        expect((enviados[1] as Map).containsKey('fechaHora'), isFalse);
+      },
+    );
+  });
 }

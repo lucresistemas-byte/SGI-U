@@ -55,6 +55,36 @@ class MovimientoControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void crear_conFechaPasada_guardaEsaFecha() throws Exception {
+        LocalDateTime ayer = LocalDateTime.now().minusDays(1).withNano(0);
+        MovimientoRequestDTO dto = new MovimientoRequestDTO(
+                "EGRESO", new BigDecimal("60000.00"), datos.metodo("TRANSFERENCIA").getId(),
+                "ALQUILER", "Alquiler pagado ayer", ayer);
+
+        mockMvc.perform(post("/api/movimientos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(dto)))
+                .andExpect(status().isCreated());
+
+        assertThat(repository.findAll().getFirst().getFechaHora()).isEqualTo(ayer);
+    }
+
+    @Test
+    void crear_conFechaFutura_devuelve400() throws Exception {
+        MovimientoRequestDTO dto = new MovimientoRequestDTO(
+                "EGRESO", new BigDecimal("100.00"), datos.metodo("EFECTIVO").getId(),
+                "OTRO", "Mañana", LocalDateTime.now().plusDays(1));
+
+        mockMvc.perform(post("/api/movimientos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("La fecha del movimiento no puede ser posterior a hoy."));
+
+        assertThat(repository.count()).isZero();
+    }
+
+    @Test
     void crear_tipoInvalido_devuelve400() throws Exception {
         MovimientoRequestDTO dto = new MovimientoRequestDTO(
                 "CRIPTO", new BigDecimal("10.00"), datos.metodo("EFECTIVO").getId(), "Otro", null, null);

@@ -21,15 +21,19 @@ class CrearMovimiento extends FinanzasEvent {
   final int metodoPagoId;
   final String categoria;
   final String descripcion;
+
+  /// Cuándo ocurrió. Null: el backend usa el momento del alta.
+  final DateTime? fechaHora;
   const CrearMovimiento({
     required this.tipo,
     required this.monto,
     required this.metodoPagoId,
     required this.categoria,
     required this.descripcion,
+    this.fechaHora,
   });
   @override
-  List<Object?> get props => [tipo, monto, metodoPagoId, categoria, descripcion];
+  List<Object?> get props => [tipo, monto, metodoPagoId, categoria, descripcion, fechaHora];
 }
 
 class CargarBalance extends FinanzasEvent {

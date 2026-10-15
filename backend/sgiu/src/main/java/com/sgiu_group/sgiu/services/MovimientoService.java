@@ -46,6 +46,11 @@ public class MovimientoService {
 
         String categoria = validarCategoria(tipo, dto.categoria());
         LocalDateTime fechaHora = dto.fechaHora() != null ? dto.fechaHora() : LocalDateTime.now();
+        // Se compara por día: un reloj de la caja unos minutos adelantado no
+        // hace fallar un alta de hoy.
+        if (fechaHora.toLocalDate().isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("La fecha del movimiento no puede ser posterior a hoy.");
+        }
 
         MovFinanciero mov = new MovFinanciero(
                 tipo,

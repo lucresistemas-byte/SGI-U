@@ -293,4 +293,64 @@ void main() {
       expect(capturados.single['categoria'], 'SUELDOS');
     });
   });
+
+  group('MovimientoFormDialog - fecha', () {
+    String dia(DateTime d) =>
+        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+    Future<List<Map<String, dynamic>>> pumpConCaptura(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final capturados = <Map<String, dynamic>>[];
+      await _pumpDialog(tester, stub: (api) {
+        when(() => api.createMovimiento(any())).thenAnswer((inv) async {
+          capturados.add(inv.positionalArguments.first as Map<String, dynamic>);
+        });
+      });
+      return capturados;
+    }
+
+    Future<void> completarYGuardar(WidgetTester tester) async {
+      await tester.enterText(find.widgetWithText(TextFormField, 'Monto (\$)'), '100');
+      await tester.enterText(find.widgetWithText(TextFormField, 'Descripción'), 'Alquiler');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('por defecto es hoy y se envía con la fecha de hoy', (tester) async {
+      final capturados = await pumpConCaptura(tester);
+      expect(find.textContaining('Hoy ('), findsOneWidget);
+
+      await completarYGuardar(tester);
+
+      expect((capturados.single['fechaHora'] as String).startsWith(dia(DateTime.now())), isTrue);
+    });
+
+    testWidgets('se puede elegir un día anterior y se envía ese día', (tester) async {
+      final capturados = await pumpConCaptura(tester);
+      final antes = DateTime.now().subtract(const Duration(days: 3));
+
+      await tester.tap(find.byKey(const Key('movimiento_fecha')));
+      await tester.pumpAndSettle();
+      // Modo texto del selector (en-US: MM/dd/yyyy).
+      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.pumpAndSettle();
+      final mm = antes.month.toString().padLeft(2, '0');
+      final dd = antes.day.toString().padLeft(2, '0');
+      await tester.enterText(find.byType(TextField).last, '$mm/$dd/${antes.year}');
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Hoy ('), findsNothing);
+      expect(find.text('$dd/$mm/${antes.year}'), findsOneWidget);
+
+      await completarYGuardar(tester);
+
+      final enviada = capturados.single['fechaHora'] as String;
+      expect(enviada.startsWith(dia(antes)), isTrue, reason: enviada);
+      expect(RegExp(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$').hasMatch(enviada), isTrue);
+    });
+  });
 }
