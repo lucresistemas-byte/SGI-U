@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/cambio_precio.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_widths.dart';
 import '../widgets/cambios_precio_dialog.dart';
 import '../utils/es_mobile.dart';
 import '../widgets/marca_negocio.dart';
@@ -85,7 +86,7 @@ class _AppShellState extends State<AppShell> {
     if (!esMobile(context)) {
       return Scaffold(
         key: _scaffoldKey,
-        backgroundColor: AppColors.grisFondo,
+        backgroundColor: AppColors.fondoApp,
         body: Row(
           children: [
             menu,
@@ -95,15 +96,16 @@ class _AppShellState extends State<AppShell> {
       );
     }
 
-    final drawerWidth =
-        (MediaQuery.of(context).size.width * 0.70).clamp(280.0, 320.0);
+    final drawerWidth = (MediaQuery.of(context).size.width *
+            AppWidths.proporcionDrawer)
+        .clamp(AppWidths.anchoDrawerMin, AppWidths.anchoDrawerMax);
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: AppColors.grisFondo,
+      backgroundColor: AppColors.fondoApp,
       appBar: AppBar(
         title: Text(_seccion.titulo),
-        backgroundColor: AppColors.verdePrincipal,
-        foregroundColor: AppColors.blanco,
+        backgroundColor: AppColors.marca,
+        foregroundColor: AppColors.sobreMarca,
       ),
       drawer: Drawer(width: drawerWidth, child: menu),
       body: contenido,
