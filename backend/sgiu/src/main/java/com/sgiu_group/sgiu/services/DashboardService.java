@@ -35,7 +35,6 @@ public class DashboardService {
     private final PagoVentaRepository pagoVentaRepository;
     private final MetodoPagoRepository metodoPagoRepository;
     private final ResultadoService resultadoService;
-    private final EspProductoRepository espProductoRepository;
 
     public DashboardService(VentaRepository ventaRepository,
                              LineaVentaRepository lineaVentaRepository,
@@ -43,8 +42,7 @@ public class DashboardService {
                              ArticuloStockRepository articuloStockRepository,
                              PagoVentaRepository pagoVentaRepository,
                              MetodoPagoRepository metodoPagoRepository,
-                             ResultadoService resultadoService,
-                             EspProductoRepository espProductoRepository) {
+                             ResultadoService resultadoService) {
         this.ventaRepository = ventaRepository;
         this.lineaVentaRepository = lineaVentaRepository;
         this.movFinancieroRepository = movFinancieroRepository;
@@ -52,12 +50,23 @@ public class DashboardService {
         this.pagoVentaRepository = pagoVentaRepository;
         this.metodoPagoRepository = metodoPagoRepository;
         this.resultadoService = resultadoService;
-        this.espProductoRepository = espProductoRepository;
     }
 
     public DashboardResponseDTO obtenerDashboard(LocalDate fechaDesde, LocalDate fechaHasta,
                                                   Long metodoPagoId, Long productoId,
                                                   String tipoTransaccion) {
+        return obtenerDashboard(fechaDesde, fechaHasta, metodoPagoId, productoId, tipoTransaccion, null);
+    }
+
+    /**
+     * @param tipoProducto null = todos. Con un tipo, las ventas, el costo, la
+     *        ganancia, la cantidad de ventas, el ticket y el top son solo de los
+     *        productos de ese tipo. Los gastos son de todo el negocio: egresos,
+     *        saldo de caja y ganancia neta no cambian.
+     */
+    public DashboardResponseDTO obtenerDashboard(LocalDate fechaDesde, LocalDate fechaHasta,
+                                                  Long metodoPagoId, Long productoId,
+                                                  String tipoTransaccion, TipoArticulo tipoProducto) {
         if (fechaDesde.isAfter(fechaHasta)) {
             throw new FechasInvalidasException("La fecha desde no puede ser mayor que la fecha hasta");
         }
@@ -67,15 +76,16 @@ public class DashboardService {
         if (metodoPagoId != null && !metodoPagoRepository.existsById(metodoPagoId)) {
             throw new FiltroInvalidoException("El método de pago especificado no existe.");
         }
-        if (productoId != null && !espProductoRepository.existsById(productoId)) {
-            throw new FiltroInvalidoException("El producto especificado no existe.");
+        if (tipoProducto != null && !TipoArticulo.vendibles().contains(tipoProducto)) {
+            throw new FiltroInvalidoException("El tipo de producto especificado no se vende.");
         }
 
         LocalDateTime desde = fechaDesde.atStartOfDay();
         LocalDateTime hasta = fechaHasta.plusDays(1).atStartOfDay();
 
         DashboardFiltrosDTO filtros = new DashboardFiltrosDTO(
-                fechaDesde, fechaHasta, metodoPagoId, productoId, tipoTransaccion);
+                fechaDesde, fechaHasta, metodoPagoId, productoId, tipoTransaccion,
+                tipoProducto != null ? tipoProducto.name() : null);
 
         // Con método de pago, los montos son solo los cobrados/pagados con él
         // (antes el filtro se validaba pero no se aplicaba).
@@ -94,22 +104,16 @@ public class DashboardService {
         ProductoMasVendidoDTO productoMasVendido = obtenerProductoMasVendido(desde, hasta);
         Long cantidadProductosStockBajo = calcularCantidadStockBajo();
 
-        ResultadoPeriodoDTO resultado;
-        if (productoId == null) {
-            resultado = resultadoService.calcular(desde, hasta, metodoPagoId);
-        } else {
-            // Solo lo de ese producto: lo vendido es su ingreso. Los egresos
-            // no son de un producto: egresos, saldo y ganancia neta van en
-            // null (la app muestra "—").
-            ResultadoService.VentasDeProducto delProducto =
-                    resultadoService.ventasDeProducto(desde, hasta, metodoPagoId, productoId);
-            resultado = resultadoService.calcularDeProducto(delProducto);
-            ingresos = delProducto.ventas();
-            egresos = null;
-            saldoNeto = null;
-            margenNetoPorcentaje = null;
-            cantidadVentas = delProducto.cantidadVentas();
-            ticketPromedio = calcularTicketPromedio(delProducto.ventas(), cantidadVentas);
+        ResultadoPeriodoDTO resultado = resultadoService.calcular(desde, hasta, metodoPagoId);
+        if (tipoProducto != null) {
+            // Lo vendido del tipo es su ingreso; egresos, saldo de caja y
+            // ganancia neta siguen siendo de todo el negocio.
+            ResultadoService.VentasDeTipo delTipo =
+                    resultadoService.ventasDeTipo(desde, hasta, metodoPagoId, tipoProducto);
+            resultado = resultadoService.conVentasDeTipo(resultado, delTipo);
+            ingresos = delTipo.ventas();
+            cantidadVentas = delTipo.cantidadVentas();
+            ticketPromedio = calcularTicketPromedio(delTipo.ventas(), cantidadVentas);
         }
 
         DashboardKpisDTO kpis = new DashboardKpisDTO(
@@ -121,7 +125,7 @@ public class DashboardService {
         DashboardGraficosDTO graficos = new DashboardGraficosDTO();
         graficos.setIngresosVsEgresosPorDia(generarIngresosVsEgresosPorDia(desde, hasta, metodoPagoId));
         graficos.setVentasPorMetodoPago(generarVentasPorMetodoPago(desde, hasta));
-        graficos.setTopProductosMasVendidos(generarTopProductos(desde, hasta, productoId));
+        graficos.setTopProductosMasVendidos(generarTopProductos(desde, hasta, tipoProducto));
         graficos.setEvolucionSaldoNeto(generarEvolucionSaldo(desde, hasta, metodoPagoId));
         graficos.setProductosConMenorStock(generarProductosCriticos());
         graficos.setCategoriaMasVendida(obtenerCategoriaMasVendida(desde, hasta));
@@ -245,10 +249,10 @@ public class DashboardService {
     }
 
     private List<ProductoMasVendidoDTO> generarTopProductos(
-            LocalDateTime desde, LocalDateTime hasta, Long productoId) {
+            LocalDateTime desde, LocalDateTime hasta, TipoArticulo tipoProducto) {
         List<ProductoMasVendidoDTO> lista = new ArrayList<>();
         for (Object[] row : lineaVentaRepository.findTopProductosConCosto(
-                desde, hasta, productoId, PageRequest.of(0, TOP_PRODUCTOS))) {
+                desde, hasta, tipoProducto, PageRequest.of(0, TOP_PRODUCTOS))) {
             lista.add(new ProductoMasVendidoDTO(((Number) row[0]).longValue(), (String) row[1],
                     ((Number) row[2]).longValue(), decimal(row[3]), decimal(row[4])));
         }

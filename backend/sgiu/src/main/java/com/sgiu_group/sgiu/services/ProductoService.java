@@ -342,8 +342,7 @@ public class ProductoService {
                 p.esPreparacionBase() ? null : CostosService.ganancia(p.getPrecioUnitario(), p.getPrecioCosto()),
                 p.getMontoFijo(),
                 cambios,
-                produccionService.puedeProducir(p),
-                p.getId()
+                produccionService.puedeProducir(p)
         );
     }
 }

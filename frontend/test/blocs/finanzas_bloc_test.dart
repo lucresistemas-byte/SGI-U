@@ -14,6 +14,8 @@ final _resumenMovimientosEspectado = {
   'saldoActual': 800.0,
   'costoTotalHoy': 0.0,
   'gananciaRealHoy': 0.0,
+  'gastosHoy': 0.0,
+  'margenNetoHoy': null,
 };
 
 final _balanceDia = {

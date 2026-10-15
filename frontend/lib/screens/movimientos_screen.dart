@@ -14,6 +14,8 @@ import '../models/categoria_movimiento.dart';
 import '../widgets/tabla_ajustada.dart';
 import '../utils/numeros.dart';
 import '../widgets/resultado.dart';
+import '../widgets/alto_minimo.dart';
+import '../utils/textos_finanzas.dart';
 
 class MovimientosScreen extends StatelessWidget {
   const MovimientosScreen({super.key});
@@ -47,7 +49,10 @@ class _MovimientosContentState extends State<MovimientosContent> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // En ventanas bajas se desplaza entera (dos filas de tarjetas + tabla).
+    return AltoMinimo(
+      minimo: 820,
+      child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,6 +112,8 @@ class _MovimientosContentState extends State<MovimientosContent> {
               double saldoActual = 0.0;
               double costoTotalHoy = 0.0;
               double gananciaRealHoy = 0.0;
+              double gastosHoy = 0.0;
+              double? margenNetoHoy;
 
               if (state is MovimientosLoaded) {
                 ingresosHoy = parseDouble(state.resumen['ingresosHoy']);
@@ -114,31 +121,71 @@ class _MovimientosContentState extends State<MovimientosContent> {
                 saldoActual = parseDouble(state.resumen['saldoActual']);
                 costoTotalHoy = parseDouble(state.resumen['costoTotalHoy'] ?? state.resumen['costoTotal']);
                 gananciaRealHoy = parseDouble(state.resumen['gananciaRealHoy'] ?? state.resumen['gananciaReal']);
+                gastosHoy = parseDouble(state.resumen['gastosHoy']);
+                final margen = state.resumen['margenNetoHoy'];
+                margenNetoHoy = margen == null ? null : parseDouble(margen);
                 // Sin ventas hoy se ve 0 / 0: antes se caía a la suma de
                 // todos los movimientos (la historia completa).
               }
               final saldoNeto = ingresosHoy - egresosHoy;
 
-              return Row(
+              // Dos filas; el saldo de caja y la ganancia neta son más
+              // anchos y más altos.
+              return Column(
                 children: [
-                  _buildResumenCard('Ingresos Totales (Hoy)', ingresosHoy,
-                      const Color(0xFF006B3D)),
-                  const SizedBox(width: 16),
-                  _buildResumenCard('Egresos Totales (Hoy)', egresosHoy,
-                      const Color(0xFFFF2B2B)),
-                  const SizedBox(width: 16),
-                  _buildResumenCard(
-                      'Saldo Neto (Hoy)', saldoNeto, const Color(0xFF222222)),
-                  const SizedBox(width: 16),
-                  _buildResumenCard(
-                      'Saldo Actual', saldoActual, const Color(0xFF222222)),
-                  const SizedBox(width: 16),
-                  _buildResumenCard(
-                      'Costo', costoTotalHoy, const Color(0xFF555555)),
-                  const SizedBox(width: 16),
-                  _buildResumenCard('Ganancia neta', gananciaRealHoy,
-                      colorResultado(gananciaRealHoy),
-                      texto: formatPesosConSigno(gananciaRealHoy)),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildResumenCard('Ingresos Totales (Hoy)', ingresosHoy,
+                          const Color(0xFF006B3D),
+                          explicacion: ExplicacionMonto(
+                              TextosFinanzas.ingresos(TextosFinanzas.hoy))),
+                      const SizedBox(width: 16),
+                      _buildResumenCard('Egresos Totales (Hoy)', egresosHoy,
+                          const Color(0xFFFF2B2B),
+                          explicacion: ExplicacionMonto(
+                              TextosFinanzas.egresos(TextosFinanzas.hoy))),
+                      const SizedBox(width: 16),
+                      _buildResumenCard('Saldo de caja (Hoy)', saldoNeto,
+                          const Color(0xFF222222),
+                          grande: true,
+                          explicacion: ExplicacionMonto(
+                            TextosFinanzas.saldoCaja(TextosFinanzas.hoy),
+                            siNegativo: TextosFinanzas.saldoCajaNegativo,
+                            negativo: saldoNeto < 0,
+                          )),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildResumenCard('Saldo de caja del mes', saldoActual,
+                          const Color(0xFF222222),
+                          grande: true,
+                          explicacion: ExplicacionMonto(
+                            TextosFinanzas.saldoCaja(TextosFinanzas.enElMes),
+                            siNegativo: TextosFinanzas.saldoCajaNegativo,
+                            negativo: saldoActual < 0,
+                          )),
+                      const SizedBox(width: 16),
+                      _buildResumenCard(
+                          'Costo', costoTotalHoy, const Color(0xFF555555),
+                          explicacion:
+                              const ExplicacionMonto(TextosFinanzas.costo)),
+                      const SizedBox(width: 16),
+                      _buildResumenCard('Ganancia neta', gananciaRealHoy,
+                          colorResultado(gananciaRealHoy),
+                          texto: formatPesosConSigno(gananciaRealHoy),
+                          porcentaje: margenNetoHoy,
+                          grande: true,
+                          explicacion: ExplicacionMonto(
+                            TextosFinanzas.gananciaNeta(formatPesos(gastosHoy)),
+                            siNegativo: TextosFinanzas.gananciaNetaNegativa,
+                            negativo: gananciaRealHoy < 0,
+                          )),
+                    ],
+                  ),
                 ],
               );
             },
@@ -394,25 +441,33 @@ class _MovimientosContentState extends State<MovimientosContent> {
           ),
         ],
       ),
+      ),
     );
   }
 
   /// [texto] reemplaza el monto formateado (p. ej. la ganancia con signo).
-  Widget _buildResumenCard(String titulo, double valor, Color color, {String? texto}) {
+  /// [grande]: saldo de caja y ganancia neta, más anchas y más altas.
+  Widget _buildResumenCard(String titulo, double valor, Color color,
+      {String? texto,
+      double? porcentaje,
+      required Widget explicacion,
+      bool grande = false}) {
     return Expanded(
+      flex: grande ? 3 : 2,
       child: Container(
-        height: 88,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        key: Key('movimientos_tarjeta_$titulo'),
+        constraints: BoxConstraints(minHeight: grande ? 130 : 110),
+        padding: EdgeInsets.all(grande ? 18 : 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4)
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02), blurRadius: 4)
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               titulo,
@@ -420,15 +475,34 @@ class _MovimientosContentState extends State<MovimientosContent> {
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
+            const SizedBox(height: 6),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(
-                texto ?? _formatMonto(valor),
-                style: TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold, color: color),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    texto ?? _formatMonto(valor),
+                    style: TextStyle(
+                        fontSize: grande ? 26 : 22,
+                        fontWeight: FontWeight.bold,
+                        color: color),
+                  ),
+                  if (porcentaje != null) ...[
+                    const SizedBox(width: 8),
+                    Text(formatPorcentaje(porcentaje),
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: color)),
+                  ],
+                ],
               ),
             ),
+            const SizedBox(height: 6),
+            explicacion,
           ],
         ),
       ),

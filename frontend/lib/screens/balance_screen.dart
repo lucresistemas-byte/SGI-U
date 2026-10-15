@@ -12,6 +12,8 @@ import '../models/categoria_movimiento.dart';
 import '../widgets/cargando_diferido.dart';
 import '../widgets/tabla_ajustada.dart';
 import '../widgets/resultado.dart';
+import '../widgets/alto_minimo.dart';
+import '../utils/textos_finanzas.dart';
 import '../widgets/selector_periodo.dart';
 import '../utils/periodo.dart';
 import '../utils/numeros.dart';
@@ -104,7 +106,10 @@ class _BalanceScreenState extends State<BalanceScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      body: Padding(
+      // En ventanas bajas se desplaza entera (dos filas de tarjetas + tabla).
+      body: AltoMinimo(
+        minimo: 900,
+        child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,6 +171,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -205,16 +211,29 @@ class _BalanceScreenState extends State<BalanceScreen> {
     final margenNeto = parseDouble(balance['margenNeto']);
     final costoTotal = parseDouble(balance['costoTotal']);
     final gananciaReal = parseDouble(balance['gananciaReal']);
+    final resultado = balance['resultado'] is Map
+        ? Map<String, dynamic>.from(balance['resultado'] as Map)
+        : const <String, dynamic>{};
+    final gastos = parseDouble(resultado['gastos']);
+    final margenGanancia = resultado['margenNetoPorcentaje'] == null
+        ? null
+        : parseDouble(resultado['margenNetoPorcentaje']);
     final colorMargen =
         margenNeto >= 0 ? const Color(0xFF006B3D) : const Color(0xFFFF0000);
+    const cuando = TextosFinanzas.entreFechas;
 
+    // Dos filas: entró / salió / saldo de caja, y costo / ganancia neta. El
+    // saldo de caja y la ganancia neta son más anchos y más altos.
     return Column(
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildMetricaCard(
+              key: const Key('balance_ingresos'),
               titulo: 'Total de Ingresos',
               valor: ingresos,
+              explicacion: ExplicacionMonto(TextosFinanzas.ingresos(cuando)),
               colorValor: const Color(0xFF006B3D),
               icon: Icons.trending_up,
               iconBgColor: const Color(0xFFEAF8EF),
@@ -222,8 +241,10 @@ class _BalanceScreenState extends State<BalanceScreen> {
             ),
             const SizedBox(width: 24),
             _buildMetricaCard(
+              key: const Key('balance_egresos'),
               titulo: 'Total de Egresos',
               valor: egresos,
+              explicacion: ExplicacionMonto(TextosFinanzas.egresos(cuando)),
               colorValor: const Color(0xFFFF0000),
               icon: Icons.trending_down,
               iconBgColor: const Color(0xFFFFEAEA),
@@ -231,17 +252,31 @@ class _BalanceScreenState extends State<BalanceScreen> {
             ),
             const SizedBox(width: 24),
             _buildMetricaCard(
-              titulo: 'Margen Neto',
+              key: const Key('balance_saldo_caja'),
+              grande: true,
+              titulo: 'Saldo de caja del período',
               valor: margenNeto,
+              explicacion: ExplicacionMonto(
+                TextosFinanzas.saldoCaja(cuando),
+                siNegativo: TextosFinanzas.saldoCajaNegativo,
+                negativo: margenNeto < 0,
+              ),
               colorValor: colorMargen,
               icon: Icons.wallet_outlined,
               iconBgColor: const Color(0xFFEAF1FF),
               iconColor: const Color(0xFF006B3D),
             ),
-            const SizedBox(width: 24),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             _buildMetricaCard(
+              key: const Key('balance_costo'),
               titulo: 'Costo',
               valor: costoTotal,
+              explicacion: const ExplicacionMonto(TextosFinanzas.costo),
               colorValor: const Color(0xFF555555),
               icon: Icons.shopping_basket_outlined,
               iconBgColor: const Color(0xFFF1F1F1),
@@ -249,12 +284,20 @@ class _BalanceScreenState extends State<BalanceScreen> {
             ),
             const SizedBox(width: 24),
             _buildMetricaCard(
+              key: const Key('balance_ganancia_neta'),
+              grande: true,
               titulo: 'Ganancia neta',
               valor: gananciaReal,
               texto: formatPesosConSigno(gananciaReal),
+              porcentaje: margenGanancia,
               ayuda: 'Lo que te queda después de pagar los gastos (alquiler, '
                   'luz, sueldos, otros). Las compras de mercadería no se '
                   'restan: su costo ya está en "Costo".',
+              explicacion: ExplicacionMonto(
+                TextosFinanzas.gananciaNeta(formatPesos(gastos)),
+                siNegativo: TextosFinanzas.gananciaNetaNegativa,
+                negativo: gananciaReal < 0,
+              ),
               colorValor: colorResultado(gananciaReal),
               icon: Icons.show_chart,
               iconBgColor: const Color(0xFFEAF8EF),
@@ -268,35 +311,42 @@ class _BalanceScreenState extends State<BalanceScreen> {
     );
   }
 
+  /// [grande]: saldo de caja y ganancia neta, más anchas y más altas.
   Widget _buildMetricaCard({
+    Key? key,
     required String titulo,
     required double valor,
+    required Widget explicacion,
     required Color colorValor,
     required IconData icon,
     required Color iconBgColor,
     required Color iconColor,
     String? texto,
+    double? porcentaje,
     String? ayuda,
+    bool grande = false,
   }) {
     final formatter =
         NumberFormat.currency(locale: 'es_AR', symbol: '\$', decimalDigits: 2);
     return Expanded(
+      flex: grande ? 3 : 2,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final double cardWidth = constraints.maxWidth;
           final double circleSize = (cardWidth * 0.22).clamp(36.0, 56.0);
           final double iconSize = circleSize * 0.5;
           final double titleSize = (cardWidth * 0.08).clamp(14.0, 16.0);
-          final double moneySize = (cardWidth * 0.15).clamp(20.0, 28.0);
+          final double moneySize =
+              grande ? 30 : (cardWidth * 0.15).clamp(20.0, 28.0);
 
           return Container(
-            height: 140,
-            padding: const EdgeInsets.all(20),
+            key: key,
+            constraints: BoxConstraints(minHeight: grande ? 170 : 140),
+            padding: EdgeInsets.all(grande ? 24 : 20),
             decoration: BoxDecoration(
                 color: Colors.white, borderRadius: BorderRadius.circular(18)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Row(
                   children: [
@@ -314,7 +364,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
                     ],
                   ],
                 ),
-                const Spacer(),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -323,12 +373,26 @@ class _BalanceScreenState extends State<BalanceScreen> {
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
-                        child: Text(
-                          texto ?? formatter.format(valor),
-                          style: TextStyle(
-                              fontSize: moneySize,
-                              fontWeight: FontWeight.bold,
-                              color: colorValor),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              texto ?? formatter.format(valor),
+                              style: TextStyle(
+                                  fontSize: moneySize,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorValor),
+                            ),
+                            if (porcentaje != null) ...[
+                              const SizedBox(width: 8),
+                              Text(formatPorcentaje(porcentaje),
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: colorValor)),
+                            ],
+                          ],
                         ),
                       ),
                     ),
@@ -342,6 +406,8 @@ class _BalanceScreenState extends State<BalanceScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 10),
+                explicacion,
               ],
             ),
           );

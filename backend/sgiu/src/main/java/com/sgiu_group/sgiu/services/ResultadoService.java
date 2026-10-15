@@ -2,6 +2,7 @@ package com.sgiu_group.sgiu.services;
 
 import com.sgiu_group.sgiu.models.dtos.ResultadoPeriodoDTO;
 import com.sgiu_group.sgiu.models.entities.CategoriaMovimiento;
+import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.repositories.LineaVentaRepository;
 import com.sgiu_group.sgiu.repositories.MovFinancieroRepository;
 import com.sgiu_group.sgiu.repositories.PagoVentaRepository;
@@ -73,16 +74,16 @@ public class ResultadoService {
                 otrosIngresos, gastos, compras, neta, porcentaje(neta, ventas));
     }
 
-    /** Lo vendido de un producto: pesos, costo congelado y ventas que lo incluyen. */
-    public record VentasDeProducto(BigDecimal ventas, BigDecimal costo, long cantidadVentas) {}
+    /** Lo vendido de un tipo de producto: pesos, costo congelado y ventas que lo incluyen. */
+    public record VentasDeTipo(BigDecimal ventas, BigDecimal costo, long cantidadVentas) {}
 
     /**
-     * Ventas y costo de un solo producto. Con un método de pago, de cada
-     * venta se toma la parte cobrada con él (en proporción, como el costo de
-     * un pago mixto).
+     * Ventas y costo de los productos de un tipo. Con un método de pago, de
+     * cada venta se toma la parte cobrada con él (en proporción, como el
+     * costo de un pago mixto).
      */
-    public VentasDeProducto ventasDeProducto(LocalDateTime desde, LocalDateTime hasta,
-                                             Long metodoPagoId, Long productoId) {
+    public VentasDeTipo ventasDeTipo(LocalDateTime desde, LocalDateTime hasta,
+                                     Long metodoPagoId, TipoArticulo tipo) {
         Map<Long, BigDecimal> cobradoConMetodo = new HashMap<>();
         if (metodoPagoId != null) {
             for (Object[] fila : pagoVentaRepository.findCobrosConMetodo(desde, hasta, metodoPagoId)) {
@@ -92,32 +93,33 @@ public class ResultadoService {
         BigDecimal ventas = BigDecimal.ZERO;
         BigDecimal costo = BigDecimal.ZERO;
         long cantidad = 0;
-        for (Object[] fila : lineaVentaRepository.findVentasDeProducto(desde, hasta, productoId)) {
+        for (Object[] fila : lineaVentaRepository.findVentasDeTipo(desde, hasta, tipo)) {
             BigDecimal subtotal = decimal(fila[2]);
-            BigDecimal costoLinea = decimal(fila[3]);
+            BigDecimal costoLineas = decimal(fila[3]);
             if (metodoPagoId != null) {
                 BigDecimal cobrado = cobradoConMetodo.get(((Number) fila[0]).longValue());
                 BigDecimal total = decimal(fila[1]);
                 if (cobrado == null || total.signum() == 0) continue;
                 subtotal = subtotal.multiply(cobrado).divide(total, 2, RoundingMode.HALF_UP);
-                costoLinea = costoLinea.multiply(cobrado).divide(total, 2, RoundingMode.HALF_UP);
+                costoLineas = costoLineas.multiply(cobrado).divide(total, 2, RoundingMode.HALF_UP);
             }
             ventas = ventas.add(subtotal);
-            costo = costo.add(costoLinea);
+            costo = costo.add(costoLineas);
             cantidad++;
         }
-        return new VentasDeProducto(ventas, costo, cantidad);
+        return new VentasDeTipo(ventas, costo, cantidad);
     }
 
     /**
-     * Resultado de un solo producto: ventas, costo y ganancia bruta. Los
-     * gastos no son de un producto, así que gastos, compras y ganancia neta
-     * van en null.
+     * El resultado de todo el negocio con las ventas, el costo y la ganancia
+     * bruta de un tipo. Gastos, compras y ganancia neta no se separan por
+     * tipo (son de todo el negocio) y quedan como en [total].
      */
-    public ResultadoPeriodoDTO calcularDeProducto(VentasDeProducto v) {
+    public ResultadoPeriodoDTO conVentasDeTipo(ResultadoPeriodoDTO total, VentasDeTipo v) {
         BigDecimal bruta = v.ventas().subtract(v.costo());
         return new ResultadoPeriodoDTO(v.ventas(), v.costo(), bruta, porcentaje(bruta, v.ventas()),
-                null, null, null, null, null);
+                total.otrosIngresos(), total.gastos(), total.comprasMercaderia(),
+                total.gananciaNeta(), total.margenNetoPorcentaje());
     }
 
     /** Filas [ventaId, cobrado con el método, total de la venta]. */

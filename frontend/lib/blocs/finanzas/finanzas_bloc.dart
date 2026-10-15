@@ -37,6 +37,10 @@ class FinanzasBloc extends Bloc<FinanzasEvent, FinanzasState> {
         'saldoActual': dataMes['margenNeto'] ?? 0.0,
         'costoTotalHoy': dataHoy['costoTotal'] ?? 0.0,
         'gananciaRealHoy': dataHoy['gananciaReal'] ?? 0.0,
+        // Para la explicación de Ganancia neta ("después de pagar $ X de
+        // gastos") y su %.
+        'gastosHoy': (dataHoy['resultado'] as Map?)?['gastos'] ?? 0.0,
+        'margenNetoHoy': (dataHoy['resultado'] as Map?)?['margenNetoPorcentaje'],
       };
 
       // 3. Emitimos un ÚNICO estado con todo empaquetado

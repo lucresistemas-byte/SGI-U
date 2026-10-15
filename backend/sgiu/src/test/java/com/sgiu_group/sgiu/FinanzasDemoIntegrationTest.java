@@ -8,6 +8,7 @@ import com.sgiu_group.sgiu.models.entities.EspProducto;
 import com.sgiu_group.sgiu.models.entities.LineaVenta;
 import com.sgiu_group.sgiu.models.entities.MovFinanciero;
 import com.sgiu_group.sgiu.models.entities.PagoVenta;
+import com.sgiu_group.sgiu.models.entities.TipoArticulo;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
 import com.sgiu_group.sgiu.models.entities.Venta;
 import com.sgiu_group.sgiu.repositories.EspProductoRepository;
@@ -59,9 +60,9 @@ class FinanzasDemoIntegrationTest extends AbstractIntegrationTest {
     @BeforeEach
     void demo() {
         limpiarBaseDatos();
-        tarta = producto("ELA-0001", "Tarta de coco", "10800", "4895");
-        torta = producto("ELA-0002", "Torta de chocolate", "21200", "10095");
-        alfajor = producto("ELA-0003", "Alfajor de maicena", "5300", "2120");
+        tarta = elaborado(producto("ELA-0001", "Tarta de coco", "10800", "4895"));
+        torta = elaborado(producto("ELA-0002", "Torta de chocolate", "21200", "10095"));
+        alfajor = elaborado(producto("ELA-0003", "Alfajor de maicena", "5300", "2120"));
         coca = producto("REV-0001", "Coca-Cola 500 ml", "1500", "900");
         agua = producto("REV-0002", "Agua mineral 500 ml", "900", "500");
         bombones = producto("REV-0003", "Caja de bombones 100 g", "6000", "3500");
@@ -98,46 +99,93 @@ class FinanzasDemoIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void filtroPorProducto_kpisYTopSoloDeEseProducto() {
-        DashboardResponseDTO mes = dashboardService.obtenerDashboard(INICIO_MES, HOY, null, torta.getId(), null);
+    void filtroPorTipo_elaborados_ventasCostoGananciaYTopDelTipo_gastosDeTodoElNegocio() {
+        DashboardResponseDTO mes = dashboardService.obtenerDashboard(
+                INICIO_MES, HOY, null, null, null, TipoArticulo.ELABORADO);
 
-        // Torta de chocolate: ventas 2 (21.200 cada una), costo 10.095 cada una.
-        assertThat(mes.getKpis().getIngresosPeriodo()).isEqualByComparingTo("42400");
-        assertThat(mes.getKpis().getCantidadVentas()).isEqualTo(2L);
-        assertThat(mes.getKpis().getTicketPromedio()).isEqualByComparingTo("21200");
-        // Los gastos no son de un producto.
-        assertThat(mes.getKpis().getEgresosPeriodo()).isNull();
-        assertThat(mes.getKpis().getSaldoNeto()).isNull();
+        // Tarta (10.800), torta × 2 (42.400) y alfajor (5.300).
+        assertThat(mes.getKpis().getIngresosPeriodo()).isEqualByComparingTo("58500");
+        assertThat(mes.getKpis().getCantidadVentas()).isEqualTo(4L);
+        assertThat(mes.getKpis().getTicketPromedio()).isEqualByComparingTo("14625");
         ResultadoPeriodoDTO r = mes.getKpis().getResultado();
-        assertThat(r.ventas()).isEqualByComparingTo("42400");
-        assertThat(r.costoVendido()).isEqualByComparingTo("20190");
-        assertThat(r.gananciaBruta()).isEqualByComparingTo("22210");
-        assertThat(r.margenBrutoPorcentaje()).isEqualByComparingTo("52.38");
-        assertThat(r.gananciaNeta()).isNull();
-        assertThat(r.gastos()).isNull();
+        assertThat(r.ventas()).isEqualByComparingTo("58500");
+        assertThat(r.costoVendido()).isEqualByComparingTo("27205");
+        assertThat(r.gananciaBruta()).isEqualByComparingTo("31295");
+        assertThat(r.margenBrutoPorcentaje()).isEqualByComparingTo("53.50");
+        // Los gastos son de todo el negocio: no cambian con el tipo.
+        assertThat(mes.getKpis().getEgresosPeriodo()).isEqualByComparingTo("123000");
+        assertThat(mes.getKpis().getSaldoNeto()).isEqualByComparingTo("-46200");
+        assertThat(r.gastos()).isEqualByComparingTo("78000");
+        assertThat(r.gananciaNeta()).isEqualByComparingTo("-39105");
         assertThat(mes.getGraficos().getTopProductosMasVendidos())
-                .extracting(ProductoMasVendidoDTO::getNombre).containsExactly("Torta de chocolate");
+                .extracting(ProductoMasVendidoDTO::getNombre)
+                .containsExactly("Torta de chocolate", "Tarta de coco", "Alfajor de maicena");
+        assertThat(mes.getFiltrosAplicados().getTipoProducto()).isEqualTo("ELABORADO");
     }
 
     @Test
-    void filtroPorProductoYMetodo_soloLaParteCobradaConEseMetodo() {
+    void filtroPorTipo_reventa() {
+        DashboardResponseDTO mes = dashboardService.obtenerDashboard(
+                INICIO_MES, HOY, null, null, null, TipoArticulo.REVENTA);
+
+        ResultadoPeriodoDTO r = mes.getKpis().getResultado();
+        assertThat(r.ventas()).isEqualByComparingTo("18300");
+        assertThat(r.costoVendido()).isEqualByComparingTo("10700");
+        assertThat(r.gananciaBruta()).isEqualByComparingTo("7600");
+        assertThat(mes.getKpis().getCantidadVentas()).isEqualTo(4L);
+        assertThat(mes.getKpis().getTicketPromedio()).isEqualByComparingTo("4575");
+        assertThat(mes.getGraficos().getTopProductosMasVendidos())
+                .extracting(ProductoMasVendidoDTO::getNombre)
+                .containsExactly("Coca-Cola 500 ml", "Caja de bombones 100 g", "Agua mineral 500 ml");
+    }
+
+    @Test
+    void filtroPorTipoSinVentas_enCero() {
+        DashboardResponseDTO mes = dashboardService.obtenerDashboard(
+                INICIO_MES, HOY, null, null, null, TipoArticulo.PAQUETE);
+
+        assertThat(mes.getKpis().getIngresosPeriodo()).isEqualByComparingTo("0");
+        assertThat(mes.getKpis().getCantidadVentas()).isZero();
+        assertThat(mes.getKpis().getTicketPromedio()).isEqualByComparingTo("0");
+        assertThat(mes.getKpis().getResultado().margenBrutoPorcentaje()).isNull();
+        assertThat(mes.getGraficos().getTopProductosMasVendidos()).isEmpty();
+        assertThat(mes.getKpis().getEgresosPeriodo()).isEqualByComparingTo("123000");
+    }
+
+    @Test
+    void filtroPorTipoYMetodo_soloLaParteCobradaConEseMetodo() {
         Long efectivo = datos.metodo("Efectivo").getId();
-        // La torta se vendió en la venta 2 (transferencia) y en la 5 (mixta:
-        // 10.000 de 22.700 en efectivo).
-        DashboardResponseDTO mes = dashboardService.obtenerDashboard(INICIO_MES, HOY, efectivo, torta.getId(), null);
+        DashboardResponseDTO mes = dashboardService.obtenerDashboard(
+                INICIO_MES, HOY, efectivo, null, null, TipoArticulo.ELABORADO);
 
-        assertThat(mes.getKpis().getCantidadVentas()).isEqualTo(1L);
-        // 21.200 × 10.000 / 22.700 y 10.095 × 10.000 / 22.700.
-        assertThat(mes.getKpis().getResultado().ventas()).isEqualByComparingTo("9339.21");
-        assertThat(mes.getKpis().getResultado().costoVendido()).isEqualByComparingTo("4447.14");
+        // Ventas 1 (tarta) y 3 (alfajor) enteras en efectivo; de la torta de
+        // la venta 5, 10.000 de 22.700.
+        assertThat(mes.getKpis().getCantidadVentas()).isEqualTo(3L);
+        assertThat(mes.getKpis().getResultado().ventas()).isEqualByComparingTo("25439.21");
+        assertThat(mes.getKpis().getResultado().costoVendido()).isEqualByComparingTo("11462.14");
     }
 
     @Test
-    void filtroPorProductoInexistente_esUnError() {
-        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
-                        dashboardService.obtenerDashboard(INICIO_MES, HOY, null, 999_999L, null))
+    void filtroPorTipoQueNoSeVende_esUnError() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> dashboardService.obtenerDashboard(
+                        INICIO_MES, HOY, null, null, null, TipoArticulo.MATERIA_PRIMA))
                 .isInstanceOf(com.sgiu_group.sgiu.exceptions.FiltroInvalidoException.class)
-                .hasMessage("El producto especificado no existe.");
+                .hasMessage("El tipo de producto especificado no se vende.");
+    }
+
+    @Test
+    @org.springframework.security.test.context.support.WithMockUser
+    void endpoint_aceptaTipoProductoYRechazaUnoInexistente() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/dashboard")
+                        .param("fechaDesde", "2026-10-01").param("fechaHasta", "2026-10-15")
+                        .param("tipoProducto", "REVENTA"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.kpis.ingresosPeriodo").value(18300.0));
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/dashboard")
+                        .param("fechaDesde", "2026-10-01").param("fechaHasta", "2026-10-15")
+                        .param("tipoProducto", "GOLOSINA"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest());
     }
 
     @Test
@@ -226,6 +274,11 @@ class FinanzasDemoIntegrationTest extends AbstractIntegrationTest {
     private EspProducto producto(String codigo, String nombre, String precio, String costo) {
         EspProducto p = datos.crearProducto(codigo, nombre, new BigDecimal(precio), 100, 0);
         p.setPrecioCosto(new BigDecimal(costo));
+        return productoRepository.save(p);
+    }
+
+    private EspProducto elaborado(EspProducto p) {
+        p.setTipo(TipoArticulo.ELABORADO);
         return productoRepository.save(p);
     }
 

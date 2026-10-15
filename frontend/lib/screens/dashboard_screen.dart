@@ -11,6 +11,7 @@ import '../navigation/ir_a_seccion.dart';
 import '../navigation/seccion.dart';
 import '../utils/numeros.dart';
 import '../utils/periodo.dart';
+import '../utils/textos_finanzas.dart';
 import '../widgets/resultado.dart';
 import '../widgets/selector_periodo.dart';
 import '../widgets/tabla_ajustada.dart';
@@ -33,10 +34,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // --- VARIABLES DE ESTADO ---
   late Periodo _periodo = Periodo.porDefecto(widget.hoy);
   int? _filtroMetodoPagoId;
-  int? _filtroProductoId;
+  /// Tipo de producto del filtro (ELABORADO, ...); null = todos.
+  String? _filtroTipo;
 
-  /// Productos vendibles para el filtro: (id, nombre).
-  List<(int, String)> _productos = const [];
+  /// Tipos que se venden en el POS: (valor del backend, texto).
+  static const _tiposProducto = [
+    ('ELABORADO', 'Elaborado'),
+    ('REVENTA', 'Reventa'),
+    ('REVENTA_MATERIA_PRIMA', 'Reventa + materia prima'),
+    ('PAQUETE', 'Paquete'),
+  ];
 
   /// Métodos activos de Configuración (los del filtro).
   List<MetodoPago> _metodosPago = const [];
@@ -50,7 +57,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _cargarMetodosPago();
-    _cargarProductos();
     _cargarDatos();
   }
 
@@ -60,20 +66,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) setState(() => _metodosPago = metodos);
     } catch (_) {
       // Sin la lista, el filtro ofrece solo "Todos".
-    }
-  }
-
-  Future<void> _cargarProductos() async {
-    try {
-      final productos = await _apiService.getProducts();
-      final lista = <(int, String)>[
-        for (final p in productos)
-          if (p is Map && p['id'] != null && p['vendible'] != false)
-            ((p['id'] as num).toInt(), p['nombre']?.toString() ?? ''),
-      ]..sort((a, b) => a.$2.toLowerCase().compareTo(b.$2.toLowerCase()));
-      if (mounted) setState(() => _productos = lista);
-    } catch (_) {
-      // Sin la lista, el filtro ofrece solo "Todos los productos".
     }
   }
 
@@ -89,7 +81,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         fechaDesde: _periodo.desde,
         fechaHasta: _periodo.hasta,
         metodoPagoId: _filtroMetodoPagoId,
-        productoId: _filtroProductoId,
+        tipoProducto: _filtroTipo,
       );
       setState(() {
         _dashboardData = DashboardResponse.fromJson(data);
@@ -179,7 +171,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   },
                 ),
                 _buildMetodoPagoDropdown(),
-                _buildProductoDropdown(),
+                _buildTipoProductoDropdown(),
               ],
             );
 
@@ -278,9 +270,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildProductoDropdown() {
-    final seleccion = _productos.any((p) => p.$1 == _filtroProductoId) ? _filtroProductoId : null;
-
+  Widget _buildTipoProductoDropdown() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
@@ -293,19 +283,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           Icon(Icons.inventory_2_outlined, size: 18, color: Colors.grey.shade700),
           const SizedBox(width: 10),
-          DropdownButton<int?>(
-            key: const Key('dashboard_filtro_producto'),
-            value: seleccion,
+          DropdownButton<String?>(
+            key: const Key('dashboard_filtro_tipo'),
+            value: _filtroTipo,
             underline: const SizedBox.shrink(),
             isDense: true,
             icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey.shade700),
             style: const TextStyle(fontSize: 14, color: Color(0xFF333333), fontWeight: FontWeight.w500),
             items: [
-              const DropdownMenuItem<int?>(value: null, child: Text('Todos los productos')),
-              for (final p in _productos) DropdownMenuItem<int?>(value: p.$1, child: Text(p.$2)),
+              const DropdownMenuItem<String?>(value: null, child: Text('Todos los tipos')),
+              for (final (valor, texto) in _tiposProducto)
+                DropdownMenuItem<String?>(value: valor, child: Text(texto)),
             ],
             onChanged: (value) {
-              setState(() => _filtroProductoId = value);
+              setState(() => _filtroTipo = value);
               _cargarDatos();
             },
           ),
@@ -315,9 +306,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // --- BLOQUE 1: SALUD FINANCIERA ---
+  /// Con un tipo de producto elegido, los gastos (Egresos, Saldo de caja y
+  /// Ganancia neta) siguen siendo de todo el negocio y lo aclaran.
+  List<String> get _notaTipo => _filtroTipo == null ? const [] : const [TextosFinanzas.noSeFiltraPorTipo];
+
   Widget _buildTarjetasFinancieras() {
     final kpis = _dashboardData!.kpis;
     final formatter = NumberFormat.currency(locale: 'es_AR', symbol: '\$');
+    const cuando = TextosFinanzas.entreFechas;
+    final saldo = kpis.saldoNeto ?? 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,33 +325,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 16),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
+              flex: 2,
               child: _buildStandardCard(
+                key: const Key('dashboard_ingresos'),
                 titulo: 'Ingresos del Período',
                 monto: formatter.format(kpis.ingresosPeriodo),
-                subtitulo: 'Total dinero entrante',
+                explicacion: ExplicacionMonto(_filtroTipo == null
+                    ? TextosFinanzas.ingresos(cuando)
+                    : TextosFinanzas.ingresosDeTipo(cuando)),
                 montoColor: const Color(0xFF008A3D),
               ),
             ),
             const SizedBox(width: 20),
             Expanded(
+              flex: 2,
               child: _buildStandardCard(
+                key: const Key('dashboard_egresos'),
                 titulo: 'Egresos del Período',
-                monto: kpis.egresosPeriodo == null ? '—' : formatter.format(kpis.egresosPeriodo),
-                subtitulo: 'Total dinero saliente',
+                monto: formatter.format(kpis.egresosPeriodo ?? 0),
+                explicacion: ExplicacionMonto(TextosFinanzas.egresos(cuando), extras: _notaTipo),
                 montoColor: const Color(0xFFD32F2F),
               ),
             ),
             const SizedBox(width: 20),
             Expanded(
+              flex: 3,
               child: _buildSaldoCard(
-                titulo: 'Saldo Neto de Caja',
-                monto: kpis.saldoNeto == null ? '—' : formatter.format(kpis.saldoNeto),
-                subtitulo: 'Capital disponible',
-                margen: kpis.margenNetoPorcentaje == null
-                    ? '—'
-                    : '${kpis.margenNetoPorcentaje! >= 0 ? '+' : ''}${kpis.margenNetoPorcentaje!.toStringAsFixed(1)}%',
+                titulo: 'Saldo de caja del período',
+                monto: formatter.format(saldo),
+                explicacion: ExplicacionMonto(
+                  TextosFinanzas.saldoCaja(cuando),
+                  siNegativo: TextosFinanzas.saldoCajaNegativo,
+                  negativo: saldo < 0,
+                  extras: _notaTipo,
+                  color: Colors.white70,
+                  colorNegativo: const Color(0xFFFFE0B2),
+                ),
               ),
             ),
           ],
@@ -369,62 +378,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// estilo que las tarjetas de arriba: pesos grandes y el % chico al lado.
   Widget _buildTarjetasGanancia() {
     final r = _dashboardData!.kpis.resultado;
-    final neta = r.gananciaNeta;
+    final neta = r.gananciaNeta ?? 0;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
+          flex: 2,
           child: _buildStandardCard(
             key: const Key('dashboard_costo'),
             titulo: 'Costo',
             monto: formatPesos(r.costoVendido),
-            subtitulo: 'Costo de lo vendido',
+            explicacion: const ExplicacionMonto(TextosFinanzas.costo),
             montoColor: const Color(0xFF555555),
           ),
         ),
         const SizedBox(width: 20),
         Expanded(
+          flex: 2,
           child: _buildStandardCard(
             key: const Key('dashboard_ganancia'),
             titulo: 'Ganancia',
             monto: formatPesosConSigno(r.gananciaBruta),
             porcentaje: r.margenBrutoPorcentaje,
-            subtitulo: 'Ventas − costo',
+            explicacion: ExplicacionMonto(
+              TextosFinanzas.ganancia,
+              siNegativo: TextosFinanzas.gananciaNegativa,
+              negativo: r.gananciaBruta < 0,
+            ),
             montoColor: colorResultado(r.gananciaBruta),
           ),
         ),
         const SizedBox(width: 20),
         Expanded(
+          flex: 3,
           child: _buildStandardCard(
             key: const Key('dashboard_ganancia_neta'),
+            grande: true,
             titulo: 'Ganancia neta',
             ayuda: 'Lo que te queda después de pagar los gastos: alquiler, luz, '
                 'sueldos y otros. Las compras de mercadería no se restan acá: '
                 'su costo ya está en "Costo" cuando vendés lo que hiciste con ella.',
-            monto: neta == null ? '—' : formatPesosConSigno(neta),
+            monto: formatPesosConSigno(neta),
             porcentaje: r.margenNetoPorcentaje,
-            subtitulo: neta == null
-                ? 'Los gastos no se calculan por producto'
-                : 'Después de ${formatPesos(r.gastos ?? 0)} de gastos',
-            montoColor: neta == null ? const Color(0xFF555555) : colorResultado(neta),
+            explicacion: ExplicacionMonto(
+              TextosFinanzas.gananciaNeta(formatPesos(r.gastos ?? 0)),
+              siNegativo: TextosFinanzas.gananciaNetaNegativa,
+              negativo: neta < 0,
+              extras: _notaTipo,
+            ),
+            montoColor: colorResultado(neta),
           ),
         ),
       ],
     );
   }
 
+  /// [grande]: Ganancia neta, más alta y con más aire para la explicación.
   Widget _buildStandardCard({
     Key? key,
     required String titulo,
     required String monto,
-    required String subtitulo,
+    required Widget explicacion,
     required Color montoColor,
     double? porcentaje,
     String? ayuda,
+    bool grande = false,
   }) {
     return Container(
       key: key,
-      padding: const EdgeInsets.all(24),
+      constraints: BoxConstraints(minHeight: grande ? 230 : 0),
+      padding: EdgeInsets.all(grande ? 28 : 24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -452,7 +475,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
-                Text(monto, style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: montoColor)),
+                Text(monto, style: TextStyle(fontSize: grande ? 36 : 32, fontWeight: FontWeight.bold, color: montoColor)),
                 if (porcentaje != null) ...[
                   const SizedBox(width: 8),
                   Text(formatPorcentaje(porcentaje),
@@ -461,16 +484,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          Text(subtitulo, style: const TextStyle(fontSize: 13, color: Color(0xFF666666))),
+          const SizedBox(height: 10),
+          explicacion,
         ],
       ),
     );
   }
 
-  Widget _buildSaldoCard({required String titulo, required String monto, required String subtitulo, required String margen}) {
+  /// Saldo de caja del período: más grande que las demás.
+  Widget _buildSaldoCard({required String titulo, required String monto, required Widget explicacion}) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      key: const Key('dashboard_saldo_caja'),
+      constraints: const BoxConstraints(minHeight: 230),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: const Color(0xFF227B63),
         borderRadius: BorderRadius.circular(12),
@@ -484,21 +510,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(monto, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+            child: Text(monto, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white)),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(subtitulo,
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13, color: Colors.white70)),
-              ),
-              const SizedBox(width: 8),
-              Text('Margen Neto: $margen', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-            ],
-          ),
+          const SizedBox(height: 10),
+          explicacion,
         ],
       ),
     );
@@ -523,20 +538,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Expanded(
               flex: 4,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: _buildMetricCard(
+                      key: const Key('dashboard_cantidad_ventas'),
                       titulo: 'Cantidad de Ventas',
                       valor: kpis.cantidadVentas.toString(),
-                      subtitulo: 'Transacciones',
+                      explicacion: TextosFinanzas.cantidadVentas(TextosFinanzas.entreFechas,
+                          deTipo: _filtroTipo != null),
                     ),
                   ),
                   const SizedBox(width: 20),
                   Expanded(
                     child: _buildMetricCard(
+                      key: const Key('dashboard_ticket'),
                       titulo: 'Ticket Promedio',
                       valor: formatter.format(kpis.ticketPromedio),
-                      subtitulo: 'por compra',
+                      explicacion: TextosFinanzas.ticketPromedio,
                     ),
                   ),
                 ],
@@ -553,9 +572,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildMetricCard({required String titulo, required String valor, required String subtitulo}) {
+  Widget _buildMetricCard({Key? key, required String titulo, required String valor, required String explicacion}) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
+      key: key,
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -565,9 +585,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           Text(titulo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
           const SizedBox(height: 16),
-          Text(valor, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Color(0xFF111111))),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(valor, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Color(0xFF111111))),
+          ),
           const SizedBox(height: 8),
-          Text(subtitulo, style: const TextStyle(fontSize: 13, color: Color(0xFF666666))),
+          ExplicacionMonto(explicacion, textAlign: TextAlign.center),
         ],
       ),
     );

@@ -23,35 +23,35 @@ public interface LineaVentaRepository extends JpaRepository<LineaVenta, Long> {
 
     /**
      * Los más vendidos (por unidades; ante empate, por lo vendido en pesos),
-     * con [productoId, nombre, unidades, ventas, costo congelado]. Con
-     * productoId, solo ese producto.
+     * con [productoId, nombre, unidades, ventas, costo congelado]. Con un
+     * tipo, solo los productos de ese tipo.
      */
     @Query("SELECT p.id, p.nombre, SUM(lv.cantidad), SUM(lv.subtotal), " +
            "SUM(COALESCE(lv.costoUnitario, 0) * lv.cantidad) " +
            "FROM LineaVenta lv JOIN lv.venta v JOIN lv.producto p " +
            "WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta " +
-           "AND (:productoId IS NULL OR p.id = :productoId) " +
+           "AND (:tipo IS NULL OR p.tipo = :tipo) " +
            "GROUP BY p.id, p.nombre " +
            "ORDER BY SUM(lv.cantidad) DESC, SUM(lv.subtotal) DESC")
     List<Object[]> findTopProductosConCosto(
             @Param("fechaDesde") LocalDateTime fechaDesde,
             @Param("fechaHasta") LocalDateTime fechaHasta,
-            @Param("productoId") Long productoId,
+            @Param("tipo") com.sgiu_group.sgiu.models.entities.TipoArticulo tipo,
             Pageable pageable);
 
     /**
-     * Por venta del rango que incluye el producto: [ventaId, total de la
-     * venta, subtotal del producto, costo congelado del producto].
+     * Por venta del rango con productos del tipo (esp_productos.tipo): [ventaId,
+     * total de la venta, subtotal de esas líneas, su costo congelado].
      */
     @Query("SELECT v.id, v.total, SUM(lv.subtotal), SUM(COALESCE(lv.costoUnitario, 0) * lv.cantidad) " +
-           "FROM LineaVenta lv JOIN lv.venta v " +
+           "FROM LineaVenta lv JOIN lv.venta v JOIN lv.producto p " +
            "WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta " +
-           "AND lv.producto.id = :productoId " +
+           "AND p.tipo = :tipo " +
            "GROUP BY v.id, v.total")
-    List<Object[]> findVentasDeProducto(
+    List<Object[]> findVentasDeTipo(
             @Param("fechaDesde") LocalDateTime fechaDesde,
             @Param("fechaHasta") LocalDateTime fechaHasta,
-            @Param("productoId") Long productoId);
+            @Param("tipo") com.sgiu_group.sgiu.models.entities.TipoArticulo tipo);
 
     @Query("SELECT c.id, c.nombre, SUM(lv.cantidad), SUM(lv.subtotal) " +
            "FROM LineaVenta lv JOIN lv.venta v JOIN lv.producto p JOIN p.categoria c " +

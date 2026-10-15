@@ -30,3 +30,53 @@ class AyudaInfo extends StatelessWidget {
     );
   }
 }
+
+/// Explicación de una tarjeta de resumen, debajo del monto: chica y en un
+/// color secundario. [siNegativo] se agrega solo cuando [negativo] es true;
+/// [extras] son líneas adicionales (p. ej. "No se filtra por tipo").
+class ExplicacionMonto extends StatelessWidget {
+  final String texto;
+  final String? siNegativo;
+  final bool negativo;
+  final List<String> extras;
+  final Color color;
+  final Color colorNegativo;
+  final TextAlign textAlign;
+
+  const ExplicacionMonto(
+    this.texto, {
+    super.key,
+    this.siNegativo,
+    this.negativo = false,
+    this.extras = const [],
+    this.color = const Color(0xFF666666),
+    this.colorNegativo = const Color(0xFFB71C1C),
+    this.textAlign = TextAlign.start,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          textAlign == TextAlign.center ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(texto, textAlign: textAlign, style: TextStyle(fontSize: 12, height: 1.3, color: color)),
+        if (negativo && siNegativo != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(siNegativo!,
+                textAlign: textAlign,
+                style: TextStyle(fontSize: 12, height: 1.3, fontWeight: FontWeight.w600, color: colorNegativo)),
+          ),
+        for (final extra in extras)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(extra,
+                textAlign: textAlign,
+                style: TextStyle(fontSize: 12, height: 1.3, fontStyle: FontStyle.italic, color: color)),
+          ),
+      ],
+    );
+  }
+}

@@ -47,8 +47,6 @@ class DashboardServiceTest {
     private MetodoPagoRepository metodoPagoRepository;
     @Mock
     private ResultadoService resultadoService;
-    @Mock
-    private com.sgiu_group.sgiu.repositories.EspProductoRepository espProductoRepository;
 
     @InjectMocks
     private DashboardService dashboardService;
