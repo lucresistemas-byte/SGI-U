@@ -9,6 +9,10 @@ jwt:
 spring:
   application:
     name: sgiu
+  config:
+    import:
+      - optional:file:secrets.properties
+      - optional:classpath:secrets.properties
 
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mariadb://${SGIU_DB_HOST:localhost}:${SGIU_DB_PORT:3306}/${SGIU_DB_NAME:sgiu_db}}
