@@ -18,7 +18,7 @@ public interface MovFinancieroRepository extends JpaRepository<MovFinanciero, Lo
     List<MovFinanciero> findEnRango(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
 
     @Query("SELECT SUM(m.monto) FROM MovFinanciero m " +
-           "WHERE m.fechaHora BETWEEN :fechaDesde AND :fechaHasta AND m.tipo = :tipo")
+           "WHERE m.fechaHora >= :fechaDesde AND m.fechaHora < :fechaHasta AND m.tipo = :tipo")
     BigDecimal sumByTipoEnRango(
             @Param("fechaDesde") LocalDateTime fechaDesde,
             @Param("fechaHasta") LocalDateTime fechaHasta,
@@ -26,7 +26,7 @@ public interface MovFinancieroRepository extends JpaRepository<MovFinanciero, Lo
 
     /** Como sumByTipoEnRango, solo de un método de pago (null = todos). */
     @Query("SELECT SUM(m.monto) FROM MovFinanciero m " +
-           "WHERE m.fechaHora BETWEEN :fechaDesde AND :fechaHasta AND m.tipo = :tipo " +
+           "WHERE m.fechaHora >= :fechaDesde AND m.fechaHora < :fechaHasta AND m.tipo = :tipo " +
            "AND (:metodoPagoId IS NULL OR m.metodoPago.id = :metodoPagoId)")
     BigDecimal sumByTipoYMetodoEnRango(
             @Param("fechaDesde") LocalDateTime fechaDesde,
@@ -38,7 +38,7 @@ public interface MovFinancieroRepository extends JpaRepository<MovFinanciero, Lo
            "SUM(CASE WHEN m.tipo = 'INGRESO' THEN m.monto ELSE 0 END), " +
            "SUM(CASE WHEN m.tipo = 'EGRESO' THEN m.monto ELSE 0 END) " +
            "FROM MovFinanciero m " +
-           "WHERE m.fechaHora BETWEEN :fechaDesde AND :fechaHasta " +
+           "WHERE m.fechaHora >= :fechaDesde AND m.fechaHora < :fechaHasta " +
            "AND (:metodoPagoId IS NULL OR m.metodoPago.id = :metodoPagoId) " +
            "GROUP BY FUNCTION('DATE', m.fechaHora) " +
            "ORDER BY FUNCTION('DATE', m.fechaHora)")
@@ -50,7 +50,7 @@ public interface MovFinancieroRepository extends JpaRepository<MovFinanciero, Lo
     @Query("SELECT FUNCTION('DATE', m.fechaHora), " +
            "SUM(CASE WHEN m.tipo = 'INGRESO' THEN m.monto ELSE -m.monto END) " +
            "FROM MovFinanciero m " +
-           "WHERE m.fechaHora BETWEEN :fechaDesde AND :fechaHasta " +
+           "WHERE m.fechaHora >= :fechaDesde AND m.fechaHora < :fechaHasta " +
            "AND (:metodoPagoId IS NULL OR m.metodoPago.id = :metodoPagoId) " +
            "GROUP BY FUNCTION('DATE', m.fechaHora) " +
            "ORDER BY FUNCTION('DATE', m.fechaHora)")

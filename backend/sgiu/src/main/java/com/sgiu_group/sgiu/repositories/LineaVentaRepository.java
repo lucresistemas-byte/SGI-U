@@ -13,7 +13,7 @@ public interface LineaVentaRepository extends JpaRepository<LineaVenta, Long> {
 
     @Query("SELECT lv.producto.id, p.nombre, SUM(lv.cantidad), SUM(lv.subtotal) " +
            "FROM LineaVenta lv JOIN lv.venta v JOIN lv.producto p " +
-           "WHERE v.fechaHora BETWEEN :fechaDesde AND :fechaHasta " +
+           "WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta " +
            "GROUP BY lv.producto.id, p.nombre " +
            "ORDER BY SUM(lv.cantidad) DESC")
     List<Object[]> findTopProductosVendidos(
@@ -22,7 +22,7 @@ public interface LineaVentaRepository extends JpaRepository<LineaVenta, Long> {
 
     @Query("SELECT c.id, c.nombre, SUM(lv.cantidad), SUM(lv.subtotal) " +
            "FROM LineaVenta lv JOIN lv.venta v JOIN lv.producto p JOIN p.categoria c " +
-           "WHERE v.fechaHora BETWEEN :fechaDesde AND :fechaHasta " +
+           "WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta " +
            "GROUP BY c.id, c.nombre " +
            "ORDER BY SUM(lv.subtotal) DESC")
     List<Object[]> findTopCategoriasVendidas(
@@ -31,7 +31,7 @@ public interface LineaVentaRepository extends JpaRepository<LineaVenta, Long> {
 
     @Query("SELECT lv.producto.id, p.nombre, SUM(lv.cantidad), SUM(lv.subtotal) " +
            "FROM LineaVenta lv JOIN lv.venta v JOIN lv.producto p LEFT JOIN p.categoria c " +
-           "WHERE v.fechaHora BETWEEN :fechaDesde AND :fechaHasta " +
+           "WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta " +
            "AND (:categoriaId IS NULL OR c.id = :categoriaId) " +
            "GROUP BY lv.producto.id, p.nombre " +
            "ORDER BY SUM(lv.cantidad) DESC")

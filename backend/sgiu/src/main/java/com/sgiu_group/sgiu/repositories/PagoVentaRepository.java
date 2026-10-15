@@ -17,7 +17,7 @@ public interface PagoVentaRepository extends JpaRepository<PagoVenta, Long> {
      */
     @Query("SELECT pv.metodoPago.nombre, COUNT(DISTINCT pv.venta.id), SUM(pv.monto) " +
            "FROM PagoVenta pv " +
-           "WHERE pv.venta.fechaHora BETWEEN :fechaDesde AND :fechaHasta " +
+           "WHERE pv.venta.fechaHora >= :fechaDesde AND pv.venta.fechaHora < :fechaHasta " +
            "GROUP BY pv.metodoPago.id, pv.metodoPago.nombre, pv.metodoPago.orden " +
            "ORDER BY pv.metodoPago.orden")
     List<Object[]> findVentasAgrupadasPorMetodoPago(
