@@ -4,6 +4,13 @@ import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
 import 'dart:ui' as ui;
+import '../theme/app_breakpoints.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_elevations.dart';
+import '../theme/app_radii.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/app_snack_bar.dart';
 import '../widgets/marca_negocio.dart';
 
 const String mensajeSesionVencida = 'Tu sesión venció, vuelve a ingresar';
@@ -37,12 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final state = context.read<AuthBloc>().state;
       final esRutaVisible = ModalRoute.of(context)?.isCurrent ?? true;
       if (state is Unauthenticated && state.sesionVencida && esRutaVisible) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(mensajeSesionVencida),
-            backgroundColor: Colors.red.shade800,
-          ),
-        );
+        AppSnackBar.error(context, mensajeSesionVencida);
       }
     });
   }
@@ -72,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 900;
+          final isWide = constraints.maxWidth >= AppBreakpoints.corteMovil;
           return Stack(
             children: [
               Container(
@@ -85,7 +87,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: BackdropFilter(
                   filter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
                   child: Container(
-                    color: Colors.black.withValues(alpha: 0.05), // opacidad reducida
+                    // Velo oscuro tenue sobre la foto de fondo.
+                    color: AppColors.textoPrincipal.withValues(alpha: 0.05),
                   ),
                 ),
               ),
@@ -95,16 +98,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   constraints: BoxConstraints(
                     maxHeight: constraints.maxHeight * 0.85,
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(32),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
+                  decoration: const BoxDecoration(
+                    color: AppColors.fondoSuperficie,
+                    borderRadius: AppRadii.bordePanel,
+                    boxShadow: AppElevations.sombraPanel,
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: isWide
@@ -141,8 +138,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLeftPanel() {
     return ClipRRect(
       borderRadius: const BorderRadius.only(
-        topLeft: Radius.circular(32),
-        bottomLeft: Radius.circular(32),
+        topLeft: Radius.circular(AppRadii.radioPanel),
+        bottomLeft: Radius.circular(AppRadii.radioPanel),
       ),
       child: Image.asset(
         'assets/images/login_background.png',
@@ -154,9 +151,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildRightPanel({bool isMobile = false}) {
-    final titleFontSize = isMobile ? 32.0 : 36.0; // Tamaño reducido para que entre en una línea
-    final horizontalPadding = isMobile ? 32.0 : 48.0; // Padding reducido para más espacio
-    final verticalPadding = isMobile ? 32.0 : 48.0;
+    final horizontalPadding =
+        isMobile ? AppSpacing.espacioPantalla : 48.0; // más espacio en escritorio
+    final verticalPadding = isMobile ? AppSpacing.espacioPantalla : 48.0;
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -168,26 +165,25 @@ class _LoginScreenState extends State<LoginScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const MarcaNegocio(estilo: EstiloMarca.login),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.espacioSeccion),
           Text(
             'Bienvenido de nuevo',
-            style: TextStyle(
+            // Georgia: excepción de marca del login (no se tokeniza la familia).
+            style: AppTypography.tituloPantalla.copyWith(
               fontFamily: 'Georgia',
-              fontSize: titleFontSize,
               fontWeight: FontWeight.w400,
-              color: const Color(0xFF1E2430),
+              color: AppColors.textoPrincipal,
             ),
           ),
-          const SizedBox(height: 12),
-          const Text(
+          const SizedBox(height: AppSpacing.espacioMedio),
+          Text(
             'Ingresa tus credenciales para continuar',
-            style: TextStyle(
-              fontSize: 16,
+            style: AppTypography.texto.copyWith(
               fontWeight: FontWeight.w400,
-              color: Color(0xFF8A8A8A),
+              color: AppColors.textoSecundario,
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpacing.espacioPantalla),
           Form(
             key: _formKey,
             child: Column(
@@ -203,9 +199,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ? _passwordFocus.requestFocus()
                       : _login(),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.espacioGrande),
                 _buildPasswordField(),
-                const SizedBox(height: 32),
+                const SizedBox(height: AppSpacing.espacioPantalla),
                 _buildLoginButton(),
               ],
             ),
@@ -227,8 +223,8 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       height: 60,
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFE5E5E5)),
-        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borde),
+        borderRadius: AppRadii.bordeCampo,
       ),
       child: TextFormField(
         controller: controller,
@@ -237,11 +233,16 @@ class _LoginScreenState extends State<LoginScreen> {
         onFieldSubmitted: onFieldSubmitted,
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: const TextStyle(fontSize: 16, color: Color(0xFF8C8C8C)),
-          prefixIcon: Icon(prefixIcon, color: const Color(0xFF6E6E6E), size: 22),
+          hintStyle: AppTypography.texto
+              .copyWith(color: AppColors.textoSecundario),
+          prefixIcon:
+              Icon(prefixIcon, color: AppColors.textoTerciario, size: 22),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.espacioGrande,
+            vertical: 14,
+          ),
         ),
         validator: (value) =>
         value == null || value.isEmpty ? 'Campo obligatorio' : null,
@@ -253,8 +254,8 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       height: 60,
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFE5E5E5)),
-        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borde),
+        borderRadius: AppRadii.bordeCampo,
       ),
       child: TextFormField(
         controller: _passwordController,
@@ -264,12 +265,16 @@ class _LoginScreenState extends State<LoginScreen> {
         onFieldSubmitted: (_) => _login(),
         decoration: InputDecoration(
           hintText: 'Contraseña',
-          hintStyle: const TextStyle(fontSize: 16, color: Color(0xFF8C8C8C)),
-          prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF6E6E6E), size: 22),
+          hintStyle: AppTypography.texto
+              .copyWith(color: AppColors.textoSecundario),
+          prefixIcon: const Icon(Icons.lock_outline,
+              color: AppColors.textoTerciario, size: 22),
           suffixIcon: IconButton(
             icon: Icon(
-              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              color: const Color(0xFF6E6E6E),
+              _obscurePassword
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+              color: AppColors.textoTerciario,
               size: 22,
             ),
             onPressed: () {
@@ -279,7 +284,10 @@ class _LoginScreenState extends State<LoginScreen> {
             },
           ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.espacioGrande,
+            vertical: 14,
+          ),
         ),
         validator: (value) =>
         value == null || value.isEmpty ? 'Campo obligatorio' : null,
@@ -291,12 +299,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red.shade800,
-            ),
-          );
+          AppSnackBar.error(context, state.message);
         }
       },
       builder: (context, state) {
@@ -307,9 +310,10 @@ class _LoginScreenState extends State<LoginScreen> {
           child: ElevatedButton(
             onPressed: isLoading ? null : _login,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF006B3D),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+              backgroundColor: AppColors.marca,
+              foregroundColor: AppColors.sobreMarca,
+              shape: const RoundedRectangleBorder(
+                borderRadius: AppRadii.bordeBoton,
               ),
             ),
             child: isLoading
@@ -317,17 +321,14 @@ class _LoginScreenState extends State<LoginScreen> {
               width: 24,
               height: 24,
               child: CircularProgressIndicator(
-                color: Colors.white,
+                color: AppColors.sobreMarca,
                 strokeWidth: 2,
               ),
             )
-                : const Text(
+                : Text(
               'Iniciar sesión',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
+              style: AppTypography.subtitulo
+                  .copyWith(fontWeight: FontWeight.w600, color: AppColors.sobreMarca),
             ),
           ),
         );
