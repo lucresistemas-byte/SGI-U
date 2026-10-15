@@ -9,6 +9,7 @@ import 'package:sgi_u_frontend/blocs/finanzas/finanzas_bloc.dart';
 import 'package:sgi_u_frontend/blocs/finanzas/finanzas_event.dart';
 import 'package:sgi_u_frontend/blocs/finanzas/finanzas_state.dart';
 import 'package:sgi_u_frontend/screens/balance_screen.dart';
+import 'package:sgi_u_frontend/utils/numeros.dart';
 
 class MockFinanzasBloc extends MockBloc<FinanzasEvent, FinanzasState>
     implements FinanzasBloc {}
@@ -76,8 +77,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // 1. Verificar tarjeta "Costo vs Beneficio"
-    expect(find.text('Costo vs Beneficio'), findsOneWidget);
-    expect(find.text('Ganancia Real'), findsOneWidget);
+    expect(find.text('Costo y ganancia'), findsOneWidget);
+    expect(find.text('Te costó'), findsOneWidget);
+    expect(find.text('Ganancia neta'), findsOneWidget);
 
     // 2. Verificar formato de moneda en los valores de la tarjeta
     final formattedCosto = currencyFormatter.format(1500.0);
@@ -85,13 +87,14 @@ void main() {
 
     // Debe encontrarse el costo y la ganancia formateados
     expect(find.text(formattedCosto), findsWidgets);
-    expect(find.text(formattedGanancia), findsWidgets);
+    // La ganancia neta va con signo explícito.
+    expect(find.text(formatPesosConSigno(3500)), findsOneWidget);
 
     // 3. Verificar columnas de DataTable
     expect(find.text('Fecha/Hora'), findsOneWidget);
     expect(find.text('Tipo'), findsOneWidget);
     expect(find.text('Monto'), findsOneWidget);
-    expect(find.text('Costo'), findsWidgets); // En tarjeta y en encabezado de columna
+    expect(find.text('Costo'), findsOneWidget); // Encabezado de columna
     expect(find.text('Ganancia'), findsOneWidget); // Encabezado de columna
     expect(find.text('Método de Pago'), findsOneWidget);
 

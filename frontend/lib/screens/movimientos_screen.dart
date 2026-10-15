@@ -12,6 +12,7 @@ import '../utils/parsers.dart';
 import '../widgets/cargando_diferido.dart';
 import '../models/categoria_movimiento.dart';
 import '../widgets/tabla_ajustada.dart';
+import '../utils/numeros.dart';
 
 class MovimientosScreen extends StatelessWidget {
   const MovimientosScreen({super.key});
@@ -132,7 +133,7 @@ class _MovimientosContentState extends State<MovimientosContent> {
                       'Caja del mes (entró − salió)', saldoActual, const Color(0xFF222222)),
                   const SizedBox(width: 16),
                   _buildCostoBeneficioCard(
-                      'Costo vs Beneficio del día', costoTotalHoy, gananciaRealHoy),
+                      'Costo y ganancia de hoy', costoTotalHoy, gananciaRealHoy),
                 ],
               );
             },
@@ -459,7 +460,7 @@ class _MovimientosContentState extends State<MovimientosContent> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Costo',
+                      const Text('Te costó',
                           style: TextStyle(fontSize: 10, color: Color(0xFF888888))),
                       FittedBox(
                         fit: BoxFit.scaleDown,
@@ -481,13 +482,13 @@ class _MovimientosContentState extends State<MovimientosContent> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text('Ganancia',
+                      const Text('Ganancia neta',
                           style: TextStyle(fontSize: 10, color: Color(0xFF888888))),
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
                         child: Text(
-                          (ganancia >= 0 ? '+ ' : '') + _formatMonto(ganancia),
+                          formatPesosConSigno(ganancia),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,

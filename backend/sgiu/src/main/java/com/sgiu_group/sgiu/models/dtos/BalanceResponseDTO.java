@@ -8,8 +8,10 @@ public record BalanceResponseDTO(
     BigDecimal totalEgresos,
     BigDecimal margenNeto,
     BigDecimal costoTotal,
+    /** Igual a resultado.gananciaNeta (las compras de mercadería no se restan). */
     BigDecimal gananciaReal,
-    List<MovimientoResponseDTO> movimientos
+    List<MovimientoResponseDTO> movimientos,
+    ResultadoPeriodoDTO resultado
 ) {
     public BalanceResponseDTO(
             BigDecimal totalIngresos,
@@ -17,6 +19,6 @@ public record BalanceResponseDTO(
             BigDecimal margenNeto,
             List<MovimientoResponseDTO> movimientos
     ) {
-        this(totalIngresos, totalEgresos, margenNeto, BigDecimal.ZERO, margenNeto, movimientos);
+        this(totalIngresos, totalEgresos, margenNeto, BigDecimal.ZERO, margenNeto, movimientos, null);
     }
 }

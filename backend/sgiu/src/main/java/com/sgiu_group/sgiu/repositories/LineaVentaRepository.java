@@ -58,6 +58,13 @@ public interface LineaVentaRepository extends JpaRepository<LineaVenta, Long> {
             @Param("fechaHasta") LocalDateTime fechaHasta,
             @Param("categoriaId") Long categoriaId);
 
+    /** Costo congelado (costo_unitario × cantidad) de las ventas del rango. */
+    @Query("SELECT SUM(COALESCE(lv.costoUnitario, 0) * lv.cantidad) FROM LineaVenta lv " +
+           "WHERE lv.venta.fechaHora >= :fechaDesde AND lv.venta.fechaHora < :fechaHasta")
+    java.math.BigDecimal sumCostoEnRango(
+            @Param("fechaDesde") LocalDateTime fechaDesde,
+            @Param("fechaHasta") LocalDateTime fechaHasta);
+
     /**
      * Costo congelado (costo_unitario × cantidad) de cada venta, sin cargar las
      * líneas ni sus productos. Devuelve filas [ventaId, costo].

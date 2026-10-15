@@ -11,6 +11,8 @@ import '../utils/parsers.dart';
 import '../models/categoria_movimiento.dart';
 import '../widgets/cargando_diferido.dart';
 import '../widgets/tabla_ajustada.dart';
+import '../widgets/resultado.dart';
+import '../utils/numeros.dart';
 
 class BalanceScreen extends StatefulWidget {
   const BalanceScreen({super.key});
@@ -357,7 +359,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Costo vs Beneficio',
+                      'Costo y ganancia',
                       style: TextStyle(
                           fontSize: titleSize,
                           fontWeight: FontWeight.w600,
@@ -380,7 +382,7 @@ class _BalanceScreenState extends State<BalanceScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Costo',
+                          const Text('Te costó',
                               style: TextStyle(
                                   fontSize: 11, color: Color(0xFF888888))),
                           FittedBox(
@@ -402,14 +404,26 @@ class _BalanceScreenState extends State<BalanceScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const Text('Ganancia Real',
-                              style: TextStyle(
-                                  fontSize: 11, color: Color(0xFF888888))),
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Flexible(
+                                child: Text('Ganancia neta',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        fontSize: 11, color: Color(0xFF888888))),
+                              ),
+                              SizedBox(width: 4),
+                              AyudaInfo(
+                                  'Lo que te queda después de pagar los gastos (alquiler, luz, sueldos, otros). Las compras de mercadería no se restan: su costo ya está en "Te costó".'),
+                            ],
+                          ),
                           FittedBox(
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerRight,
                             child: Text(
-                              formatter.format(gananciaReal),
+                              formatPesosConSigno(gananciaReal),
                               style: TextStyle(
                                   fontSize: moneySize,
                                   fontWeight: FontWeight.bold,

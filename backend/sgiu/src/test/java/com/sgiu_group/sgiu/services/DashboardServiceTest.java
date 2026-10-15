@@ -45,6 +45,8 @@ class DashboardServiceTest {
     private PagoVentaRepository pagoVentaRepository;
     @Mock
     private MetodoPagoRepository metodoPagoRepository;
+    @Mock
+    private ResultadoService resultadoService;
 
     @InjectMocks
     private DashboardService dashboardService;

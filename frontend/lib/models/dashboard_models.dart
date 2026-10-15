@@ -1,4 +1,5 @@
 // lib/models/dashboard_models.dart
+import 'resultado_periodo.dart';
 
 class DashboardResponse {
   final DashboardKpis kpis;
@@ -23,6 +24,9 @@ class DashboardKpis {
   final double ticketPromedio;
   final int cantidadProductosStockBajo;
 
+  /// Vendiste, te costó, ganancia bruta y neta.
+  final ResultadoPeriodo resultado;
+
   DashboardKpis({
     required this.ingresosPeriodo,
     required this.egresosPeriodo,
@@ -31,6 +35,7 @@ class DashboardKpis {
     required this.cantidadVentas,
     required this.ticketPromedio,
     required this.cantidadProductosStockBajo,
+    this.resultado = const ResultadoPeriodo(),
   });
 
   factory DashboardKpis.fromJson(Map<String, dynamic> json) {
@@ -42,6 +47,7 @@ class DashboardKpis {
       cantidadVentas: json['cantidadVentas'] ?? 0,
       ticketPromedio: (json['ticketPromedio'] ?? 0).toDouble(),
       cantidadProductosStockBajo: json['cantidadProductosStockBajo'] ?? 0,
+      resultado: ResultadoPeriodo.fromJson(json['resultado'] as Map<String, dynamic>?),
     );
   }
 }

@@ -75,9 +75,14 @@ void main() {
         expect(find.text(viejo), findsNothing, reason: viejo);
       }
       expect(find.textContaining('Margen Neto'), findsNothing);
-      expect(find.byIcon(Icons.info_outline), findsNothing);
+      // El único ⓘ es el de Ganancia neta, y explica algo.
+      final info = find.byIcon(Icons.info_outline);
+      expect(info, findsOneWidget);
+      final ayuda = t.widget<Tooltip>(find.ancestor(of: info, matching: find.byType(Tooltip)));
+      expect(ayuda.message, contains('compras de mercadería'));
       expect(find.text('Inicio'), findsOneWidget);
-      expect(find.text('Caja del período'), findsOneWidget);
+      // La caja (entró − salió) pasó a Ganancias; Inicio muestra la ganancia.
+      expect(find.text('Vendiste'), findsOneWidget);
     });
 
     testWidgets('los links llevan a Productos y a Ganancias', (t) async {

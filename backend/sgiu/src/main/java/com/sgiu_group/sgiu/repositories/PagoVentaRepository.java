@@ -33,6 +33,16 @@ public interface PagoVentaRepository extends JpaRepository<PagoVenta, Long> {
             @Param("fechaHasta") LocalDateTime fechaHasta,
             @Param("metodoPagoId") Long metodoPagoId);
 
+    /** Por venta del rango cobrada con el método: [ventaId, cobrado con él, total de la venta]. */
+    @Query("SELECT pv.venta.id, SUM(pv.monto), pv.venta.total FROM PagoVenta pv " +
+           "WHERE pv.venta.fechaHora >= :fechaDesde AND pv.venta.fechaHora < :fechaHasta " +
+           "AND pv.metodoPago.id = :metodoPagoId " +
+           "GROUP BY pv.venta.id, pv.venta.total")
+    List<Object[]> findCobrosConMetodo(
+            @Param("fechaDesde") LocalDateTime fechaDesde,
+            @Param("fechaHasta") LocalDateTime fechaHasta,
+            @Param("metodoPagoId") Long metodoPagoId);
+
     /** Lo cobrado con el método en las ventas del rango. */
     @Query("SELECT SUM(pv.monto) FROM PagoVenta pv " +
            "WHERE pv.venta.fechaHora >= :fechaDesde AND pv.venta.fechaHora < :fechaHasta " +

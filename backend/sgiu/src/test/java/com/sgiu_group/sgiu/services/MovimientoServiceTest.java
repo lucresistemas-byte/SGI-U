@@ -42,6 +42,8 @@ class MovimientoServiceTest {
     private LineaVentaRepository lineaVentaRepository;
     @Mock
     private MetodoPagoService metodoPagoService;
+    @Mock
+    private ResultadoService resultadoService;
 
     private static final MetodoPago EFECTIVO = new MetodoPago("Efectivo", true, 1);
     private static final MetodoPago TRANSFERENCIA = new MetodoPago("Transferencia", false, 4);
@@ -51,6 +53,9 @@ class MovimientoServiceTest {
         lenient().when(metodoPagoService.paraCobrar(1L)).thenReturn(EFECTIVO);
         lenient().when(metodoPagoService.paraCobrar(3L)).thenReturn(new MetodoPago("Tarjeta", false, 3));
         lenient().when(metodoPagoService.paraCobrar(4L)).thenReturn(TRANSFERENCIA);
+        BigDecimal cero = BigDecimal.ZERO;
+        lenient().when(resultadoService.calcular(any(), any(), any())).thenReturn(
+                new com.sgiu_group.sgiu.models.dtos.ResultadoPeriodoDTO(cero, cero, cero, null, cero, cero, cero, cero, null));
     }
 
     @InjectMocks

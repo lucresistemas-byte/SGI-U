@@ -9,6 +9,7 @@ import 'package:sgi_u_frontend/blocs/finanzas/finanzas_bloc.dart';
 import 'package:sgi_u_frontend/blocs/finanzas/finanzas_event.dart';
 import 'package:sgi_u_frontend/blocs/finanzas/finanzas_state.dart';
 import 'package:sgi_u_frontend/screens/movimientos_screen.dart';
+import 'package:sgi_u_frontend/utils/numeros.dart';
 
 class MockFinanzasBloc extends MockBloc<FinanzasEvent, FinanzasState>
     implements FinanzasBloc {}
@@ -77,14 +78,14 @@ void main() {
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 
-    // 1. Verificar tarjeta "Costo vs Beneficio del día"
-    expect(find.text('Costo vs Beneficio del día'), findsOneWidget);
+    // 1. Verificar tarjeta "Costo y ganancia de hoy"
+    expect(find.text('Costo y ganancia de hoy'), findsOneWidget);
+    expect(find.text('Ganancia neta'), findsOneWidget);
 
     // 2. Verificar valores formateados en la tarjeta
     final formattedCosto = currencyFormatter.format(2000.0);
-    final formattedGanancia = currencyFormatter.format(4000.0);
     expect(find.text(formattedCosto), findsWidgets);
-    expect(find.text('+ $formattedGanancia'), findsWidgets);
+    expect(find.text(formatPesosConSigno(4000)), findsOneWidget);
 
     // 3. Verificar columnas de la tabla de movimientos
     expect(find.text('Costo'), findsWidgets);
@@ -93,7 +94,7 @@ void main() {
   });
 
   testWidgets(
-      'F-2: sin ventas hoy, "Costo vs Beneficio del día" muestra 0 / 0 aunque haya historia',
+      'F-2: sin ventas hoy, "Costo y ganancia de hoy" muestra 0 / 0 aunque haya historia',
       (tester) async {
     tester.view.physicalSize = const Size(1920, 1080);
     tester.view.devicePixelRatio = 1.0;
@@ -141,12 +142,11 @@ void main() {
     await tester.pumpAndSettle();
 
     final tarjeta = find.ancestor(
-      of: find.text('Costo vs Beneficio del día'),
+      of: find.text('Costo y ganancia de hoy'),
       matching: find.byType(Container),
     ).first;
-    final cero = currencyFormatter.format(0);
-    expect(find.descendant(of: tarjeta, matching: find.text(cero)), findsOneWidget);
-    expect(find.descendant(of: tarjeta, matching: find.text('+ $cero')), findsOneWidget);
+    expect(find.descendant(of: tarjeta, matching: find.text(currencyFormatter.format(0))), findsOneWidget);
+    expect(find.descendant(of: tarjeta, matching: find.text(formatPesosConSigno(0))), findsOneWidget);
     // Nada de la historia: ni 66.695 de costo ni −52.895 de ganancia.
     expect(find.descendant(of: tarjeta, matching: find.textContaining('66.695')), findsNothing);
     expect(find.descendant(of: tarjeta, matching: find.textContaining('52.895')), findsNothing);

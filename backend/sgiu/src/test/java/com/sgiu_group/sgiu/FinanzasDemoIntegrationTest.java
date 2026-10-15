@@ -1,5 +1,7 @@
 package com.sgiu_group.sgiu;
 
+import com.sgiu_group.sgiu.models.dtos.BalanceResponseDTO;
+import com.sgiu_group.sgiu.models.dtos.ResultadoPeriodoDTO;
 import com.sgiu_group.sgiu.models.dtos.dashboard.DashboardResponseDTO;
 import com.sgiu_group.sgiu.models.dtos.dashboard.ProductoGananciaDTO;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
@@ -13,6 +15,7 @@ import com.sgiu_group.sgiu.repositories.MovFinancieroRepository;
 import com.sgiu_group.sgiu.repositories.PagoVentaRepository;
 import com.sgiu_group.sgiu.repositories.VentaRepository;
 import com.sgiu_group.sgiu.services.DashboardService;
+import com.sgiu_group.sgiu.services.MovimientoService;
 import com.sgiu_group.sgiu.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +51,8 @@ class FinanzasDemoIntegrationTest extends AbstractIntegrationTest {
     private MovFinancieroRepository movRepository;
     @Autowired
     private DashboardService dashboardService;
+    @Autowired
+    private MovimientoService movimientoService;
 
     private EspProducto tarta, torta, alfajor, coca, agua, bombones;
 
@@ -92,6 +97,83 @@ class FinanzasDemoIntegrationTest extends AbstractIntegrationTest {
         ProductoGananciaDTO coca = mes.getGraficos().getTopProductosPorGanancia().getLast();
         assertThat(coca.cantidadVendida()).isEqualTo(3L);
         assertThat(coca.ganancia()).isEqualByComparingTo("1800");
+    }
+
+    @Test
+    void resultadoDelMes_coincideConLaTablaDeReferencia() {
+        ResultadoPeriodoDTO mes = dashboardService.obtenerDashboard(INICIO_MES, HOY, null, null, null)
+                .getKpis().getResultado();
+
+        assertThat(mes.ventas()).isEqualByComparingTo("76800");
+        assertThat(mes.costoVendido()).isEqualByComparingTo("37905");
+        assertThat(mes.gananciaBruta()).isEqualByComparingTo("38895");
+        assertThat(mes.margenBrutoPorcentaje()).isEqualByComparingTo("50.64");
+        assertThat(mes.otrosIngresos()).isEqualByComparingTo("0");
+        // Alquiler + servicios; la compra de chocolate y coco va aparte.
+        assertThat(mes.gastos()).isEqualByComparingTo("78000");
+        assertThat(mes.comprasMercaderia()).isEqualByComparingTo("45000");
+        assertThat(mes.gananciaNeta()).isEqualByComparingTo("-39105");
+        assertThat(mes.margenNetoPorcentaje()).isEqualByComparingTo("-50.92");
+    }
+
+    @Test
+    void resultadoDeLaSemanaYDeHoy() {
+        // Semana del lunes 12 al jueves 15.
+        ResultadoPeriodoDTO semana = dashboardService.obtenerDashboard(
+                LocalDate.of(2026, 10, 12), HOY, null, null, null).getKpis().getResultado();
+        assertThat(semana.ventas()).isEqualByComparingTo("63000");
+        assertThat(semana.costoVendido()).isEqualByComparingTo("31210");
+        assertThat(semana.gananciaBruta()).isEqualByComparingTo("31790");
+        assertThat(semana.gastos()).isEqualByComparingTo("18000");
+        assertThat(semana.gananciaNeta()).isEqualByComparingTo("13790");
+
+        // Hoy no hubo nada: todo en cero y sin márgenes.
+        ResultadoPeriodoDTO hoy = dashboardService.obtenerDashboard(HOY, HOY, null, null, null)
+                .getKpis().getResultado();
+        assertThat(hoy.ventas()).isEqualByComparingTo("0");
+        assertThat(hoy.gananciaNeta()).isEqualByComparingTo("0");
+        assertThat(hoy.margenBrutoPorcentaje()).isNull();
+        assertThat(hoy.margenNetoPorcentaje()).isNull();
+    }
+
+    @Test
+    void conMetodoDePago_elCostoDeUnPagoMixtoVaEnProporcion() {
+        Long efectivo = datos.metodo("Efectivo").getId();
+        ResultadoPeriodoDTO mes = dashboardService.obtenerDashboard(INICIO_MES, HOY, efectivo, null, null)
+                .getKpis().getResultado();
+
+        // Ventas 1 y 3 enteras en efectivo; de la 5, 10.000 de 22.700.
+        assertThat(mes.ventas()).isEqualByComparingTo("36000");
+        // 6.695 + 6.120 + 10.995 × 10.000 / 22.700 (4.843,61).
+        assertThat(mes.costoVendido()).isEqualByComparingTo("17658.61");
+        assertThat(mes.gastos()).isEqualByComparingTo("18000");
+        assertThat(mes.comprasMercaderia()).isEqualByComparingTo("0");
+        assertThat(mes.gananciaNeta()).isEqualByComparingTo("341.39");
+    }
+
+    @Test
+    void otrosIngresosSumanALaGananciaNeta() {
+        datos.crearMovimiento(TipoMovimiento.INGRESO, new BigDecimal("5000"), "Efectivo",
+                "OTRO_INGRESO", dia(13, 10, 0));
+
+        ResultadoPeriodoDTO mes = dashboardService.obtenerDashboard(INICIO_MES, HOY, null, null, null)
+                .getKpis().getResultado();
+        assertThat(mes.ventas()).isEqualByComparingTo("76800");
+        assertThat(mes.otrosIngresos()).isEqualByComparingTo("5000");
+        assertThat(mes.gananciaNeta()).isEqualByComparingTo("-34105");
+    }
+
+    @Test
+    void ganancias_laGananciaRealEsLaNetaSinRestarLasCompras() {
+        BalanceResponseDTO balance = movimientoService.calcularBalance(INICIO_MES, HOY);
+
+        assertThat(balance.totalIngresos()).isEqualByComparingTo("76800");
+        assertThat(balance.totalEgresos()).isEqualByComparingTo("123000");
+        assertThat(balance.margenNeto()).isEqualByComparingTo("-46200");
+        assertThat(balance.costoTotal()).isEqualByComparingTo("37905");
+        // Antes: 76.800 − 37.905 − 123.000 = −84.105 (la compra se restaba dos veces).
+        assertThat(balance.gananciaReal()).isEqualByComparingTo("-39105");
+        assertThat(balance.resultado().gananciaBruta()).isEqualByComparingTo("38895");
     }
 
     // --- Datos ---

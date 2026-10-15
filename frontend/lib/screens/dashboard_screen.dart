@@ -10,6 +10,7 @@ import '../widgets/cargando_diferido.dart';
 import '../navigation/ir_a_seccion.dart';
 import '../navigation/seccion.dart';
 import '../utils/numeros.dart';
+import '../widgets/resultado.dart';
 import '../widgets/tabla_ajustada.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -130,8 +131,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _buildCabecera(),
                       const SizedBox(height: 32),
                       _buildTarjetasFinancieras(),
-                      const SizedBox(height: 32),
-                      _buildMetricasComerciales(),
                       const SizedBox(height: 32),
                       _buildAlertasOperativas(),
                     ],
@@ -301,10 +300,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- BLOQUE 1: SALUD FINANCIERA ---
+  // --- BLOQUE 1: ¿CUÁNTO GANÉ? ---
   Widget _buildTarjetasFinancieras() {
     final kpis = _dashboardData!.kpis;
-    final formatter = NumberFormat.currency(locale: 'es_AR', symbol: '\$');
+    final r = kpis.resultado;
+    final ventas = kpis.cantidadVentas == 1 ? '1 venta' : '${kpis.cantidadVentas} ventas';
+
+    final tarjetas = [
+      _buildKpiCard(
+        key: const Key('inicio_vendiste'),
+        titulo: 'Vendiste',
+        monto: formatPesos(r.ventas),
+        subtitulo: kpis.cantidadVentas == 0
+            ? 'Sin ventas en el período'
+            : '$ventas · promedio ${formatPesos(kpis.ticketPromedio)}',
+      ),
+      _buildKpiCard(
+        key: const Key('inicio_te_costo'),
+        titulo: 'Te costó',
+        monto: formatPesos(r.costoVendido),
+        subtitulo: 'Lo que te costó hacer o comprar lo que vendiste',
+      ),
+      _buildKpiCard(
+        key: const Key('inicio_ganancia_bruta'),
+        titulo: 'Ganancia bruta',
+        monto: formatPesosConSigno(r.gananciaBruta),
+        montoColor: colorResultado(r.gananciaBruta),
+        porcentaje: r.margenBrutoPorcentaje,
+        subtitulo: 'Lo que te dejan los productos (vendiste − te costó)',
+      ),
+      _buildKpiCard(
+        key: const Key('inicio_ganancia_neta'),
+        titulo: 'Ganancia neta',
+        ayuda: 'Lo que te queda después de pagar los gastos: alquiler, luz, '
+            'sueldos y otros. Las compras de mercadería no se restan acá: su '
+            'costo ya está en "Te costó" cuando vendés lo que hiciste con ella.',
+        monto: formatPesosConSigno(r.gananciaNeta),
+        montoColor: colorResultado(r.gananciaNeta),
+        porcentaje: r.margenNetoPorcentaje,
+        subtitulo: r.otrosIngresos > 0
+            ? 'Después de ${formatPesos(r.gastos)} de gastos y con ${formatPesos(r.otrosIngresos)} de otros ingresos'
+            : 'Después de ${formatPesos(r.gastos)} de gastos',
+      ),
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,42 +352,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF008A3D)),
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStandardCard(
-                titulo: 'Ingresos del período',
-                monto: formatter.format(kpis.ingresosPeriodo),
-                subtitulo: 'Todo lo que entró',
-                montoColor: const Color(0xFF008A3D),
-              ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: _buildStandardCard(
-                titulo: 'Egresos del período',
-                monto: formatter.format(kpis.egresosPeriodo),
-                subtitulo: 'Todo lo que salió',
-                montoColor: const Color(0xFFD32F2F),
-              ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: _buildSaldoCard(
-                titulo: 'Caja del período',
-                monto: formatter.format(kpis.saldoNeto),
-                subtitulo: 'Entró menos salió',
-              ),
-            ),
-          ],
-        ),
+        LayoutBuilder(builder: (context, constraints) {
+          // Cuatro en fila; en pantallas angostas, de a dos.
+          final porFila = constraints.maxWidth >= 900 ? 4 : 2;
+          const separacion = 20.0;
+          final ancho = (constraints.maxWidth - separacion * (porFila - 1)) / porFila;
+          return Wrap(
+            spacing: separacion,
+            runSpacing: separacion,
+            children: [for (final t in tarjetas) SizedBox(width: ancho, child: t)],
+          );
+        }),
       ],
     );
   }
 
-  Widget _buildStandardCard({required String titulo, required String monto, required String subtitulo, required Color montoColor}) {
+  /// Pesos primero y grandes; el % chico al lado.
+  Widget _buildKpiCard({
+    required Key key,
+    required String titulo,
+    required String monto,
+    required String subtitulo,
+    Color montoColor = const Color(0xFF111111),
+    double? porcentaje,
+    String? ayuda,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      key: key,
+      height: 150,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -358,89 +389,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(titulo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
-          const SizedBox(height: 12),
-          Text(monto, style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: montoColor)),
-          const SizedBox(height: 8),
-          Text(subtitulo, style: const TextStyle(fontSize: 13, color: Color(0xFF666666))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSaldoCard({required String titulo, required String monto, required String subtitulo}) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF227B63),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: const Color(0xFF227B63).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(titulo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.white70)),
-          const SizedBox(height: 12),
-          Text(monto, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
-          const SizedBox(height: 8),
-          Text(subtitulo, style: const TextStyle(fontSize: 13, color: Colors.white70)),
-        ],
-      ),
-    );
-  }
-
-  // --- BLOQUE 2: MOTOR COMERCIAL ---
-  Widget _buildMetricasComerciales() {
-    final kpis = _dashboardData!.kpis;
-    final formatter = NumberFormat.currency(locale: 'es_AR', symbol: '\$');
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '¿Cómo se está moviendo mi negocio?',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF008A3D)),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _buildMetricCard(
-                titulo: 'Ventas',
-                valor: kpis.cantidadVentas.toString(),
-                subtitulo: 'en el período',
+          Row(
+            children: [
+              Flexible(
+                child: Text(titulo,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
               ),
+              if (ayuda != null) ...[
+                const SizedBox(width: 6),
+                AyudaInfo(ayuda),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(monto, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: montoColor)),
+                if (porcentaje != null) ...[
+                  const SizedBox(width: 8),
+                  Text(formatPorcentaje(porcentaje),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: montoColor)),
+                ],
+              ],
             ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: _buildMetricCard(
-                titulo: 'Promedio por venta',
-                valor: formatter.format(kpis.ticketPromedio),
-                subtitulo: 'lo que gasta cada cliente',
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMetricCard({required String titulo, required String valor, required String subtitulo}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        children: [
-          Text(titulo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
-          const SizedBox(height: 16),
-          Text(valor, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Color(0xFF111111))),
-          const SizedBox(height: 8),
-          Text(subtitulo, style: const TextStyle(fontSize: 13, color: Color(0xFF666666))),
+          ),
+          const Spacer(),
+          Text(subtitulo,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF666666))),
         ],
       ),
     );

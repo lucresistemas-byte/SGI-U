@@ -33,19 +33,22 @@ public class DashboardService {
     private final ArticuloStockRepository articuloStockRepository;
     private final PagoVentaRepository pagoVentaRepository;
     private final MetodoPagoRepository metodoPagoRepository;
+    private final ResultadoService resultadoService;
 
     public DashboardService(VentaRepository ventaRepository,
                              LineaVentaRepository lineaVentaRepository,
                              MovFinancieroRepository movFinancieroRepository,
                              ArticuloStockRepository articuloStockRepository,
                              PagoVentaRepository pagoVentaRepository,
-                             MetodoPagoRepository metodoPagoRepository) {
+                             MetodoPagoRepository metodoPagoRepository,
+                             ResultadoService resultadoService) {
         this.ventaRepository = ventaRepository;
         this.lineaVentaRepository = lineaVentaRepository;
         this.movFinancieroRepository = movFinancieroRepository;
         this.articuloStockRepository = articuloStockRepository;
         this.pagoVentaRepository = pagoVentaRepository;
         this.metodoPagoRepository = metodoPagoRepository;
+        this.resultadoService = resultadoService;
     }
 
     public DashboardResponseDTO obtenerDashboard(LocalDate fechaDesde, LocalDate fechaHasta,
@@ -88,6 +91,7 @@ public class DashboardService {
                 ingresos, egresos, saldoNeto, margenNetoPorcentaje,
                 cantidadVentas, ticketPromedio, productoMasVendido,
                 cantidadProductosStockBajo);
+        kpis.setResultado(resultadoService.calcular(desde, hasta, metodoPagoId));
 
         DashboardGraficosDTO graficos = new DashboardGraficosDTO();
         graficos.setIngresosVsEgresosPorDia(generarIngresosVsEgresosPorDia(desde, hasta, metodoPagoId));
