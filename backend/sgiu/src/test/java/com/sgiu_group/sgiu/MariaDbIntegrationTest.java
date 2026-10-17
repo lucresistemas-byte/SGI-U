@@ -20,8 +20,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Smoke test del perfil "integration": arranca la app contra un MariaDB de
  * Testcontainers (no contra la base instalada) y persiste un producto. Si
  * Docker no está accesible, se saltea.
+ * <p>
+ * Misma propiedad de locations que {@link FlywayMariaDbTest}: ambas clases
+ * comparten el contexto de Spring y el mismo contenedor; si una aplicara
+ * solo db/migration y la otra resolviera db/migration+db/demo, la segunda
+ * fallaría la validación de Flyway contra la historia parcial de la primera.
  */
-@SpringBootTest
+@SpringBootTest(properties = "spring.flyway.locations=classpath:db/migration,classpath:db/demo")
 @ActiveProfiles("integration")
 @EnabledIf("dockerDisponible")
 @Transactional

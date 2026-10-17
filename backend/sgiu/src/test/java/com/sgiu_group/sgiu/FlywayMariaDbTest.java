@@ -36,7 +36,14 @@ class FlywayMariaDbTest {
     void aplicaTodasLasMigracionesYLaDemoYLasEntidadesValidan() {
         assertThat(jdbc.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = 1 ORDER BY installed_rank", String.class))
-                .containsExactly("1", "1.1", "2", "3", "3.1", "4", "5", "5.1", "6", "6.1", "7", "7.1", "8", "8.1");
+                .containsExactly("1", "1.1", "2", "3", "3.1", "4", "5", "5.1", "6", "6.1", "7", "7.1", "8", "8.1",
+                        "9", "10");
+
+        // V10: la columna de idempotencia existe en MariaDB real.
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() "
+                        + "AND table_name = 'ventas' AND column_name = 'token_idempotencia'", Integer.class))
+                .isEqualTo(1);
 
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM esp_productos WHERE tipo = 'ELABORADO' AND vendible = 0", Integer.class))
