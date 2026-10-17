@@ -11,6 +11,9 @@ import java.util.List;
 
 public interface PagoVentaRepository extends JpaRepository<PagoVenta, Long> {
 
+    /** A2: pagos de una venta (idempotencia: armar la respuesta de una venta ya registrada). */
+    List<PagoVenta> findByVentaId(Long ventaId);
+
     /**
      * Por método: nombre, cantidad de ventas que lo usaron y monto cobrado con
      * él (en un pago mixto, cada método suma solo su parte).

@@ -64,7 +64,21 @@ public class VentaService {
      */
     @Transactional
     public VentaResponseDTO procesarVenta(VentaRequestDTO request) {
+        // A2: idempotencia. Si este token ya registró una venta (reintento de
+        // red o del ReintentoStock), se devuelve la venta existente sin tocar
+        // stock ni caja otra vez.
+        String token = request.tokenIdempotencia() != null && !request.tokenIdempotencia().isBlank()
+                ? request.tokenIdempotencia().trim()
+                : null;
+        if (token != null) {
+            var existente = ventaRepository.findByTokenIdempotencia(token);
+            if (existente.isPresent()) {
+                return respuestaDeVentaExistente(existente.get());
+            }
+        }
+
         Venta venta = new Venta();
+        venta.setTokenIdempotencia(token);
         // Setear valores requeridos por PR #13 para evitar errores de nulidad
         venta.setIdSesionCaja(0); // Valor por defecto temporal
         venta.setCreadoPorUsuario(0); // Valor por defecto temporal
@@ -138,6 +152,19 @@ public class VentaService {
                     linea.getKey().getId(), linea.getKey().getNombre(), linea.getValue()));
         }
         return new VentaResponseDTO(ventaGuardada.getId(), totalAcumulado, cobro.vuelto(), registrados);
+    }
+
+    /**
+     * A2: respuesta para una venta ya registrada con el mismo token de
+     * idempotencia (el vuelto se calcula como 0: la venta original ya cobró).
+     */
+    private VentaResponseDTO respuestaDeVentaExistente(Venta venta) {
+        List<VentaResponseDTO.PagoRegistradoDTO> registrados = new ArrayList<>();
+        for (PagoVenta pago : pagoRepository.findByVentaId(venta.getId())) {
+            registrados.add(new VentaResponseDTO.PagoRegistradoDTO(
+                    pago.getMetodoPago().getId(), pago.getMetodoPago().getNombre(), pago.getMonto()));
+        }
+        return new VentaResponseDTO(venta.getId(), venta.getTotal(), BigDecimal.ZERO, registrados);
     }
 
     /**

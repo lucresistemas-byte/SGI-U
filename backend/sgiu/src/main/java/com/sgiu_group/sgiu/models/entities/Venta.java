@@ -20,12 +20,16 @@ public class Venta extends BaseEntity {
     private BigDecimal total;
 
     // --- ANCLAJES DE ESCALABILIDAD (Campos Opcionales) ---
-    
+
     @Column(name = "id_sesion_caja")
     private Integer idSesionCaja;
 
     @Column(name = "creado_por_usuario")
     private Integer creadoPorUsuario;
+
+    /** A2: token de idempotencia; un reintento con el mismo token no duplica la venta. */
+    @Column(name = "token_idempotencia", length = 64)
+    private String tokenIdempotencia;
 
     // --- RELACIONES ---
 
@@ -74,6 +78,14 @@ public class Venta extends BaseEntity {
 
     public void setCreadoPorUsuario(Integer creadoPorUsuario) {
         this.creadoPorUsuario = creadoPorUsuario;
+    }
+
+    public String getTokenIdempotencia() {
+        return tokenIdempotencia;
+    }
+
+    public void setTokenIdempotencia(String tokenIdempotencia) {
+        this.tokenIdempotencia = tokenIdempotencia;
     }
 
     public List<LineaVenta> getLineas() {
