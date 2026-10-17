@@ -52,8 +52,13 @@ public class InstallationSecrets {
             Files.writeString(filePath, newSecret, StandardCharsets.UTF_8);
             return newSecret;
         } catch (IOException e) {
+            // A2: sin secreto compartido hardcodeado. Si no se puede persistir,
+            // se genera uno aleatorio solo para esta ejecución (se invalidan
+            // los tokens al reiniciar, que es lo correcto si falla el disco).
             System.err.println("Advertencia: No se pudo persistir el secreto JWT en disco: " + e.getMessage());
-            return "SGIU_FALLBACK_SECURE_SECRET_KEY_FOR_LOCAL_INSTALLATION_256BITS!";
+            byte[] bytes = new byte[32];
+            new SecureRandom().nextBytes(bytes);
+            return Base64.getEncoder().encodeToString(bytes);
         }
     }
 

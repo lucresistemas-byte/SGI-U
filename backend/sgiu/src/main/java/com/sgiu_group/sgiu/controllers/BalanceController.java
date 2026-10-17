@@ -9,7 +9,6 @@ import java.time.LocalDate;
 import java.util.Map;
 
 @RestController
-@CrossOrigin(origins = "*")
 @RequestMapping("/api/balance")
 public class BalanceController {
 

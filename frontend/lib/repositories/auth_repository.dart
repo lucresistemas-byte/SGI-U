@@ -9,6 +9,12 @@ class AuthRepository {
     return _apiService.login(username, password);
   }
 
+  /// A2: cambio de contraseña obligatorio; el backend devuelve un token nuevo.
+  Future<Map<String, dynamic>> cambiarPassword(
+      String passwordActual, String passwordNueva) {
+    return _apiService.cambiarPassword(passwordActual, passwordNueva);
+  }
+
   void setAuthToken(String token) {
     _apiService.setAuthToken(token);
   }

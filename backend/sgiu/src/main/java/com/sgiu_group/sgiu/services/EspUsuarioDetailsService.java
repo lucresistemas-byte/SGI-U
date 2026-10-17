@@ -25,7 +25,7 @@ public class EspUsuarioDetailsService implements UserDetailsService {
         }
         String rol = (usuario.getRol() != null && !usuario.getRol().isBlank())
                 ? usuario.getRol().trim().toUpperCase()
-                : "USER";
+                : "ADMIN";
         if (!rol.startsWith("ROLE_")) {
             rol = "ROLE_" + rol;
         }

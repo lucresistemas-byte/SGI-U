@@ -19,6 +19,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<LoginRequested>(_onLoginRequested);
     on<LogoutRequested>(_onLogoutRequested);
     on<SessionExpired>(_onSessionExpired);
+    on<CambiarPasswordRequested>(_onCambiarPasswordRequested);
 
     // Sesión expirada: el interceptor 401 de ApiService avisa a este bloc.
     ApiService().onSessionExpired = () {
@@ -36,10 +37,33 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(const Unauthenticated());
         return;
       }
-      emit(Authenticated(token));
       _authRepository.setAuthToken(token);
+      // A2: si el token guardado aún exige el cambio de contraseña, la app
+      // vuelve a mostrar la pantalla de cambio antes que el resto.
+      if (_requiereCambioPassword(token)) {
+        emit(PasswordChangeRequired(token));
+        return;
+      }
+      emit(Authenticated(token));
     } else {
       emit(const Unauthenticated());
+    }
+  }
+
+  /// A2: lee el reclamo "cambioPassword" del payload del JWT.
+  static bool _requiereCambioPassword(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return false;
+      final normalized = base64Url.normalize(parts[1]);
+      final payloadString = utf8.decode(base64Url.decode(normalized));
+      final payload = jsonDecode(payloadString);
+      if (payload is Map && payload['cambioPassword'] == true) {
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -85,7 +109,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // L4.1: Save the mDNS service name associated with the backend so the
         // app can remember/reconnect to the same service on next launch.
         await _storageService.saveBackendServiceName(DiscoveryService.serviceType);
-        
+
+        // A2: si el backend pide cambio de contraseña (primer uso con la
+        // clave de fábrica), la app muestra la pantalla de cambio antes
+        // de entrar al sistema.
+        final requiereCambio = response['requiereCambioPassword'] == true;
+        if (requiereCambio) {
+          emit(PasswordChangeRequired(token));
+          return;
+        }
+
         emit(Authenticated(token));
       } else {
         emit(const AuthError('Token no recibido del servidor'));
@@ -107,6 +140,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     await _storageService.deleteToken();
     _authRepository.clearAuthToken();
     emit(const Unauthenticated());
+  }
+
+  /// A2: envía el cambio de contraseña y guarda el token nuevo (sin el
+  /// reclamo) que devuelve el backend.
+  Future<void> _onCambiarPasswordRequested(
+      CambiarPasswordRequested event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    try {
+      final response = await _authRepository.cambiarPassword(
+          event.passwordActual, event.passwordNueva);
+      final token = response['token'];
+      if (token == null || token.isEmpty) {
+        emit(const AuthError('No se recibió confirmación del servidor'));
+        return;
+      }
+      await _storageService.saveToken(token);
+      _authRepository.setAuthToken(token);
+      emit(Authenticated(token));
+    } catch (e) {
+      final message = e.toString().replaceFirst('Exception: ', '');
+      emit(AuthError(message.isEmpty ? 'No se pudo cambiar la contraseña' : message));
+    }
   }
 
   /// Sesión expirada (401 en endpoints): limpia credenciales y emite

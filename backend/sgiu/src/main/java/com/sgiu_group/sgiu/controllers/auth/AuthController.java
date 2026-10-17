@@ -6,6 +6,7 @@ import com.sgiu_group.sgiu.models.entities.EspUsuario;
 import com.sgiu_group.sgiu.repositories.EspUsuarioRepository;
 import com.sgiu_group.sgiu.security.JwtUtil;
 import com.sgiu_group.sgiu.services.EspUsuarioDetailsService;
+import com.sgiu_group.sgiu.services.LoginAttemptService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,7 +26,6 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
 public class AuthController {
 
     @Autowired
@@ -42,6 +42,9 @@ public class AuthController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private LoginAttemptService loginAttemptService;
 
     /**
      * Clase interna para representar una respuesta de login.
@@ -90,9 +93,16 @@ public class AuthController {
 
     /**
      * Endpoint para autenticar usuario y generar token JWT.
+     * A2: 5 credenciales incorrectas seguidas bloquean el login 15 minutos (429).
      */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequestDTO request) {
+        if (loginAttemptService.estaBloqueado(request.username())) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("error", "Demasiados intentos fallidos. Intente de nuevo en "
+                            + loginAttemptService.minutosRestantesDeBloqueo(request.username())
+                            + " minutos."));
+        }
         try {
             // Restauramos la validación estricta de credenciales
             authenticationManager.authenticate(
@@ -102,6 +112,7 @@ public class AuthController {
                     )
             );
         }catch (BadCredentialsException e) {
+            loginAttemptService.registrarFallo(request.username());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                                  .body(Map.of("error", "Credenciales incorrectas"));
         }
@@ -113,7 +124,12 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Usuario no encontrado"));
         }
 
-        final String jwt = jwtUtil.generateToken(userDetails);
+        loginAttemptService.registrarExito(request.username());
+
+        // A2: el reclamo cambioPassword bloquea el resto de la API hasta
+        // que el usuario cambie la contraseña de fábrica.
+        final String jwt = jwtUtil.generateToken(userDetails,
+                Boolean.TRUE.equals(usuario.getRequiereCambioPassword()));
 
         return ResponseEntity.ok(new LoginResponse(jwt, usuario));
     }
@@ -132,13 +148,14 @@ public class AuthController {
         usuario.setUsername(request.username());
         usuario.setPassword(passwordEncoder.encode(request.password()));
         usuario.setActivo(true);
-        usuario.setRol("USER");
+        // A2: solo existe el rol ADMIN (decisión 2026-10-15).
+        usuario.setRol("ADMIN");
         usuario.setRequiereCambioPassword(false);
 
         usuarioRepository.save(usuario);
 
         final UserDetails userDetails = usuarioDetailsService.loadUserByUsername(usuario.getUsername());
-        final String jwt = jwtUtil.generateToken(userDetails);
+        final String jwt = jwtUtil.generateToken(userDetails, false);
 
         return ResponseEntity.ok(new LoginResponse(jwt, usuario));
     }
@@ -176,6 +193,11 @@ public class AuthController {
         usuario.setRequiereCambioPassword(false);
         usuarioRepository.save(usuario);
 
-        return ResponseEntity.ok(Map.of("mensaje", "Contraseña actualizada exitosamente"));
+        // A2: se devuelve un token nuevo SIN el reclamo cambioPassword,
+        // para que el frontend continúe sin tener que volver a entrar.
+        final UserDetails userDetails = usuarioDetailsService.loadUserByUsername(usuario.getUsername());
+        final String jwt = jwtUtil.generateToken(userDetails, false);
+
+        return ResponseEntity.ok(new LoginResponse(jwt, usuario));
     }
 }

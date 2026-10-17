@@ -16,6 +16,22 @@ public class Launcher {
     private static Process dbProcess;
 
     public static void main(String[] args) {
+        // Modo restauración (--restore=<archivo> [--sha256=<hex>]): no levanta
+        // Spring ni la BD; solo verifica/descifra y sale con código de estado.
+        String archivoRestore = null;
+        String shaRestore = null;
+        for (String arg : args) {
+            if (arg.startsWith("--restore=")) {
+                archivoRestore = arg.substring("--restore=".length());
+            } else if (arg.startsWith("--sha256=")) {
+                shaRestore = arg.substring("--sha256=".length());
+            }
+        }
+        if (archivoRestore != null) {
+            int codigo = com.sgiu_group.sgiu.backup.BackupRestoreTool.restaurar(archivoRestore, shaRestore);
+            System.exit(codigo);
+        }
+
         String os = System.getProperty("os.name").toLowerCase();
 
         // LÃƒÂ³gica condicional segÃƒÂºn Sistema Operativo
@@ -177,37 +193,15 @@ public class Launcher {
             System.setProperty("sgiu.instance-id", instanceId);
             System.out.println("ID de instalacion: " + instanceId);
 
-            // A2: secreto JWT único por instalación, persistido en sgiu-jwt.secret
-            String jwtSecret = getOrCreateJwtSecret();
+            // A2: secreto JWT único por instalación (InstallationSecrets):
+            // %LOCALAPPDATA%/SGI-U/sgiu-jwt.secret, generado por instalación.
+            String jwtSecret = InstallationSecrets.getOrCreateJwtSecret();
             System.setProperty("SGIU_JWT_SECRET", jwtSecret);
             System.out.println("Secreto JWT de instalacion cargado.");
         } catch (Exception e) {
             System.err.println("Error obteniendo el ID de instalacion: " + e.getMessage());
             System.setProperty("sgiu.instance-id", "generico");
         }
-    }
-
-    /**
-     * A2: Lee o genera un secreto JWT de 256 bits (base64) único para esta instalación.
-     * El archivo se guarda en %USERPROFILE%/sgiu-jwt.secret y nunca debe compartirse.
-     */
-    private static String getOrCreateJwtSecret() throws java.io.IOException {
-        String userProfile = System.getenv("USERPROFILE");
-        if (userProfile == null || userProfile.isBlank()) {
-            userProfile = System.getProperty("user.home");
-        }
-        java.nio.file.Path secretPath = java.nio.file.Paths.get(userProfile, "sgiu-jwt.secret");
-        if (java.nio.file.Files.exists(secretPath)) {
-            String content = java.nio.file.Files.readString(secretPath, java.nio.charset.StandardCharsets.UTF_8).trim();
-            if (!content.isBlank()) return content;
-        }
-        // Genera 32 bytes aleatorios y codifica en base64
-        byte[] bytes = new byte[32];
-        new java.security.SecureRandom().nextBytes(bytes);
-        String secret = java.util.Base64.getEncoder().encodeToString(bytes);
-        java.nio.file.Files.writeString(secretPath, secret, java.nio.charset.StandardCharsets.UTF_8);
-        System.out.println("Nuevo secreto JWT generado para esta instalacion.");
-        return secret;
     }
 
     private static void configureFirewall() {
@@ -250,6 +244,9 @@ public class Launcher {
         props.add("server.address=0.0.0.0");
         if (os.contains("win")) {
             props.add("spring.datasource.url=jdbc:mariadb://localhost:3307/sgiu_db");
+            // A2: el password de la BD ya no vive en application.yml; el Launcher
+            // lo inyecta porque él mismo crea el usuario con ese password.
+            props.add("spring.datasource.password=sgiu_1234");
         }
         builder.properties(props.toArray(new String[0]));
         builder.run(args);

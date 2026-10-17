@@ -24,7 +24,8 @@ public class JwtUtil {
     @Value("${jwt.secret:}")
     private String configuredSecret;
 
-    @Value("${jwt.expiration:43200000}")
+    /** A2: JWT de 8 horas (decisión del equipo 2026-10-15). */
+    @Value("${jwt.expiration:28800000}")
     private long jwtExpiration;
 
     private String secretKey;
@@ -47,10 +48,11 @@ public class JwtUtil {
         String secretToUse;
         if (this.secretKey != null && !this.secretKey.isBlank()) {
             secretToUse = this.secretKey;
-        } else if (configuredSecret != null && !configuredSecret.isBlank()
-                && !configuredSecret.equals("a7b8C9d0E1f2G3h4I5j6K7l8M9n0O1p2Q3r4S5t6U7v=")) {
+        } else if (configuredSecret != null && !configuredSecret.isBlank()) {
             secretToUse = configuredSecret;
         } else {
+            // A2: sin secreto configurado, cada instalación usa el suyo
+            // generado en InstallationSecrets (fuera del repo).
             secretToUse = InstallationSecrets.getOrCreateJwtSecret();
         }
 
@@ -92,6 +94,15 @@ public class JwtUtil {
      * Genera un token JWT para los detalles del usuario proporcionados incluyendo roles.
      */
     public String generateToken(UserDetails userDetails) {
+        return generateToken(userDetails, false);
+    }
+
+    /**
+     * Genera un token JWT incluyendo el reclamo {@code cambioPassword}:
+     * si es true, el JwtFilter solo deja pasar /api/auth/cambiar-password
+     * hasta que el usuario cambie la contraseña inicial.
+     */
+    public String generateToken(UserDetails userDetails, boolean requiereCambioPassword) {
         Map<String, Object> claims = new HashMap<>();
         if (userDetails.getAuthorities() != null && !userDetails.getAuthorities().isEmpty()) {
             var roles = userDetails.getAuthorities().stream()
@@ -101,7 +112,15 @@ public class JwtUtil {
             String rol = roles.get(0).replace("ROLE_", "");
             claims.put("rol", rol);
         }
+        claims.put("cambioPassword", requiereCambioPassword);
         return createToken(claims, userDetails.getUsername());
+    }
+
+    /**
+     * Indica si el token exige cambio de contraseña obligatorio.
+     */
+    public boolean requiereCambioPassword(String token) {
+        return Boolean.TRUE.equals(extractClaim(token, claims -> claims.get("cambioPassword", Boolean.class)));
     }
 
     /**
