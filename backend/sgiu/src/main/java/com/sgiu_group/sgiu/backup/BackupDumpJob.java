@@ -28,11 +28,22 @@ public class BackupDumpJob {
     @Value("${spring.datasource.username:sgiu_user}")
     private String dbUser;
 
-    @Value("${spring.datasource.password:sgiu_1234}")
+    // Sin password por defecto: en el instalador lo inyecta Launcher
+    // (application.yml tampoco tiene default; en dev viene del entorno).
+    @Value("${spring.datasource.password:}")
     private String dbPassword;
+
+    @Value("${spring.datasource.url:jdbc:mariadb://localhost:3307/sgiu_db}")
+    private String dbUrl;
 
     @Value("${sgiu.backup.catchup.enabled:true}")
     private boolean catchupHabilitado;
+
+    @Value("${sgiu.backup.retention.local-days:14}")
+    private int retencionLocalDias;
+
+    @Value("${sgiu.backup.retention.remote-days:30}")
+    private int retencionRemotaDias;
 
     // Se ejecuta al iniciar la aplicación (Catch-up si la PC estuvo apagada en el cron nocturno)
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
@@ -47,12 +58,8 @@ public class BackupDumpJob {
                 // Espera de gracia para que la app complete su arranque sin competencia de I/O
                 Thread.sleep(5000);
                 String prefijoHoy = "sgiu_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-                File dirBackups = new File("backups");
-                boolean existeHoy = false;
-                if (dirBackups.exists() && dirBackups.isDirectory()) {
-                    File[] archivos = dirBackups.listFiles((dir, name) -> name.startsWith(prefijoHoy) && name.endsWith(".sql.gz"));
-                    existeHoy = (archivos != null && archivos.length > 0);
-                }
+                File dirBackups = carpetaBackups();
+                boolean existeHoy = existeRespaldoDeHoy(dirBackups, prefijoHoy);
 
                 if (!existeHoy) {
                     log.info("[BACKUP CATCH-UP] No se encontró respaldo nocturno de hoy ({}). Computadora posiblemente apagada. Ejecutando respaldo automático en segundo plano...", prefijoHoy);
@@ -66,6 +73,20 @@ public class BackupDumpJob {
                 log.warn("[BACKUP CATCH-UP] Error al ejecutar respaldo de contingencia al inicio: {}", e.getMessage());
             }
         });
+    }
+
+    /**
+     * Existe un respaldo de hoy? Considera tanto el .sql.gz plano como el
+     * .sql.gz.enc (flujo real con cifrado A8). Package-private para tests.
+     */
+    boolean existeRespaldoDeHoy(File dirBackups, String prefijoHoy) {
+        if (!dirBackups.exists() || !dirBackups.isDirectory()) {
+            return false;
+        }
+        File[] archivos = dirBackups.listFiles((dir, name) ->
+                name.startsWith(prefijoHoy)
+                        && (name.endsWith(".sql.gz") || name.endsWith(".sql.gz.enc")));
+        return archivos != null && archivos.length > 0;
     }
 
     // Se ejecuta según cron (default: 03:30 AM todos los días)
@@ -87,7 +108,11 @@ public class BackupDumpJob {
 
         File dump = generarDumpComprimido(codigoCliente);
 
-        // A8: Cifra el dump con AES-256-GCM antes de subirlo
+        // A8: Cifra el dump con AES-256-GCM antes de subirlo y persiste el
+        // SHA-256 del .gz (se verifica al restaurar, después de descifrar).
+        String shaGz = calcularSha256(dump);
+        escribirChecksum(new File(dump.getParentFile(), dump.getName() + ".sha256"), shaGz);
+
         File dumpCifrado;
         try {
             dumpCifrado = encryptionService.cifrar(dump);
@@ -97,8 +122,18 @@ public class BackupDumpJob {
             throw new IOException("Error al cifrar el backup: " + e.getMessage(), e);
         }
 
+        // SHA-256 del .enc: detecta corrupción de red ANTES de descargarlo entero.
+        String shaEnc = calcularSha256(dumpCifrado);
+        escribirChecksum(new File(dumpCifrado.getParentFile(), dumpCifrado.getName() + ".sha256"), shaEnc);
+
         String ubicacion = backupUploader.subirABucket(dumpCifrado, codigoCliente);
         log.info("[BACKUP JOB] Backup cifrado y almacenado exitosamente: {}", ubicacion);
+
+        // Rotaciones: la local nunca falla el backup del día; la remota
+        // tampoco (BackupUploader ya loguea y devuelve 0 en error).
+        rotarBackupsLocales(retencionLocalDias);
+        backupUploader.limpiarRemotosMasAntiguos(codigoCliente, retencionRemotaDias);
+
         return ubicacion;
     }
 
@@ -107,7 +142,7 @@ public class BackupDumpJob {
     private String dumpPathConfig;
 
     public File generarDumpComprimido(String codigoCliente) throws IOException, InterruptedException {
-        File dirBackups = new File("backups");
+        File dirBackups = carpetaBackups();
         if (!dirBackups.exists()) {
             dirBackups.mkdirs();
         }
@@ -122,13 +157,15 @@ public class BackupDumpJob {
 
         List<String> comando = new ArrayList<>(List.of(
                 dumpExe,
-                "--databases", "sgiu_db",
+                "--databases", extraerBaseDeDatos(),
                 "--routines",
                 "--triggers",
+                // Incluye eventos: los cron de la app quedan protegidos por el respaldo.
+                "--events",
                 "--single-transaction",
                 "-u" + dbUser,
                 "-p" + dbPassword,
-                "-P3307"
+                "-P" + extraerPuerto()
         ));
 
         ProcessBuilder pb = new ProcessBuilder(comando);
@@ -197,7 +234,38 @@ public class BackupDumpJob {
     }
 
     /**
-     * A6: Resuelve la ruta de mariadb-dump.exe: primero usa la propiedad sgiu.backup.dump.path,
+     * A6/retención: borra en {@code backups/} los respaldos con más de
+     * {@code dias} días (.sql.gz, .enc y .sha256 asociados). Nunca lanza:
+     * la retención no debe abortar el respaldo del día.
+     */
+    public int rotarBackupsLocales(int dias) {
+        if (dias <= 0) {
+            return 0;
+        }
+        File dirBackups = carpetaBackups();
+        if (!dirBackups.exists() || !dirBackups.isDirectory()) {
+            return 0;
+        }
+        long corte = System.currentTimeMillis() - dias * 24L * 3600_000L;
+        int borrados = 0;
+        File[] archivos = dirBackups.listFiles((dir, name) ->
+                name.endsWith(".sql.gz") || name.endsWith(".sql.gz.enc") || name.endsWith(".sha256"));
+        if (archivos == null) {
+            return 0;
+        }
+        for (File f : archivos) {
+            if (f.lastModified() < corte) {
+                if (f.delete()) {
+                    borrados++;
+                    log.info("[BACKUP ROTACIÓN] Eliminado local {} (más antiguo que {} días)", f.getName(), dias);
+                }
+            }
+        }
+        return borrados;
+    }
+
+    /**
+     * A6: resuelve la ruta de mariadb-dump.exe: primero usa la propiedad sgiu.backup.dump.path,
      * luego busca junto al instalador (content/bin/), y por último el PATH del sistema.
      */
     private String resolverRutaDump() throws IOException {
@@ -216,8 +284,46 @@ public class BackupDumpJob {
         return "mariadb-dump";
     }
 
+    /** Carpeta de respaldos locales (package-private para tests). */
+    File carpetaBackups() {
+        return new File("backups");
+    }
+
+    /** Puerto del dump tomado de spring.datasource.url (3307 en Windows, 3306 en Docker). */
+    String extraerPuerto() {
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile(":(\\d+)/").matcher(dbUrl == null ? "" : dbUrl);
+        return m.find() ? m.group(1) : "3307";
+    }
+
+    /** Base de datos tomada de spring.datasource.url (default sgiu_db). */
+    String extraerBaseDeDatos() {
+        if (dbUrl == null || dbUrl.isBlank()) {
+            return "sgiu_db";
+        }
+        int barra = dbUrl.lastIndexOf('/');
+        if (barra < 0 || barra == dbUrl.length() - 1) {
+            return "sgiu_db";
+        }
+        String db = dbUrl.substring(barra + 1);
+        int interrogacion = db.indexOf('?');
+        return interrogacion >= 0 ? db.substring(0, interrogacion) : db;
+    }
+
+    /** Escribe el checksum en formato compatible con `sha256sum -c`. */
+    void escribirChecksum(File destino, String sha256Hex) throws IOException {
+        try (Writer w = new OutputStreamWriter(new FileOutputStream(destino), StandardCharsets.UTF_8)) {
+            w.write(sha256Hex + "  " + quitarExtChecksum(destino.getName()) + System.lineSeparator());
+        }
+        log.info("[BACKUP DUMP] Checksum escrito: {}", destino.getName());
+    }
+
+    private static String quitarExtChecksum(String nombre) {
+        return nombre.endsWith(".sha256") ? nombre.substring(0, nombre.length() - ".sha256".length()) : nombre;
+    }
+
     /** A6: Calcula el SHA-256 de un archivo y lo devuelve en hex. */
-    private String calcularSha256(File archivo) {
+    public String calcularSha256(File archivo) {
         try {
             java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
             try (java.io.FileInputStream fis = new java.io.FileInputStream(archivo)) {
