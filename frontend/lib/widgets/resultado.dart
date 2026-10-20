@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../utils/numeros.dart';
 
@@ -69,7 +70,7 @@ class ExplicacionMonto extends StatelessWidget {
             style: AppTypography.etiqueta.copyWith(height: 1.3, color: color)),
         if (negativo && siNegativo != null)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AppSpacing.espacioMinimo),
             child: Text(siNegativo!,
                 textAlign: textAlign,
                 style: AppTypography.etiqueta.copyWith(
@@ -77,7 +78,7 @@ class ExplicacionMonto extends StatelessWidget {
           ),
         for (final extra in extras)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AppSpacing.espacioMinimo),
             child: Text(extra,
                 textAlign: textAlign,
                 style: AppTypography.etiqueta

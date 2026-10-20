@@ -130,7 +130,7 @@ class _SideMenuState extends State<SideMenu> {
           width: double.infinity,
           padding: EdgeInsets.symmetric(
             vertical: AppSpacing.espacioMedio,
-            horizontal: compacto ? 0 : AppSpacing.espacioEstandar,
+            horizontal: compacto ? AppSpacing.espacioNinguno : AppSpacing.espacioEstandar,
           ),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.seleccionFondo : AppColors.transparente,

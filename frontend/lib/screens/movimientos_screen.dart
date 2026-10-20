@@ -460,18 +460,16 @@ class _MovimientosContentState extends State<MovimientosContent> {
                 children: [
                   Text(
                     texto ?? _formatMonto(valor),
-                    style: TextStyle(
-                        fontSize: grande ? 26 : 22,
-                        fontWeight: FontWeight.bold,
-                        color: color),
+                    style: (grande
+                            ? AppTypography.numeroKpi
+                            : AppTypography.numeroResumen)
+                        .copyWith(color: color),
                   ),
                   if (porcentaje != null) ...[
                     const SizedBox(width: AppSpacing.espacioChico),
                     Text(formatPorcentaje(porcentaje),
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: color)),
+                        style: AppTypography.etiqueta.copyWith(
+                            fontWeight: FontWeight.w600, color: color)),
                   ],
                 ],
               ),

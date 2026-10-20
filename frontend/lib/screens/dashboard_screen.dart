@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../models/dashboard_models.dart';
 import '../models/metodo_pago.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_elevations.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -447,11 +448,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       key: key,
       constraints: BoxConstraints(minHeight: grande ? 230 : 0),
-      padding: EdgeInsets.all(grande ? 28 : AppSpacing.espacioSeccion),
-      decoration: BoxDecoration(
+      padding: EdgeInsets.all(
+          grande ? AppSpacing.espacioDestacado : AppSpacing.espacioSeccion),
+      decoration: const BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: AppElevations.sombraTarjetaSuave,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -478,7 +480,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
-                Text(monto, style: TextStyle(fontSize: grande ? 36 : 32, fontWeight: FontWeight.bold, color: montoColor)),
+                Text(monto, style: (grande ? AppTypography.numeroKpiGrande : AppTypography.numeroKpiMediano).copyWith(color: montoColor)),
                 if (porcentaje != null) ...[
                   const SizedBox(width: AppSpacing.espacioChico),
                   Text(formatPorcentaje(porcentaje),
@@ -500,7 +502,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       key: const Key('dashboard_saldo_caja'),
       constraints: const BoxConstraints(minHeight: 230),
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
       decoration: BoxDecoration(
         color: AppColors.marcaActiva,
         borderRadius: AppRadii.bordeTarjeta,
@@ -517,7 +519,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(monto, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.sobreMarca)),
+            child: Text(monto, style: AppTypography.numeroKpiGrande.copyWith(color: AppColors.sobreMarca)),
           ),
           const SizedBox(height: 10),
           explicacion,
@@ -584,10 +586,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       key: key,
       padding: const EdgeInsets.symmetric(
           vertical: AppSpacing.espacioSeccion, horizontal: AppSpacing.espacioEstandar),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: AppElevations.sombraTarjetaSuave,
       ),
       child: Column(
         children: [
@@ -598,7 +600,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: AppSpacing.espacioEstandar),
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(valor, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.textoPrincipal)),
+            child: Text(valor, style: AppTypography.numeroKpiGrande.copyWith(color: AppColors.textoPrincipal)),
           ),
           const SizedBox(height: AppSpacing.espacioChico),
           ExplicacionMonto(explicacion, textAlign: TextAlign.center),
@@ -611,10 +613,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       height: 185,
       padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: AppElevations.sombraTarjetaSuave,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,7 +630,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: AppColors.textoPrincipal)),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.espacioMedio, vertical: 6),
+                    horizontal: AppSpacing.espacioMedio,
+                    vertical: AppSpacing.espacioMedioChico),
                 decoration: BoxDecoration(
                     border: Border.all(color: AppColors.bordeSuave),
                     borderRadius: AppRadii.bordeChico),
@@ -687,10 +690,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: AppElevations.sombraTarjetaSuave,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -761,10 +764,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: AppElevations.sombraTarjetaSuave,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

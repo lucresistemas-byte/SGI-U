@@ -241,7 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.espacioGrande,
-            vertical: 14,
+            vertical: AppSpacing.espacioMedioGrande,
           ),
         ),
         validator: (value) =>
@@ -286,7 +286,7 @@ class _LoginScreenState extends State<LoginScreen> {
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.espacioGrande,
-            vertical: 14,
+            vertical: AppSpacing.espacioMedioGrande,
           ),
         ),
         validator: (value) =>

@@ -357,16 +357,13 @@ class _BalanceScreenState extends State<BalanceScreen> {
                           children: [
                             Text(
                               texto ?? _currencyFormat.format(valor),
-                              style: TextStyle(
-                                  fontSize: moneySize,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorValor),
+                              style: AppTypography.numeroKpi.copyWith(
+                                  fontSize: moneySize, color: colorValor),
                             ),
                             if (porcentaje != null) ...[
                               const SizedBox(width: AppSpacing.espacioChico),
                               Text(formatPorcentaje(porcentaje),
-                                  style: TextStyle(
-                                      fontSize: 14,
+                                  style: AppTypography.textoChico.copyWith(
                                       fontWeight: FontWeight.w600,
                                       color: colorValor)),
                             ],
