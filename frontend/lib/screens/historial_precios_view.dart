@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/historial_precio.dart';
 import '../services/api_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
+import '../theme/app_spacing.dart';
 import '../utils/numeros.dart';
+import '../widgets/app_button.dart';
+import '../widgets/app_data_table.dart';
 import '../widgets/cargando_diferido.dart';
+import '../widgets/estado_seccion.dart';
 import '../widgets/tabla_ajustada.dart';
 
 /// Pestaña "Historial de precios" de Productos: cada cambio de costo o
@@ -73,26 +79,26 @@ class _HistorialPreciosViewState extends State<HistorialPreciosView> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Wrap(
-            spacing: 12,
-            runSpacing: 12,
+            spacing: AppSpacing.espacioMedio,
+            runSpacing: AppSpacing.espacioMedio,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              OutlinedButton.icon(
+              AppButton.secondary(
                 key: const Key('historial_desde'),
-                icon: const Icon(Icons.calendar_today, size: 16),
-                label: Text('Desde ${_fecha.format(_desde)}'),
+                icono: Icons.calendar_today,
                 onPressed: () => _elegirFecha(desde: true),
+                child: Text('Desde ${_fecha.format(_desde)}'),
               ),
-              OutlinedButton.icon(
+              AppButton.secondary(
                 key: const Key('historial_hasta'),
-                icon: const Icon(Icons.calendar_today, size: 16),
-                label: Text('Hasta ${_fecha.format(_hasta)}'),
+                icono: Icons.calendar_today,
                 onPressed: () => _elegirFecha(desde: false),
+                child: Text('Hasta ${_fecha.format(_hasta)}'),
               ),
               SizedBox(
                 width: 220,
@@ -108,15 +114,15 @@ class _HistorialPreciosViewState extends State<HistorialPreciosView> {
                   onSubmitted: (_) => _buscar(),
                 ),
               ),
-              ElevatedButton.icon(
+              AppButton.primary(
                 key: const Key('historial_buscar'),
-                icon: const Icon(Icons.search),
-                label: const Text('Buscar'),
+                icono: Icons.search,
                 onPressed: _buscar,
+                child: const Text('Buscar'),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.espacioEstandar),
           Expanded(child: _tabla()),
         ],
       ),
@@ -125,46 +131,49 @@ class _HistorialPreciosViewState extends State<HistorialPreciosView> {
 
   Widget _tabla() {
     if (_cargando) return const CargandoDiferido();
-    if (_error != null) return Center(child: Text(_error!, style: const TextStyle(color: Colors.redAccent)));
+    if (_error != null) {
+      return ErrorState(mensaje: _error!, onReintentar: _buscar);
+    }
     if (_filas.isEmpty) {
-      return const Center(
-          child: Text('No hay cambios de precio en ese período.', style: TextStyle(color: Color(0xFF64748B))));
+      return const EmptyState(
+        mensaje: 'No hay cambios de precio en ese período.',
+        icono: Icons.history,
+      );
     }
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-      child: TablaAjustada(
-        tabla: DataTable(
-          columnSpacing: 20,
-          horizontalMargin: 16,
-          key: const Key('tabla_historial_precios'),
-          headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
-          columns: const [
-            DataColumn(columnWidth: columnaAjustable, label: Text('Fecha', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(columnWidth: columnaFlexibleSecundaria, label: Text('Producto', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(columnWidth: columnaAjustable, label: Text('Costo', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(columnWidth: columnaAjustable, label: Text('Precio', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(columnWidth: columnaAjustable, label: Text('Modo', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(columnWidth: columnaFlexible, label: Text('Causa', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(columnWidth: columnaAjustable, label: Text('Usuario', style: TextStyle(fontWeight: FontWeight.bold))),
-          ],
-          rows: [
-            for (final h in _filas)
-              DataRow(key: ValueKey('historial_${h.id}'), cells: [
-                DataCell(Text(_fechaHora.format(h.fecha.toLocal()))),
-                DataCell(Text('${h.nombre} (${h.codigo})', maxLines: 2, overflow: TextOverflow.ellipsis)),
-                DataCell(Text('${_pesos(h.costoAnterior)} → ${_pesos(h.costoNuevo)}')),
-                DataCell(Text(h.cambioPrecio ? '${_pesos(h.precioAnterior)} → ${_pesos(h.precioNuevo)}' : '—',
-                    style: TextStyle(fontWeight: h.cambioPrecio ? FontWeight.bold : FontWeight.normal))),
-                DataCell(Text(switch (h.modoPrecio) {
-                  'MANUAL' => 'A mano',
-                  'COSTO_MAS_FIJO' => 'Costo + fijo',
-                  _ => 'Margen',
-                })),
-                DataCell(Text(h.causa, overflow: TextOverflow.ellipsis, maxLines: 2)),
-                DataCell(Text(h.usuario ?? '—')),
-              ]),
-          ],
-        ),
+      decoration: const BoxDecoration(
+          color: AppColors.fondoSuperficie, borderRadius: AppRadii.bordeTarjeta),
+      child: AppDataTable(
+        key: const Key('tabla_historial_precios'),
+        separacionColumnas: AppSpacing.espacioGrande,
+        margenHorizontal: AppSpacing.espacioEstandar,
+        colorEncabezado: AppColors.fondoApp,
+        columnas: const [
+          DataColumn(columnWidth: columnaAjustable, label: Text('Fecha')),
+          DataColumn(columnWidth: columnaFlexibleSecundaria, label: Text('Producto')),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Costo')),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Precio')),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Modo')),
+          DataColumn(columnWidth: columnaFlexible, label: Text('Causa')),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Usuario')),
+        ],
+        filas: [
+          for (final h in _filas)
+            DataRow(key: ValueKey('historial_${h.id}'), cells: [
+              DataCell(Text(_fechaHora.format(h.fecha.toLocal()))),
+              DataCell(Text('${h.nombre} (${h.codigo})', maxLines: 2, overflow: TextOverflow.ellipsis)),
+              DataCell(Text('${_pesos(h.costoAnterior)} → ${_pesos(h.costoNuevo)}')),
+              DataCell(Text(h.cambioPrecio ? '${_pesos(h.precioAnterior)} → ${_pesos(h.precioNuevo)}' : '—',
+                  style: TextStyle(fontWeight: h.cambioPrecio ? FontWeight.bold : FontWeight.normal))),
+              DataCell(Text(switch (h.modoPrecio) {
+                'MANUAL' => 'A mano',
+                'COSTO_MAS_FIJO' => 'Costo + fijo',
+                _ => 'Margen',
+              })),
+              DataCell(Text(h.causa, overflow: TextOverflow.ellipsis, maxLines: 2)),
+              DataCell(Text(h.usuario ?? '—')),
+            ]),
+        ],
       ),
     );
   }

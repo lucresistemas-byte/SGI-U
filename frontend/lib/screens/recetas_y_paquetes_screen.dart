@@ -12,15 +12,15 @@ class RecetasYPaquetesScreen extends StatelessWidget {
     return const DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: AppColors.grisFondo,
+        backgroundColor: AppColors.fondoApp,
         body: Column(
           children: [
             Material(
-              color: Colors.white,
+              color: AppColors.fondoSuperficie,
               child: TabBar(
                 key: Key('tabs_recetas_paquetes'),
-                labelColor: AppColors.verdePrincipal,
-                indicatorColor: AppColors.verdePrincipal,
+                labelColor: AppColors.marca,
+                indicatorColor: AppColors.marca,
                 tabs: [
                   Tab(key: Key('tab_recetas'), icon: Icon(Icons.menu_book), text: 'Recetas'),
                   Tab(key: Key('tab_paquetes'), icon: Icon(Icons.card_giftcard), text: 'Paquetes'),

@@ -4,9 +4,17 @@ import '../models/insumo.dart';
 import '../models/paquete.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
+import '../theme/app_spacing.dart';
 import '../utils/numeros.dart';
+import '../widgets/app_button.dart';
+import '../widgets/app_data_table.dart';
+import '../widgets/app_snack_bar.dart';
 import '../widgets/cargando_diferido.dart';
+import '../widgets/estado_chip.dart';
+import '../widgets/estado_seccion.dart';
 import '../widgets/paquete_form_dialog.dart';
+import '../widgets/section_header.dart';
 import '../widgets/tabla_ajustada.dart';
 
 /// Pestaña Paquetes de "Recetas y paquetes": cada paquete se arma con
@@ -46,10 +54,11 @@ class _PaquetesScreenState extends State<PaquetesScreen> {
 
   void _avisar(String mensaje, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(mensaje),
-      backgroundColor: error ? Colors.redAccent : AppColors.verdePrincipal,
-    ));
+    if (error) {
+      AppSnackBar.error(context, mensaje);
+    } else {
+      AppSnackBar.exito(context, mensaje);
+    }
   }
 
   Future<void> _abrir({Paquete? existente}) async {
@@ -90,35 +99,22 @@ class _PaquetesScreenState extends State<PaquetesScreen> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Paquetes',
-                        style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-                    SizedBox(height: 4),
-                    Text('Precio = costo del armado + monto fijo, redondeado hacia arriba a \$100',
-                        style: TextStyle(fontSize: 14, color: Color(0xFF64748B))),
-                  ],
-                ),
-              ),
-              ElevatedButton.icon(
-                key: const Key('nuevo_paquete_button'),
-                icon: const Icon(Icons.add),
-                label: const Text('Nuevo paquete'),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.verdePrincipal, foregroundColor: Colors.white),
-                onPressed: () => _abrir(),
-              ),
-            ],
+          SectionHeader(
+            titulo: 'Paquetes',
+            subtitulo:
+                'Precio = costo del armado + monto fijo, redondeado hacia arriba a \$100',
+            accion: AppButton.primary(
+              key: const Key('nuevo_paquete_button'),
+              icono: Icons.add,
+              onPressed: () => _abrir(),
+              child: const Text('Nuevo paquete'),
+            ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.espacioGrande),
           Expanded(child: _tabla()),
         ],
       ),
@@ -128,62 +124,64 @@ class _PaquetesScreenState extends State<PaquetesScreen> {
   Widget _tabla() {
     if (_cargando) return const CargandoDiferido();
     if (_paquetes.isEmpty) {
-      return const Center(
-          child: Text('No hay paquetes. Cree uno con "Nuevo paquete".', style: TextStyle(color: Color(0xFF64748B))));
+      return const EmptyState(
+        mensaje: 'No hay paquetes. Cree uno con "Nuevo paquete".',
+        icono: Icons.card_giftcard,
+      );
     }
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-      child: TablaAjustada(
-        tabla: DataTable(
-          columnSpacing: 20,
-          horizontalMargin: 16,
-          headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
-          columns: const [
-            DataColumn(columnWidth: columnaAjustable, label: Text('Código', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(columnWidth: columnaAjustable, label: Text('Nombre', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(columnWidth: columnaFlexible, label: Text('Armado', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(columnWidth: columnaAjustable, label: Text('Costo armado', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
-            DataColumn(columnWidth: columnaAjustable, label: Text('Monto fijo', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
-            DataColumn(columnWidth: columnaAjustable, label: Text('Precio', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
-            DataColumn(columnWidth: columnaAjustable, label: Text('Ganancia', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
-            DataColumn(columnWidth: columnaAjustable, label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold))),
-          ],
-          rows: [
-            for (final p in _paquetes)
-              DataRow(key: ValueKey('fila_paquete_${p.codigo}'), cells: [
-                DataCell(Text(p.codigo, style: const TextStyle(fontWeight: FontWeight.w600))),
-                DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(p.nombre),
-                  if (!p.activo) ...[
-                    const SizedBox(width: 8),
-                    const Chip(label: Text('Inactivo'), visualDensity: VisualDensity.compact),
-                  ],
-                ])),
-                DataCell(Text(p.armado.map((f) => f.articuloNombre ?? '').join(', '),
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
-                DataCell(Text(formatPesos(p.costoArmado))),
-                DataCell(Text(formatPesos(p.montoFijo))),
-                DataCell(Text(formatPesos(p.precioVenta),
-                    key: Key('precio_paquete_${p.codigo}'), style: const TextStyle(fontWeight: FontWeight.bold))),
-                DataCell(Text(formatPesos(p.gananciaPesos), key: Key('ganancia_paquete_${p.codigo}'))),
-                DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
-                  IconButton(
-                    key: Key('editar_paquete_${p.codigo}'),
-                    tooltip: 'Editar',
-                    icon: const Icon(Icons.edit, color: Color(0xFF64748B)),
-                    onPressed: () => _abrir(existente: p),
-                  ),
-                  IconButton(
-                    key: Key('estado_paquete_${p.codigo}'),
-                    tooltip: p.activo ? 'Desactivar' : 'Reactivar',
-                    icon: Icon(p.activo ? Icons.toggle_on : Icons.toggle_off,
-                        color: p.activo ? AppColors.verdePrincipal : const Color(0xFF94A3B8)),
-                    onPressed: () => _cambiarEstado(p),
-                  ),
-                ])),
-              ]),
-          ],
-        ),
+      decoration: const BoxDecoration(
+          color: AppColors.fondoSuperficie, borderRadius: AppRadii.bordeTarjeta),
+      child: AppDataTable(
+        separacionColumnas: AppSpacing.espacioGrande,
+        margenHorizontal: AppSpacing.espacioEstandar,
+        colorEncabezado: AppColors.fondoApp,
+        columnas: const [
+          DataColumn(columnWidth: columnaAjustable, label: Text('Código')),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Nombre')),
+          DataColumn(columnWidth: columnaFlexible, label: Text('Armado')),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Costo armado'), numeric: true),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Monto fijo'), numeric: true),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Precio'), numeric: true),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Ganancia'), numeric: true),
+          DataColumn(columnWidth: columnaAjustable, label: Text('Acciones')),
+        ],
+        filas: [
+          for (final p in _paquetes)
+            DataRow(key: ValueKey('fila_paquete_${p.codigo}'), cells: [
+              DataCell(Text(p.codigo,
+                  style: const TextStyle(fontWeight: FontWeight.w600))),
+              DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
+                Text(p.nombre),
+                if (!p.activo) ...[
+                  const SizedBox(width: AppSpacing.espacioChico),
+                  const EstadoChip(etiqueta: 'Inactivo', tono: TonoEstado.neutro),
+                ],
+              ])),
+              DataCell(Text(p.armado.map((f) => f.articuloNombre ?? '').join(', '),
+                  style: const TextStyle(color: AppColors.textoInactivo))),
+              DataCell(Text(formatPesos(p.costoArmado))),
+              DataCell(Text(formatPesos(p.montoFijo))),
+              DataCell(Text(formatPesos(p.precioVenta),
+                  key: Key('precio_paquete_${p.codigo}'), style: const TextStyle(fontWeight: FontWeight.bold))),
+              DataCell(Text(formatPesos(p.gananciaPesos), key: Key('ganancia_paquete_${p.codigo}'))),
+              DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
+                IconButton(
+                  key: Key('editar_paquete_${p.codigo}'),
+                  tooltip: 'Editar',
+                  icon: const Icon(Icons.edit, color: AppColors.textoInactivo),
+                  onPressed: () => _abrir(existente: p),
+                ),
+                IconButton(
+                  key: Key('estado_paquete_${p.codigo}'),
+                  tooltip: p.activo ? 'Desactivar' : 'Reactivar',
+                  icon: Icon(p.activo ? Icons.toggle_on : Icons.toggle_off,
+                      color: p.activo ? AppColors.marca : AppColors.textoInactivo),
+                  onPressed: () => _cambiarEstado(p),
+                ),
+              ])),
+            ]),
+        ],
       ),
     );
   }

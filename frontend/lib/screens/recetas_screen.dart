@@ -11,8 +11,18 @@ import '../utils/numeros.dart';
 import '../models/receta.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/app_button.dart';
+import '../widgets/app_data_table.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/app_snack_bar.dart';
 import '../widgets/cargando_diferido.dart';
+import '../widgets/estado_chip.dart';
+import '../widgets/estado_seccion.dart';
+import '../widgets/section_header.dart';
 import '../widgets/tabla_ajustada.dart';
 
 class RecetasScreen extends StatefulWidget {
@@ -106,10 +116,10 @@ class _RecetasScreenState extends State<RecetasScreen> {
                   key: const Key('producto_receta_fijo')),
             ),
             if (!state.productoEditadoActivo)
-              const Chip(
+              const EstadoChip(
                 key: Key('producto_inactivo_armador'),
-                label: Text('Producto inactivo'),
-                visualDensity: VisualDensity.compact,
+                etiqueta: 'Producto inactivo',
+                tono: TonoEstado.neutro,
               ),
           ],
         ),
@@ -133,10 +143,11 @@ class _RecetasScreenState extends State<RecetasScreen> {
         const SizedBox(height: 12),
         if (state.usarProductoNuevo) ..._camposProductoNuevo(state)
         else if (elaborados.isEmpty)
-          const Text(
+          Text(
             'No hay productos elaborados sin receta. Cree uno nuevo.',
-            key: Key('sin_elaborados_sin_receta'),
-            style: TextStyle(color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+            key: const Key('sin_elaborados_sin_receta'),
+            style: AppTypography.texto.copyWith(
+                color: AppColors.textoInactivo, fontStyle: FontStyle.italic),
           )
         else
           DropdownButtonFormField<String>(
@@ -275,20 +286,10 @@ class _RecetasScreenState extends State<RecetasScreen> {
               if (_isBuilding) {
                 setState(() => _isBuilding = false);
               }
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.successMessage!),
-                  backgroundColor: AppColors.verdePrincipal,
-                ),
-              );
+              AppSnackBar.exito(context, state.successMessage!);
             }
             if (state.errorMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.errorMessage!),
-                  backgroundColor: Colors.redAccent,
-                ),
-              );
+              AppSnackBar.error(context, state.errorMessage!);
             }
             if (state.successMessage != null || state.errorMessage != null) {
               _bloc.add(const LimpiarMensajesRecetas());
@@ -312,107 +313,60 @@ class _RecetasScreenState extends State<RecetasScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Recetas de Fabricación',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Defina insumos y costos para productos elaborados',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-            ElevatedButton.icon(
-              key: const Key('nueva_receta_button'),
-              icon: const Icon(Icons.add),
-              label: const Text('Nueva Receta'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.verdePrincipal,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: _iniciarNuevaReceta,
-            ),
-          ],
+        SectionHeader(
+          titulo: 'Recetas de Fabricación',
+          subtitulo: 'Defina insumos y costos para productos elaborados',
+          accion: AppButton.primary(
+            key: const Key('nueva_receta_button'),
+            icono: Icons.add,
+            onPressed: _iniciarNuevaReceta,
+            child: const Text('Nueva Receta'),
+          ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.espacioSeccion),
         if (state.isLoading && state.recetas.isEmpty)
           const Expanded(child: CargandoDiferido())
         else if (state.recetas.isEmpty)
           const Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.menu_book_outlined, size: 64, color: Color(0xFF94A3B8)),
-                  SizedBox(height: 12),
-                  Text(
-                    'No hay recetas registradas',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
+            child: EmptyState(
+              mensaje: 'No hay recetas registradas',
+              icono: Icons.menu_book_outlined,
             ),
           )
         else
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.fondoSuperficie,
+                borderRadius: AppRadii.bordeTarjeta,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: AppColors.textoPrincipal.withValues(alpha: 0.04),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: TablaAjustada(
-                  tabla: DataTable(
-                    columnSpacing: 20,
-                    horizontalMargin: 16,
-                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
-                    columns: const [
-                      DataColumn(columnWidth: columnaAjustable, label: Text('Producto Elaborado', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(columnWidth: columnaFlexible, label: Text('Nombre Receta', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(columnWidth: columnaAjustable, label: Text('Insumos', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(columnWidth: columnaAjustable, label: Text('Costos Adic.', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(columnWidth: columnaAjustable, label: Text('Costo Total', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(columnWidth: columnaAjustable, label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.bold))),
-                    ],
-                    rows: state.recetas.map((r) {
+                borderRadius: AppRadii.bordeTarjeta,
+                child: AppDataTable(
+                  separacionColumnas: AppSpacing.espacioGrande,
+                  margenHorizontal: AppSpacing.espacioEstandar,
+                  colorEncabezado: AppColors.fondoApp,
+                  columnas: const [
+                    DataColumn(columnWidth: columnaAjustable, label: Text('Producto Elaborado')),
+                    DataColumn(columnWidth: columnaFlexible, label: Text('Nombre Receta')),
+                    DataColumn(columnWidth: columnaAjustable, label: Text('Insumos')),
+                    DataColumn(columnWidth: columnaAjustable, label: Text('Costos Adic.')),
+                    DataColumn(columnWidth: columnaAjustable, label: Text('Costo Total')),
+                    DataColumn(columnWidth: columnaAjustable, label: Text('Acciones')),
+                  ],
+                  filas: state.recetas.map((r) {
                       // La receta siempre se ve; si su producto está
                       // desactivado, se marca (no se vende en el POS).
                       final atenuado = r.productoActivo
                           ? null
-                          : const TextStyle(color: Color(0xFF94A3B8));
+                          : const TextStyle(color: AppColors.textoInactivo);
                       return DataRow(
                         key: ValueKey('fila_receta_${r.id}'),
                         cells: [
@@ -423,11 +377,11 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                   style: (atenuado ?? const TextStyle())
                                       .copyWith(fontWeight: FontWeight.w600)),
                               if (!r.productoActivo) ...[
-                                const SizedBox(width: 8),
-                                const Chip(
+                                const SizedBox(width: AppSpacing.espacioChico),
+                                const EstadoChip(
                                   key: Key('producto_inactivo_chip'),
-                                  label: Text('Producto inactivo'),
-                                  visualDensity: VisualDensity.compact,
+                                  etiqueta: 'Producto inactivo',
+                                  tono: TonoEstado.neutro,
                                 ),
                               ],
                             ],
@@ -437,14 +391,14 @@ class _RecetasScreenState extends State<RecetasScreen> {
                           DataCell(Text(_currencyFormat.format(r.costosAdicionales), style: atenuado)),
                           DataCell(Text(_currencyFormat.format(r.costoTotal),
                               style: atenuado ??
-                                  const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF13894E)))),
+                                  const TextStyle(fontWeight: FontWeight.bold, color: AppColors.exito))),
                           DataCell(
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
                                   key: Key('editar_receta_${r.id}'),
-                                  icon: const Icon(Icons.edit, color: Color(0xFF64748B)),
+                                  icon: const Icon(Icons.edit, color: AppColors.textoInactivo),
                                   onPressed: () => _editarReceta(r),
                                 ),
                               ],
@@ -453,7 +407,6 @@ class _RecetasScreenState extends State<RecetasScreen> {
                         ],
                       );
                     }).toList(),
-                  ),
                 ),
               ),
             ),
@@ -494,10 +447,15 @@ class _RecetasScreenState extends State<RecetasScreen> {
   Widget _dato(String titulo, String valor, Key key, {String? detalle}) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(titulo, style: const TextStyle(fontSize: 13, color: Color(0xFF166534), fontWeight: FontWeight.w500)),
-          const SizedBox(height: 4),
-          Text(valor, key: key, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF15803D))),
-          if (detalle != null) Text(detalle, style: const TextStyle(fontSize: 12, color: Color(0xFF15803D))),
+          Text(titulo,
+              style: AppTypography.etiqueta.copyWith(
+                  color: AppColors.exito, fontWeight: FontWeight.w500)),
+          const SizedBox(height: AppSpacing.espacioMinimo),
+          Text(valor,
+              key: key,
+              style: AppTypography.numeroKpi.copyWith(color: AppColors.exito)),
+          if (detalle != null)
+            Text(detalle, style: AppTypography.etiqueta.copyWith(color: AppColors.exito)),
         ],
       );
 
@@ -558,29 +516,19 @@ class _RecetasScreenState extends State<RecetasScreen> {
                     });
                   },
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.espacioChico),
                 Text(
                   state.editingRecetaId == null
                       ? 'Armado de receta'
                       : 'Editar receta',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
-                  ),
+                  style: AppTypography.tituloPantalla
+                      .copyWith(color: AppColors.textoPrincipal),
                 ),
               ],
             ),
-            ElevatedButton.icon(
+            AppButton.primary(
               key: const Key('guardar_receta_button'),
-              icon: const Icon(Icons.save),
-              label: Text(state.isSaving ? 'Guardando...' : 'Guardar receta'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.verdePrincipal,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
+              icono: Icons.save,
               onPressed: (state.isFormValid && !state.isSaving)
                   ? () {
                       // El armador se cierra recién cuando el guardado sale
@@ -588,22 +536,23 @@ class _RecetasScreenState extends State<RecetasScreen> {
                       _bloc.add(const GuardarReceta());
                     }
                   : null,
+              child: Text(state.isSaving ? 'Guardando...' : 'Guardar receta'),
             ),
           ],
         ),
         if (state.hayFilasIncompletas)
-          const Align(
+          Align(
             alignment: Alignment.centerRight,
             child: Padding(
-              padding: EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: AppSpacing.espacioChico),
               child: Text(
                 RecetasState.mensajeFilasIncompletas,
-                key: Key('aviso_filas_incompletas'),
-                style: TextStyle(color: Color(0xFFB45309), fontSize: 13),
+                key: const Key('aviso_filas_incompletas'),
+                style: AppTypography.etiqueta.copyWith(color: AppColors.alerta),
               ),
             ),
           ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.espacioGrande),
         Expanded(
           child: SingleChildScrollView(
             key: const Key('armador_scroll'),
@@ -613,18 +562,19 @@ class _RecetasScreenState extends State<RecetasScreen> {
                 // Card Datos Básicos
                 Card(
                   elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AppRadii.bordeTarjeta,
+                    side: BorderSide(color: AppColors.bordeSuave),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(20.0),
+                    padding: const EdgeInsets.all(AppSpacing.espacioGrande),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Información General',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: AppTypography.subtitulo
+                              .copyWith(color: AppColors.textoPrincipal),
                         ),
                         const SizedBox(height: 16),
                         Row(
@@ -740,9 +690,12 @@ class _RecetasScreenState extends State<RecetasScreen> {
                             ),
                             if (state.rinde == null || state.rinde! <= 0)
                               const Padding(
-                                padding: EdgeInsets.only(left: 12, top: 14),
+                                padding: EdgeInsets.only(
+                                    left: AppSpacing.espacioMedio,
+                                    top: AppSpacing.espacioEstandar),
                                 child: Text('Indique cuánto rinde la receta (mayor a 0).',
-                                    key: Key('aviso_rinde'), style: TextStyle(color: Color(0xFFB45309))),
+                                    key: Key('aviso_rinde'),
+                                    style: TextStyle(color: AppColors.alerta)),
                               ),
                           ],
                         ),
@@ -756,23 +709,15 @@ class _RecetasScreenState extends State<RecetasScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Ingredientes / Insumos',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
-                      ),
+                      style: AppTypography.subtitulo
+                          .copyWith(color: AppColors.textoPrincipal),
                     ),
-                    ElevatedButton.icon(
+                    AppButton.primary(
                       key: const Key('agregar_insumo_fila_button'),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Agregar Insumo'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0284C7),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
+                      icono: Icons.add,
+                      child: const Text('Agregar Insumo'),
                       onPressed: () {
                         if (state.availableInsumos.isNotEmpty) {
                           // La fila nueva llega vacía: el usuario elige el insumo
@@ -782,23 +727,17 @@ class _RecetasScreenState extends State<RecetasScreen> {
                               .where((i) => !usados.contains(i.id))
                               .toList();
                           if (libres.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Todos los insumos disponibles ya están en la receta.'),
-                              ),
-                            );
+                            AppSnackBar.info(context,
+                                'Todos los insumos disponibles ya están en la receta.');
                             return;
                           }
                           _bloc.add(const AgregarFilaVacia());
                         } else {
                           // Sin insumos no hay qué agregar: antes se agregaba uno
                           // ficticio (id 1) que se guardaba contra otro insumo real.
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('No hay insumos activos. Cárguelos en '
-                                  'Materia Prima antes de armar la receta.'),
-                            ),
-                          );
+                          AppSnackBar.info(context,
+                              'No hay insumos activos. Cárguelos en '
+                              'Materia Prima antes de armar la receta.');
                         }
                       },
                     ),
@@ -808,16 +747,18 @@ class _RecetasScreenState extends State<RecetasScreen> {
 
                 if (state.detalles.isEmpty)
                   Container(
-                    padding: const EdgeInsets.all(32),
+                    padding: const EdgeInsets.all(AppSpacing.espacioPantalla),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      color: AppColors.fondoSuperficie,
+                      borderRadius: AppRadii.bordeTarjeta,
+                      border: Border.all(color: AppColors.bordeSuave),
                     ),
-                    child: const Text(
+                    child: Text(
                       'No hay insumos agregados en la receta. Haga clic en "Agregar Insumo".',
-                      style: TextStyle(color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+                      style: AppTypography.texto.copyWith(
+                          color: AppColors.textoInactivo,
+                          fontStyle: FontStyle.italic),
                     ),
                   )
                 else
@@ -841,9 +782,9 @@ class _RecetasScreenState extends State<RecetasScreen> {
                         // quitar o cambiar una fila, cada widget conserva sus datos.
                         key: ValueKey('fila_insumo_${detalle.claveUi}'),
                         margin: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: AppRadii.bordeChico,
+                          side: BorderSide(color: AppColors.bordeSuave),
                         ),
                         child: Padding(
                           key: Key('fila_insumo_$index'),
@@ -927,7 +868,9 @@ class _RecetasScreenState extends State<RecetasScreen> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  const Text('Costo Unit.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                  Text('Costo Unit.',
+                                      style: AppTypography.etiqueta
+                                          .copyWith(color: AppColors.textoInactivo)),
                                   Text(
                                     '${formatPesos(detalle.costoUnitario, decimales: detalle.costoUnitario < 10 ? 4 : 2)}'
                                     '${UnidadMedida.deCodigo(detalle.unidadMedida) != null ? ' / ${UnidadMedida.deCodigo(detalle.unidadMedida)!.abreviatura}' : ''}',
@@ -936,26 +879,28 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: AppSpacing.espacioGrande),
 
                               // Subtotal
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  const Text('Subtotal', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                  Text('Subtotal',
+                                      style: AppTypography.etiqueta
+                                          .copyWith(color: AppColors.textoInactivo)),
                                   Text(
                                     _currencyFormat.format(detalle.subtotal),
                                     key: Key('subtotal_insumo_fila_$index'),
-                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF13894E)),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.exito),
                                   ),
                                 ],
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: AppSpacing.espacioMedio),
 
                               // Eliminar fila
                               IconButton(
                                 key: Key('eliminar_insumo_fila_$index'),
-                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                icon: const Icon(Icons.delete_outline, color: AppColors.error),
                                 onPressed: () => _bloc.add(RemoverFilaInsumo(index)),
                               ),
                             ],
@@ -968,16 +913,16 @@ class _RecetasScreenState extends State<RecetasScreen> {
 
                 // Costos y precio, en vivo.
                 Card(
-                  color: const Color(0xFFF0FDF4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: Color(0xFFBBF7D0)),
+                  color: AppColors.exitoFondo,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AppRadii.bordeTarjeta,
+                    side: BorderSide(color: AppColors.bordeSuave),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(20.0),
+                    padding: const EdgeInsets.all(AppSpacing.espacioGrande),
                     child: Wrap(
-                      spacing: 32,
-                      runSpacing: 16,
+                      spacing: AppSpacing.espacioPantalla,
+                      runSpacing: AppSpacing.espacioEstandar,
                       children: [
                         _dato('Costo total de la receta', formatPesos(state.costoTotal), const Key('costo_total_receta'),
                             detalle: 'Incluye ${state.detalles.length} insumos + ${formatPesos(state.costosAdicionales)} de adicionales'),
@@ -1031,9 +976,21 @@ class _NuevaCategoriaDialogState extends State<_NuevaCategoriaDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Nueva categoría'),
-      content: TextField(
+    return AppDialog(
+      titulo: 'Nueva categoría',
+      tamano: TamanoDialogo.chico,
+      acciones: [
+        AppButton.ghost(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        AppButton.primary(
+          key: const Key('crear_categoria_confirmar'),
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('Crear'),
+        ),
+      ],
+      child: TextField(
         key: const Key('nueva_categoria_nombre'),
         controller: _controller,
         autofocus: true,
@@ -1041,17 +998,6 @@ class _NuevaCategoriaDialogState extends State<_NuevaCategoriaDialog> {
         decoration: const InputDecoration(labelText: 'Nombre'),
         onSubmitted: (v) => Navigator.of(context).pop(v),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          key: const Key('crear_categoria_confirmar'),
-          onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: const Text('Crear'),
-        ),
-      ],
     );
   }
 }

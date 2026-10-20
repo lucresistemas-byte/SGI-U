@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/stock.dart';
 import '../services/api_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import 'app_button.dart';
+import 'app_data_table.dart';
+import 'app_dialog.dart';
 import 'cargando_diferido.dart';
 import 'tabla_ajustada.dart';
 
@@ -68,108 +74,106 @@ class _StockHistorialDialogState extends State<StockHistorialDialog> {
 
   Widget _tabla() {
     if (_cargando) return const SizedBox(height: 200, child: CargandoDiferido());
-    if (_error != null) return Text(_error!, style: const TextStyle(color: Colors.redAccent));
+    if (_error != null) {
+      return Text(_error!, style: const TextStyle(color: AppColors.error));
+    }
     if (_filas.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(24),
-        child: Text('No hay movimientos en ese período.', style: TextStyle(color: Color(0xFF64748B))),
+      return Padding(
+        padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
+        child: Text('No hay movimientos en ese período.',
+            style: AppTypography.texto.copyWith(color: AppColors.textoInactivo)),
       );
     }
-    return TablaAjustada(
-      tabla: DataTable(
-        key: const Key('tabla_movimientos_stock'),
-        columnSpacing: 20,
-        headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
-        columns: const [
-          DataColumn(columnWidth: columnaAjustable, label: Text('Fecha', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(columnWidth: columnaAjustable, label: Text('Tipo', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(columnWidth: columnaAjustable, label: Text('Cantidad', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
-          DataColumn(columnWidth: columnaAjustable, label: Text('Stock', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
-          DataColumn(columnWidth: columnaFlexible, label: Text('Motivo', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(columnWidth: columnaAjustable, label: Text('Usuario', style: TextStyle(fontWeight: FontWeight.bold))),
-        ],
-        rows: [
-          for (final m in _filas)
-            DataRow(key: ValueKey('movimiento_${m.id}'), cells: [
-              DataCell(Text(_fechaHora.format(m.fecha.toLocal()))),
-              DataCell(Text(m.tipoDescripcion)),
-              DataCell(Text(m.cantidadTexto,
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: m.cantidad < 0 ? const Color(0xFF475569) : const Color(0xFF15803D)))),
-              DataCell(Text(m.stockResultanteTexto,
-                  key: Key('stock_resultante_${m.id}'),
-                  style: TextStyle(
-                      color: m.stockResultante < 0 ? Colors.red.shade700 : null,
-                      fontWeight: m.stockResultante < 0 ? FontWeight.bold : null))),
-              DataCell(Text(m.motivo ?? '—', overflow: TextOverflow.ellipsis, maxLines: 2)),
-              DataCell(Text(m.usuario ?? '—')),
-            ]),
-        ],
-      ),
+    return AppDataTable(
+      key: const Key('tabla_movimientos_stock'),
+      separacionColumnas: AppSpacing.espacioGrande,
+      colorEncabezado: AppColors.fondoApp,
+      columnas: const [
+        DataColumn(columnWidth: columnaAjustable, label: Text('Fecha')),
+        DataColumn(columnWidth: columnaAjustable, label: Text('Tipo')),
+        DataColumn(columnWidth: columnaAjustable, label: Text('Cantidad'), numeric: true),
+        DataColumn(columnWidth: columnaAjustable, label: Text('Stock'), numeric: true),
+        DataColumn(columnWidth: columnaFlexible, label: Text('Motivo')),
+        DataColumn(columnWidth: columnaAjustable, label: Text('Usuario')),
+      ],
+      filas: [
+        for (final m in _filas)
+          DataRow(key: ValueKey('movimiento_${m.id}'), cells: [
+            DataCell(Text(_fechaHora.format(m.fecha.toLocal()))),
+            DataCell(Text(m.tipoDescripcion)),
+            DataCell(Text(m.cantidadTexto,
+                style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: m.cantidad < 0 ? AppColors.textoSecundario : AppColors.exito))),
+            DataCell(Text(m.stockResultanteTexto,
+                key: Key('stock_resultante_${m.id}'),
+                style: TextStyle(
+                    color: m.stockResultante < 0 ? AppColors.error : null,
+                    fontWeight: m.stockResultante < 0 ? FontWeight.bold : null))),
+            DataCell(Text(m.motivo ?? '—', overflow: TextOverflow.ellipsis, maxLines: 2)),
+            DataCell(Text(m.usuario ?? '—')),
+          ]),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return AppDialog(
       key: const Key('stock_historial_dialog'),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text('Historial de stock: ${widget.nombre} (${widget.codigo})',
-          style: const TextStyle(fontWeight: FontWeight.bold)),
-      content: SizedBox(
-        width: 860,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+      titulo: 'Historial de stock: ${widget.nombre} (${widget.codigo})',
+      tamano: TamanoDialogo.grande,
+      acciones: [
+        AppButton.ghost(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cerrar'),
+        ),
+      ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: AppSpacing.espacioMedio,
+            runSpacing: AppSpacing.espacioMedio,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  OutlinedButton.icon(
-                    key: const Key('stock_historial_desde'),
-                    icon: const Icon(Icons.calendar_today, size: 16),
-                    label: Text('Desde ${_fecha.format(_desde)}'),
-                    onPressed: () => _elegirFecha(desde: true),
-                  ),
-                  OutlinedButton.icon(
-                    key: const Key('stock_historial_hasta'),
-                    icon: const Icon(Icons.calendar_today, size: 16),
-                    label: Text('Hasta ${_fecha.format(_hasta)}'),
-                    onPressed: () => _elegirFecha(desde: false),
-                  ),
-                  SizedBox(
-                    width: 240,
-                    child: DropdownButtonFormField<String?>(
-                      key: const Key('stock_historial_tipo'),
-                      initialValue: _tipo,
-                      isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Tipo', border: OutlineInputBorder(), isDense: true),
-                      items: [
-                        const DropdownMenuItem<String?>(value: null, child: Text('Todos')),
-                        for (final t in tiposMovimientoStock.entries)
-                          DropdownMenuItem<String?>(value: t.key, child: Text(t.value)),
-                      ],
-                      onChanged: (t) {
-                        setState(() => _tipo = t);
-                        _buscar();
-                      },
-                    ),
-                  ),
-                ],
+              AppButton.secondary(
+                key: const Key('stock_historial_desde'),
+                icono: Icons.calendar_today,
+                onPressed: () => _elegirFecha(desde: true),
+                child: Text('Desde ${_fecha.format(_desde)}'),
               ),
-              const SizedBox(height: 16),
-              _tabla(),
+              AppButton.secondary(
+                key: const Key('stock_historial_hasta'),
+                icono: Icons.calendar_today,
+                onPressed: () => _elegirFecha(desde: false),
+                child: Text('Hasta ${_fecha.format(_hasta)}'),
+              ),
+              SizedBox(
+                width: 240,
+                child: DropdownButtonFormField<String?>(
+                  key: const Key('stock_historial_tipo'),
+                  initialValue: _tipo,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Tipo', border: OutlineInputBorder(), isDense: true),
+                  items: [
+                    const DropdownMenuItem<String?>(value: null, child: Text('Todos')),
+                    for (final t in tiposMovimientoStock.entries)
+                      DropdownMenuItem<String?>(value: t.key, child: Text(t.value)),
+                  ],
+                  onChanged: (t) {
+                    setState(() => _tipo = t);
+                    _buscar();
+                  },
+                ),
+              ),
             ],
           ),
-        ),
+          const SizedBox(height: AppSpacing.espacioEstandar),
+          _tabla(),
+        ],
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cerrar')),
-      ],
     );
   }
 }

@@ -4,7 +4,11 @@ import '../models/insumo.dart';
 import '../models/paquete.dart';
 import '../models/unidad_medida.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import '../utils/numeros.dart';
+import 'app_button.dart';
+import 'app_dialog.dart';
 
 /// Una fila del armado mientras se edita.
 class _Fila {
@@ -104,7 +108,7 @@ class _PaqueteFormDialogState extends State<PaqueteFormDialog> {
     final ofrecidos = widget.insumos.where((i) => !usados.contains(i.id)).toList();
     return Padding(
       key: ObjectKey(fila),
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpacing.espacioChico),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -126,7 +130,7 @@ class _PaqueteFormDialogState extends State<PaqueteFormDialog> {
               }),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.espacioChico),
           SizedBox(
             width: 110,
             child: TextFormField(
@@ -140,7 +144,7 @@ class _PaqueteFormDialogState extends State<PaqueteFormDialog> {
               },
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.espacioChico),
           SizedBox(
             width: 140,
             child: fila.insumo == null
@@ -156,7 +160,7 @@ class _PaqueteFormDialogState extends State<PaqueteFormDialog> {
                     onChanged: (u) => setState(() => fila.unidad = u),
                   ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.espacioChico),
           SizedBox(
             width: 110,
             child: Padding(
@@ -182,8 +186,10 @@ class _PaqueteFormDialogState extends State<PaqueteFormDialog> {
   Widget _dato(String titulo, String valor, Key key) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(titulo, style: const TextStyle(fontSize: 13, color: Color(0xFF166534))),
-          Text(valor, key: key, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF15803D))),
+          Text(titulo, style: AppTypography.etiqueta.copyWith(color: AppColors.textoSecundario)),
+          Text(valor,
+              key: key,
+              style: AppTypography.tituloTarjeta.copyWith(color: AppColors.exito)),
         ],
       );
 
@@ -191,111 +197,110 @@ class _PaqueteFormDialogState extends State<PaqueteFormDialog> {
   Widget build(BuildContext context) {
     final costo = _costoArmado;
     final fijo = parseDecimal(_montoFijo.text) ?? 0;
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text(_esEdicion ? 'Editar paquete ${widget.existente!.codigo}' : 'Nuevo paquete',
-          style: const TextStyle(fontWeight: FontWeight.bold)),
-      content: SizedBox(
-        width: 720,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: TextFormField(
-                        key: const Key('paquete_nombre_input'),
-                        controller: _nombre,
-                        decoration: const InputDecoration(
-                            labelText: 'Nombre *', hintText: 'Ej: Paquete día de la madre', border: OutlineInputBorder()),
-                        validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: DropdownButtonFormField<int?>(
-                        key: const Key('paquete_categoria_dropdown'),
-                        initialValue: _categoriaId,
-                        isExpanded: true,
-                        decoration: const InputDecoration(labelText: 'Categoría', border: OutlineInputBorder()),
-                        items: [
-                          const DropdownMenuItem<int?>(value: null, child: Text('Sin categoría')),
-                          for (final c in widget.categorias) DropdownMenuItem<int?>(value: c.id, child: Text(c.nombre)),
-                        ],
-                        onChanged: (v) => setState(() => _categoriaId = v),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    const Expanded(child: Text('Armado', style: TextStyle(fontWeight: FontWeight.w600))),
-                    TextButton.icon(
-                      key: const Key('paquete_agregar_fila'),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Agregar insumo'),
-                      onPressed: () => setState(() => _agregarFila(_Fila())),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (widget.insumos.isEmpty)
-                  const Text('No hay insumos activos. Cárguelos en Materia Prima.',
-                      style: TextStyle(color: Color(0xFFB45309))),
-                for (var i = 0; i < _filas.length; i++) _fila(i),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: 220,
-                  child: TextFormField(
-                    key: const Key('paquete_monto_fijo_input'),
-                    controller: _montoFijo,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                        labelText: 'Monto fijo *', prefixText: r'$ ', border: OutlineInputBorder()),
-                    validator: (v) {
-                      final n = parseDecimal(v);
-                      return n == null || n < 0 ? 'Ingrese un monto (puede ser 0)' : null;
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Card(
-                  color: const Color(0xFFF0FDF4),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Wrap(
-                      spacing: 28,
-                      runSpacing: 12,
-                      children: [
-                        _dato('Costo del armado', formatPesos(costo), const Key('paquete_costo_armado')),
-                        _dato('Monto fijo', formatPesos(fijo), const Key('paquete_monto_fijo')),
-                        _dato('Precio (a \$100)', formatPesos(_precio), const Key('paquete_precio')),
-                        _dato('Ganancia', formatPesos(_precio - costo), const Key('paquete_ganancia')),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+    return AppDialog(
+      titulo: _esEdicion ? 'Editar paquete ${widget.existente!.codigo}' : 'Nuevo paquete',
+      tamano: TamanoDialogo.grande,
+      acciones: [
+        AppButton.ghost(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
         ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
-        ElevatedButton(
+        AppButton.primary(
           key: const Key('guardar_paquete_button'),
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.verdePrincipal, foregroundColor: Colors.white),
           onPressed: _guardar,
           child: const Text('Guardar'),
         ),
       ],
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: TextFormField(
+                    key: const Key('paquete_nombre_input'),
+                    controller: _nombre,
+                    decoration: const InputDecoration(
+                        labelText: 'Nombre *', hintText: 'Ej: Paquete día de la madre', border: OutlineInputBorder()),
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.espacioChico),
+                Expanded(
+                  child: DropdownButtonFormField<int?>(
+                    key: const Key('paquete_categoria_dropdown'),
+                    initialValue: _categoriaId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Categoría', border: OutlineInputBorder()),
+                    items: [
+                      const DropdownMenuItem<int?>(value: null, child: Text('Sin categoría')),
+                      for (final c in widget.categorias) DropdownMenuItem<int?>(value: c.id, child: Text(c.nombre)),
+                    ],
+                    onChanged: (v) => setState(() => _categoriaId = v),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.espacioEstandar),
+            Row(
+              children: [
+                Expanded(
+                    child: Text('Armado',
+                        style: AppTypography.subtitulo
+                            .copyWith(color: AppColors.textoPrincipal))),
+                TextButton.icon(
+                  key: const Key('paquete_agregar_fila'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Agregar insumo'),
+                  onPressed: () => setState(() => _agregarFila(_Fila())),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.espacioChico),
+            if (widget.insumos.isEmpty)
+              const Text('No hay insumos activos. Cárguelos en Materia Prima.',
+                  style: TextStyle(color: AppColors.alerta)),
+            for (var i = 0; i < _filas.length; i++) _fila(i),
+            const SizedBox(height: AppSpacing.espacioChico),
+            SizedBox(
+              width: 220,
+              child: TextFormField(
+                key: const Key('paquete_monto_fijo_input'),
+                controller: _montoFijo,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                    labelText: 'Monto fijo *', prefixText: r'$ ', border: OutlineInputBorder()),
+                validator: (v) {
+                  final n = parseDecimal(v);
+                  return n == null || n < 0 ? 'Ingrese un monto (puede ser 0)' : null;
+                },
+              ),
+            ),
+            const SizedBox(height: AppSpacing.espacioEstandar),
+            Card(
+              color: AppColors.exitoFondo,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.espacioEstandar),
+                child: Wrap(
+                  spacing: 28,
+                  runSpacing: AppSpacing.espacioMedio,
+                  children: [
+                    _dato('Costo del armado', formatPesos(costo), const Key('paquete_costo_armado')),
+                    _dato('Monto fijo', formatPesos(fijo), const Key('paquete_monto_fijo')),
+                    _dato('Precio (a \$100)', formatPesos(_precio), const Key('paquete_precio')),
+                    _dato('Ganancia', formatPesos(_precio - costo), const Key('paquete_ganancia')),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
