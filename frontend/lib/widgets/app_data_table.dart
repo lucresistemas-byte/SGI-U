@@ -17,12 +17,24 @@ class AppDataTable extends StatelessWidget {
   /// `false` para dejar la [DataTable] suelta (sin [TablaAjustada]).
   final bool ajustarAncho;
 
+  /// Alto máximo de cada fila. `null` deja el valor por defecto de [DataTable].
+  final double? altoFilaMaximo;
+
+  /// Separación horizontal entre columnas (default de [DataTable] si es `null`).
+  final double? separacionColumnas;
+
+  /// Margen horizontal del borde de la tabla.
+  final double? margenHorizontal;
+
   const AppDataTable({
     super.key,
     required this.columnas,
     required this.filas,
     this.colorEncabezado,
     this.ajustarAncho = true,
+    this.altoFilaMaximo,
+    this.separacionColumnas,
+    this.margenHorizontal,
   });
 
   @override
@@ -30,6 +42,9 @@ class AppDataTable extends StatelessWidget {
     final tabla = DataTable(
       columns: columnas,
       rows: filas,
+      dataRowMaxHeight: altoFilaMaximo,
+      columnSpacing: separacionColumnas,
+      horizontalMargin: margenHorizontal,
       headingRowColor: WidgetStatePropertyAll(
         colorEncabezado ?? AppColors.fondoAlternativo,
       ),

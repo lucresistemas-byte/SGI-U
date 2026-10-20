@@ -7,7 +7,15 @@ import '../blocs/pos_state.dart';
 import '../widgets/producto_form_dialog.dart';
 import '../widgets/app_scaffold.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/app_button.dart';
+import '../widgets/app_data_table.dart';
+import '../widgets/app_snack_bar.dart';
 import '../widgets/cargando_diferido.dart';
+import '../widgets/estado_chip.dart';
+import '../widgets/section_header.dart';
 import '../services/api_service.dart';
 import '../utils/numeros.dart';
 import 'historial_precios_view.dart';
@@ -66,30 +74,22 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
           };
     return Container(
       key: Key('tipo_${producto.codigo}'),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(6),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.espacioChico,
+          vertical: AppSpacing.espacioMinimo),
+      decoration: const BoxDecoration(
+        color: AppColors.fondoApp,
+        borderRadius: AppRadii.bordeChico,
       ),
-      child: Text(etiqueta, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+      child: Text(etiqueta,
+          style: AppTypography.etiqueta.copyWith(fontWeight: FontWeight.w600)),
     );
   }
 
   Widget _buildBadge(bool isActive) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isActive ? AppColors.grisVerdeClaro : AppColors.grisInformativo,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        isActive ? 'Activo' : 'Inactivo',
-        style: TextStyle(
-          color: isActive ? AppColors.verdeActivo : AppColors.grisInactivo,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
+    return EstadoChip(
+      etiqueta: isActive ? 'Activo' : 'Inactivo',
+      tono: isActive ? TonoEstado.exito : TonoEstado.neutro,
     );
   }
 
@@ -102,11 +102,11 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
         child: Column(
           children: [
             const Material(
-              color: Colors.white,
+              color: AppColors.fondoSuperficie,
               child: TabBar(
                 key: Key('tabs_productos'),
-                labelColor: AppColors.verdeTeal,
-                indicatorColor: AppColors.verdeTeal,
+                labelColor: AppColors.marcaActiva,
+                indicatorColor: AppColors.marcaActiva,
                 tabs: [
                   Tab(key: Key('tab_productos'), text: 'Productos'),
                   Tab(key: Key('tab_historial_precios'), text: 'Historial de precios'),
@@ -135,14 +135,15 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
         Text(
           textoStock(producto.stockActual, producto.unidadStock),
           key: Key('stock_${producto.codigo}'),
-          style: TextStyle(
-              color: negativo ? Colors.red.shade700 : const Color(0xFF475569),
+          style: AppTypography.textoChico.copyWith(
+              color: negativo ? AppColors.error : AppColors.textoSecundario,
               fontWeight: negativo ? FontWeight.bold : FontWeight.normal),
         ),
         if (producto.seProduce && producto.puedeProducir != null)
           Text('Puedo producir hasta ${producto.puedeProducir}',
               key: Key('puede_producir_${producto.codigo}'),
-              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+              style: AppTypography.pie
+                  .copyWith(color: AppColors.textoInactivo)),
       ],
     );
   }
@@ -158,11 +159,13 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     if (resultado == null || !mounted) return;
     context.read<PosBloc>().add(const LoadProducts());
     final consumos = resultado.consumos.map((c) => '${c.nombre} ${c.cantidadTexto}').join(', ');
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      backgroundColor: resultado.conFaltantes ? Colors.orange.shade800 : AppColors.verdeTeal,
-      content: Text('Se produjeron ${formatDecimal(resultado.cantidad)} ${resultado.nombre}'
-          '${resultado.conFaltantes ? ' (con faltantes: hay stock negativo)' : ''}. Consumo: $consumos.'),
-    ));
+    final mensaje = 'Se produjeron ${formatDecimal(resultado.cantidad)} ${resultado.nombre}'
+        '${resultado.conFaltantes ? ' (con faltantes: hay stock negativo)' : ''}. Consumo: $consumos.';
+    if (resultado.conFaltantes) {
+      AppSnackBar.info(context, mensaje);
+    } else {
+      AppSnackBar.exito(context, mensaje);
+    }
   }
 
   Widget _productos(BuildContext context) {
@@ -172,59 +175,34 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
             previous.successMessage != current.successMessage,
         listener: (context, state) {
           if (state.errorMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text(state.errorMessage!),
-                  backgroundColor: Colors.red.shade800),
-            );
+            AppSnackBar.error(context, state.errorMessage!);
             context.read<PosBloc>().add(const ClearError());
           }
           if (state.successMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text(state.successMessage!),
-                  backgroundColor: AppColors.verdeTeal),
-            );
+            AppSnackBar.exito(context, state.successMessage!);
             context.read<PosBloc>().add(const ClearSuccess());
           }
         },
         child: Padding(
-          padding: const EdgeInsets.all(32.0),
+          padding: const EdgeInsets.all(AppSpacing.espacioPantalla),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // --- HEADER ---
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Productos',
-                    style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B)),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => const ProductoFormDialog(),
-                      );
-                    },
-                    icon: const Icon(Icons.add, color: Colors.white),
-                    label: const Text('Agregar Nuevo Producto',
-                        style: TextStyle(color: Colors.white)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.verdeTeal,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 18),
-                    ),
-                  ),
-                ],
+              SectionHeader(
+                titulo: 'Productos',
+                accion: AppButton.primary(
+                  icono: Icons.add,
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const ProductoFormDialog(),
+                    );
+                  },
+                  child: const Text('Agregar Nuevo Producto'),
+                ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.espacioSeccion),
 
               // --- BUSCADOR Y CHIPS DE CATEGORÍA ---
               Row(
@@ -233,23 +211,26 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                   Container(
                     width: 320,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
+                      color: AppColors.fondoSuperficie,
+                      borderRadius: AppRadii.bordeChico,
+                      border: Border.all(color: AppColors.borde),
                     ),
                     child: TextField(
                       controller: _searchController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: 'Buscar producto...',
-                        hintStyle: TextStyle(color: Colors.grey),
-                        suffixIcon: Icon(Icons.search, color: Colors.grey),
+                        hintStyle: AppTypography.texto
+                            .copyWith(color: AppColors.textoInactivo),
+                        suffixIcon: const Icon(Icons.search,
+                            color: AppColors.textoInactivo),
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.espacioEstandar,
+                            vertical: AppSpacing.espacioMedio),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppSpacing.espacioEstandar),
                   Expanded(
                     child: BlocBuilder<PosBloc, PosState>(
                       builder: (context, state) {
@@ -265,17 +246,22 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                   (state.selectedCategory == null && cat == 'Todas') ||
                                       state.selectedCategory == cat;
                               return Padding(
-                                padding: const EdgeInsets.only(right: 8.0),
+                                padding: const EdgeInsets.only(
+                                    right: AppSpacing.espacioChico),
                                 child: FilterChip(
                                   key: ValueKey('catalogo_category_chip_$cat'),
                                   label: Text(cat),
                                   selected: isSelected,
-                                  selectedColor: AppColors.verdeTeal.withValues(alpha: 0.2),
-                                  checkmarkColor: AppColors.verdeTeal,
-                                  labelStyle: TextStyle(
-                                    color: isSelected ? AppColors.verdeTeal : Colors.black87,
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                    fontSize: 13,
+                                  selectedColor: AppColors.marcaActiva
+                                      .withValues(alpha: 0.2),
+                                  checkmarkColor: AppColors.marcaActiva,
+                                  labelStyle: AppTypography.etiqueta.copyWith(
+                                    color: isSelected
+                                        ? AppColors.marcaActiva
+                                        : AppColors.textoPrincipal,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
                                   ),
                                   onSelected: (selected) {
                                     final target = (selected && cat != 'Todas') ? cat : null;
@@ -294,18 +280,18 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.espacioEstandar),
 
               // --- CAJA BLANCA (TABLA + PAGINACIÓN) ---
               Expanded(
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    color: AppColors.fondoSuperficie,
+                    borderRadius: AppRadii.bordeTarjeta,
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
+                          color: AppColors.textoPrincipal.withValues(alpha: 0.03),
                           blurRadius: 10)
                     ],
                   ),
@@ -313,7 +299,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                     builder: (context, state) {
                       if (state.isLoading) {
                         return const CargandoDiferido(
-                            color: Color(0xFF004D40));
+                            color: AppColors.marcaActiva);
                       }
 
                       // 1. Filtrar los productos por categoría activa y búsqueda
@@ -345,157 +331,156 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                         children: [
                           // TABLA
                           Expanded(
-                            child: TablaAjustada(
-                              tabla: DataTable(
-                                key: const Key('tabla_productos'),
-                                columnSpacing: 16,
-                                horizontalMargin: 16,
-                                headingTextStyle: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1E293B)),
-                                dataRowMaxHeight: double.infinity,
-                                columns: const [
-                                  DataColumn(columnWidth: columnaAjustable, label: Text('Código ↓')),
-                                  DataColumn(
-                                      columnWidth: columnaFlexible,
-                                      label:
-                                          Text('Nombre del Producto')),
-                                  DataColumn(columnWidth: columnaAjustable, label: Text('Tipo')),
-                                  DataColumn(columnWidth: columnaFlexibleSecundaria, label: Text('Categoría')),
-                                  DataColumn(
-                                      columnWidth: columnaAjustable, label: Text('Precio Unit.')),
-                                  DataColumn(columnWidth: columnaAjustable, label: Text('Ganancia')),
-                                  DataColumn(columnWidth: columnaFlexibleSecundaria, label: Text('Stock')),
-                                  DataColumn(columnWidth: columnaAjustable, label: Text('Estado')),
-                                  DataColumn(columnWidth: columnaAjustable, label: Text('Acciones')),
-                                ],
-                                rows: paginatedProducts.map((producto) {
-                                  return DataRow(cells: [
-                                    DataCell(Text(producto.codigo,
-                                        style: const TextStyle(
-                                            color: Color(0xFF475569)))),
-                                    DataCell(Text(producto.nombre,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                            color: Color(0xFF1E293B)))),
-                                    DataCell(_buildTipo(producto)),
-                                    DataCell(Text(producto.categoria ?? '-',
-                                        maxLines: 2,
-                                        style: const TextStyle(
-                                            color: Color(0xFF475569)))),
-                                    DataCell(Text(
-                                        '${formatPesos(producto.precioUnitario)}'
-                                        '${producto.precioManual ? '\n(a mano)' : ''}',
-                                        key: Key('precio_${producto.codigo}'),
-                                        style: const TextStyle(
-                                            color: Color(0xFF475569)))),
-                                    // Ganancia por unidad en $ y en %.
-                                    DataCell(Text(
-                                        producto.gananciaPesos == null
-                                            ? '—'
-                                            : '${formatPesos(producto.gananciaPesos!)}'
-                                                '${producto.porcentajeReal != null ? '\n${formatDecimal(producto.porcentajeReal!, decimales: 1)} %' : ''}',
-                                        key: Key('ganancia_${producto.codigo}'),
-                                        style: const TextStyle(
-                                            color: Color(0xFF15803D),
-                                            fontWeight: FontWeight.w600))),
-                                    DataCell(_stock(producto)),
-                                    DataCell(
-                                        _buildBadge(producto.activo)),
-                                    DataCell(Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // BOTÓN EDITAR (la reventa + materia
-                                        // prima se edita en Materia Prima).
+                            child: AppDataTable(
+                              key: const Key('tabla_productos'),
+                              altoFilaMaximo: double.infinity,
+                              separacionColumnas: AppSpacing.espacioEstandar,
+                              margenHorizontal: AppSpacing.espacioEstandar,
+                              columnas: const [
+                                DataColumn(columnWidth: columnaAjustable, label: Text('Código ↓')),
+                                DataColumn(
+                                    columnWidth: columnaFlexible,
+                                    label: Text('Nombre del Producto')),
+                                DataColumn(columnWidth: columnaAjustable, label: Text('Tipo')),
+                                DataColumn(columnWidth: columnaFlexibleSecundaria, label: Text('Categoría')),
+                                DataColumn(
+                                    columnWidth: columnaAjustable,
+                                    numeric: true,
+                                    label: Text('Precio Unit.')),
+                                DataColumn(
+                                    columnWidth: columnaAjustable,
+                                    numeric: true,
+                                    label: Text('Ganancia')),
+                                DataColumn(columnWidth: columnaFlexibleSecundaria, label: Text('Stock')),
+                                DataColumn(columnWidth: columnaAjustable, label: Text('Estado')),
+                                DataColumn(columnWidth: columnaAjustable, label: Text('Acciones')),
+                              ],
+                              filas: paginatedProducts.map((producto) {
+                                return DataRow(cells: [
+                                  DataCell(Text(producto.codigo,
+                                      style: AppTypography.textoChico.copyWith(
+                                          color: AppColors.textoSecundario))),
+                                  DataCell(Text(producto.nombre,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.textoChico.copyWith(
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.textoPrincipal))),
+                                  DataCell(_buildTipo(producto)),
+                                  DataCell(Text(producto.categoria ?? '-',
+                                      maxLines: 2,
+                                      style: AppTypography.textoChico.copyWith(
+                                          color: AppColors.textoSecundario))),
+                                  DataCell(Text(
+                                      '${formatPesos(producto.precioUnitario)}'
+                                      '${producto.precioManual ? '\n(a mano)' : ''}',
+                                      key: Key('precio_${producto.codigo}'),
+                                      style: AppTypography.textoChico.copyWith(
+                                          color: AppColors.textoSecundario))),
+                                  // Ganancia por unidad en $ y en %.
+                                  DataCell(Text(
+                                      producto.gananciaPesos == null
+                                          ? '—'
+                                          : '${formatPesos(producto.gananciaPesos!)}'
+                                              '${producto.porcentajeReal != null ? '\n${formatDecimal(producto.porcentajeReal!, decimales: 1)} %' : ''}',
+                                      key: Key('ganancia_${producto.codigo}'),
+                                      style: AppTypography.textoChico.copyWith(
+                                          color: AppColors.exito,
+                                          fontWeight: FontWeight.w600))),
+                                  DataCell(_stock(producto)),
+                                  DataCell(
+                                      _buildBadge(producto.activo)),
+                                  DataCell(Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // BOTÓN EDITAR (la reventa + materia
+                                      // prima se edita en Materia Prima).
+                                      IconButton(
+                                        visualDensity: VisualDensity.compact,
+                                        key: Key('editar_producto_${producto.codigo}'),
+                                        tooltip: producto.esReventaMateriaPrima
+                                            ? 'Se edita en Materia Prima'
+                                            : producto.esPaquete
+                                                ? 'Se edita en Recetas y paquetes'
+                                                : 'Editar',
+                                        icon: const Icon(Icons.edit,
+                                            color: AppColors.marcaActiva,
+                                            size: 20),
+                                        onPressed: producto.esReventaMateriaPrima || producto.esPaquete ? null : () {
+                                          // ABRE EL MODAL DE EDICIÓN
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) =>
+                                                ProductoFormDialog(
+                                                    productoAEditar:
+                                                        producto),
+                                          );
+                                        },
+                                      ),
+                                      // PRODUCIR (elaborados y paquetes: descuenta sus componentes)
+                                      if (producto.seProduce)
                                         IconButton(
-                                          visualDensity: VisualDensity.compact,
-                                          key: Key('editar_producto_${producto.codigo}'),
-                                          tooltip: producto.esReventaMateriaPrima
-                                              ? 'Se edita en Materia Prima'
-                                              : producto.esPaquete
-                                                  ? 'Se edita en Recetas y paquetes'
-                                                  : 'Editar',
-                                          icon: const Icon(Icons.edit,
-                                              color: Color(0xFF004D40),
-                                              size: 20),
-                                          onPressed: producto.esReventaMateriaPrima || producto.esPaquete ? null : () {
-                                            // ABRE EL MODAL DE EDICIÓN
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) =>
-                                                  ProductoFormDialog(
-                                                      productoAEditar:
-                                                          producto),
-                                            );
-                                          },
+                                        visualDensity: VisualDensity.compact,
+                                          key: Key('producir_${producto.codigo}'),
+                                          tooltip: 'Producir',
+                                          icon: const Icon(Icons.soup_kitchen_outlined,
+                                              color: AppColors.marcaActiva, size: 20),
+                                          onPressed: () => _producir(producto),
                                         ),
-                                        // PRODUCIR (elaborados y paquetes: descuenta sus componentes)
-                                        if (producto.seProduce)
-                                          IconButton(
-                                          visualDensity: VisualDensity.compact,
-                                            key: Key('producir_${producto.codigo}'),
-                                            tooltip: 'Producir',
-                                            icon: const Icon(Icons.soup_kitchen_outlined,
-                                                color: Color(0xFF004D40), size: 20),
-                                            onPressed: () => _producir(producto),
-                                          ),
-                                        // HISTORIAL DE STOCK
-                                        IconButton(
-                                          visualDensity: VisualDensity.compact,
-                                          key: Key('historial_stock_${producto.codigo}'),
-                                          tooltip: 'Ver historial de stock',
-                                          icon: const Icon(Icons.history,
-                                              color: Color(0xFF004D40), size: 20),
-                                          onPressed: () => StockHistorialDialog.mostrar(context,
-                                              codigo: producto.codigo, nombre: producto.nombre),
-                                        ),
-                                        // BOTÓN ARCHIVAR/DESARCHIVAR
-                                        IconButton(
-                                          visualDensity: VisualDensity.compact,
-                                          icon: Icon(
-                                              producto.activo
-                                                  ? Icons.delete_outline
-                                                  : Icons
-                                                      .restore_from_trash,
-                                              color: const Color(
-                                                  0xFF004D40),
-                                              size: 20),
-                                          onPressed: () {
-                                            context
-                                                .read<PosBloc>()
-                                                .add(UpdateProduct(
-                                                    producto.codigo, {
-                                                  'codigo': producto
-                                                      .codigo, // AGREGADO
-                                                  'nombre':
-                                                      producto.nombre,
-                                                  'precioUnitario':
-                                                      producto
-                                                          .precioUnitario,
-                                                  'stockActual': producto
-                                                      .stockActual, // ¡EL SALVAVIDAS!
-                                                  'activo':
-                                                      !producto.activo,
-                                                }));
-                                          },
-                                        ),
-                                      ],
-                                    )),
-                                  ]);
-                                }).toList(),
-                              ),
+                                      // HISTORIAL DE STOCK
+                                      IconButton(
+                                        visualDensity: VisualDensity.compact,
+                                        key: Key('historial_stock_${producto.codigo}'),
+                                        tooltip: 'Ver historial de stock',
+                                        icon: const Icon(Icons.history,
+                                            color: AppColors.marcaActiva, size: 20),
+                                        onPressed: () => StockHistorialDialog.mostrar(context,
+                                            codigo: producto.codigo, nombre: producto.nombre),
+                                      ),
+                                      // BOTÓN ARCHIVAR/DESARCHIVAR
+                                      IconButton(
+                                        visualDensity: VisualDensity.compact,
+                                        icon: Icon(
+                                            producto.activo
+                                                ? Icons.delete_outline
+                                                : Icons
+                                                    .restore_from_trash,
+                                            color: AppColors.marcaActiva,
+                                            size: 20),
+                                        onPressed: () {
+                                          context
+                                              .read<PosBloc>()
+                                              .add(UpdateProduct(
+                                                  producto.codigo, {
+                                                'codigo': producto
+                                                    .codigo, // AGREGADO
+                                                'nombre':
+                                                    producto.nombre,
+                                                'precioUnitario':
+                                                    producto
+                                                        .precioUnitario,
+                                                'stockActual': producto
+                                                    .stockActual, // ¡EL SALVAVIDAS!
+                                                'activo':
+                                                    !producto.activo,
+                                              }));
+                                        },
+                                      ),
+                                    ],
+                                  )),
+                                ]);
+                              }).toList(),
                             ),
                           ),
                           // FOOTER (PAGINACIÓN)
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                vertical: 16, horizontal: 24),
-                            decoration: BoxDecoration(
+                                vertical: AppSpacing.espacioEstandar,
+                                horizontal: AppSpacing.espacioSeccion),
+                            decoration: const BoxDecoration(
                                 border: Border(
                                     top: BorderSide(
-                                        color: Colors.grey.shade200))),
+                                        color: AppColors.bordeSuave))),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -508,15 +493,15 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                 ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.verdeTeal,
-                                    borderRadius:
-                                        BorderRadius.circular(8),
+                                      horizontal: AppSpacing.espacioEstandar,
+                                      vertical: AppSpacing.espacioChico),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.marcaActiva,
+                                    borderRadius: AppRadii.bordeChico,
                                   ),
                                   child: Text('$_currentPage',
-                                      style: const TextStyle(
-                                          color: Colors.white,
+                                      style: AppTypography.etiqueta.copyWith(
+                                          color: AppColors.sobreMarca,
                                           fontWeight: FontWeight.bold)),
                                 ),
                                 IconButton(
@@ -526,11 +511,11 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                           setState(() => _currentPage++)
                                       : null,
                                 ),
-                                const SizedBox(width: 24),
+                                const SizedBox(width: AppSpacing.espacioSeccion),
                                 Text(
                                     'Página $_currentPage de $totalPages',
-                                    style: const TextStyle(
-                                        color: Colors.grey)),
+                                    style: AppTypography.textoChico.copyWith(
+                                        color: AppColors.textoInactivo)),
                               ],
                             ),
                           ),
