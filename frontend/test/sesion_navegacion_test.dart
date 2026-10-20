@@ -14,6 +14,7 @@ import 'package:sgi_u_frontend/services/api_service.dart';
 import 'package:sgi_u_frontend/navigation/app_shell.dart';
 import 'package:sgi_u_frontend/navigation/seccion.dart';
 import 'package:sgi_u_frontend/navigation/transiciones.dart';
+import 'package:sgi_u_frontend/widgets/campo_buscador.dart';
 import 'package:sgi_u_frontend/widgets/marca_negocio.dart';
 
 /// Flujo de navegación de sesión (login, logout, sesión vencida) sobre la app
@@ -79,8 +80,15 @@ void main() {
   }
 
   Future<void> ingresar(WidgetTester tester) async {
-    await tester.enterText(find.byType(TextFormField).at(0), 'admin');
-    await tester.enterText(find.byType(TextFormField).at(1), 'admin123');
+    await tester.pumpAndSettle();
+    final usuario = find.descendant(
+        of: find.byType(CampoBuscador).at(0), matching: find.byType(TextField));
+    final contrasena = find.descendant(
+        of: find.byType(CampoBuscador).at(1), matching: find.byType(TextFormField));
+    await tester.enterText(usuario, 'admin');
+    await tester.pump();
+    await tester.enterText(contrasena, 'admin123');
+    await tester.pump();
     await tester.tap(_botonLogin);
     await tester.pumpAndSettle();
   }
@@ -98,6 +106,9 @@ void main() {
 
   Future<void> cerrarSesion(WidgetTester tester) async {
     await tester.tap(find.text('Cerrar Sesión'));
+    await tester.pumpAndSettle();
+    // El cierre de sesión pide confirmación: se toca el botón del modal.
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Cerrar sesión'));
     await tester.pumpAndSettle();
   }
 
@@ -229,13 +240,16 @@ void main() {
   });
 
   group('Enter en el formulario de login', () {
-    final usuario = find.byType(TextFormField).at(0);
-    final contrasena = find.byType(TextFormField).at(1);
+    final usuario = find.descendant(
+        of: find.byType(CampoBuscador).at(0), matching: find.byType(TextField));
+    final contrasena = find.descendant(
+        of: find.byType(CampoBuscador).at(1), matching: find.byType(TextFormField));
 
     testWidgets('Enter en Contraseña inicia sesión', (tester) async {
       await arrancar(tester);
       await tester.enterText(usuario, 'admin');
       await tester.enterText(contrasena, 'admin123');
+      await tester.pump();
 
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
@@ -248,7 +262,9 @@ void main() {
         (tester) async {
       await arrancar(tester);
       await tester.enterText(usuario, 'admin');
-
+      await tester.enterText(contrasena, '');
+      await tester.enterText(usuario, 'admin');
+      await tester.pump();
       await tester.testTextInput.receiveAction(TextInputAction.next);
       await tester.pumpAndSettle();
 
@@ -261,8 +277,10 @@ void main() {
     testWidgets('Enter en Usuario con Contraseña completa inicia sesión',
         (tester) async {
       await arrancar(tester);
+      await tester.enterText(usuario, 'admin');
       await tester.enterText(contrasena, 'admin123');
       await tester.enterText(usuario, 'admin');
+      await tester.pump();
 
       await tester.testTextInput.receiveAction(TextInputAction.next);
       await tester.pumpAndSettle();
@@ -304,6 +322,8 @@ void main() {
       await ingresar(tester);
 
       await tester.tap(find.text('Cerrar Sesión'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Cerrar sesión'));
       await esperarSinTransicion(tester, _principal, login);
     });
 
@@ -318,8 +338,14 @@ void main() {
 
     testWidgets('el paso de login a la app es instantáneo', (tester) async {
       await arrancar(tester);
-      await tester.enterText(find.byType(TextFormField).at(0), 'admin');
-      await tester.enterText(find.byType(TextFormField).at(1), 'admin123');
+      final usuario = find.descendant(
+          of: find.byType(CampoBuscador).at(0), matching: find.byType(TextField));
+      final contrasena = find.descendant(
+          of: find.byType(CampoBuscador).at(1), matching: find.byType(TextFormField));
+      await tester.enterText(usuario, 'admin');
+      await tester.pump();
+      await tester.enterText(contrasena, 'admin123');
+      await tester.pump();
 
       await tester.tap(_botonLogin);
       await esperarSinTransicion(tester, login, _principal);

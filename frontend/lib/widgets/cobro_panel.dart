@@ -58,7 +58,13 @@ class CobroPanel extends StatelessWidget {
                           key: Key('pagar_restante_${m.id}'),
                           onPressed:
                               puedeCargar ? () => bloc.add(PagarRestante(m.id)) : null,
-                          child: Text(m.nombre),
+                          child: Text(
+                            m.nombre,
+                            style: AppTypography.etiqueta,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            softWrap: false,
+                          ),
                         ),
                     ],
                   ),

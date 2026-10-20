@@ -11,6 +11,7 @@ import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../widgets/app_snack_bar.dart';
+import '../widgets/campo_buscador.dart';
 import '../widgets/marca_negocio.dart';
 
 const String mensajeSesionVencida = 'Tu sesión venció, vuelve a ingresar';
@@ -219,79 +220,57 @@ class _LoginScreenState extends State<LoginScreen> {
     Widget? suffixIcon,
     TextInputAction? textInputAction,
     ValueChanged<String>? onFieldSubmitted,
+    FocusNode? focusNode,
+    bool esFormField = false,
+    FormFieldValidator<String>? validator,
   }) {
-    return Container(
+    return SizedBox(
       height: 60,
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.borde),
-        borderRadius: AppRadii.bordeCampo,
-      ),
-      child: TextFormField(
+      child: CampoBuscador(
         controller: controller,
+        focusNode: focusNode,
+        hintText: hintText,
+        icono: prefixIcon,
+        iconoAlFrente: true,
+        conSombra: false,
+        ancho: double.infinity,
+        alto: 60,
         obscureText: obscureText,
+        suffixIcon: suffixIcon,
         textInputAction: textInputAction,
         onFieldSubmitted: onFieldSubmitted,
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: AppTypography.texto
-              .copyWith(color: AppColors.textoSecundario),
-          prefixIcon:
-              Icon(prefixIcon, color: AppColors.textoTerciario, size: 22),
-          suffixIcon: suffixIcon,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.espacioGrande,
-            vertical: AppSpacing.espacioMedioGrande,
-          ),
-        ),
-        validator: (value) =>
-        value == null || value.isEmpty ? 'Campo obligatorio' : null,
+        esFormField: esFormField,
+        validator: validator,
       ),
     );
   }
 
   Widget _buildPasswordField() {
-    return Container(
-      height: 60,
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.borde),
-        borderRadius: AppRadii.bordeCampo,
-      ),
-      child: TextFormField(
-        controller: _passwordController,
-        focusNode: _passwordFocus,
-        obscureText: _obscurePassword,
-        textInputAction: TextInputAction.done,
-        onFieldSubmitted: (_) => _login(),
-        decoration: InputDecoration(
-          hintText: 'Contraseña',
-          hintStyle: AppTypography.texto
-              .copyWith(color: AppColors.textoSecundario),
-          prefixIcon: const Icon(Icons.lock_outline,
-              color: AppColors.textoTerciario, size: 22),
-          suffixIcon: IconButton(
-            icon: Icon(
-              _obscurePassword
-                  ? Icons.visibility_outlined
-                  : Icons.visibility_off_outlined,
-              color: AppColors.textoTerciario,
-              size: 22,
-            ),
-            onPressed: () {
-              setState(() {
-                _obscurePassword = !_obscurePassword;
-              });
-            },
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.espacioGrande,
-            vertical: AppSpacing.espacioMedioGrande,
-          ),
+    return _buildTextField(
+      controller: _passwordController,
+      focusNode: _passwordFocus,
+      hintText: 'Contraseña',
+      prefixIcon: Icons.lock_outline,
+      obscureText: _obscurePassword,
+      suffixIcon: IconButton(
+        icon: Icon(
+          _obscurePassword
+              ? Icons.visibility_outlined
+              : Icons.visibility_off_outlined,
+          color: AppColors.textoTerciario,
+          size: 22,
         ),
-        validator: (value) =>
-        value == null || value.isEmpty ? 'Campo obligatorio' : null,
+        onPressed: () {
+          setState(() {
+            _obscurePassword = !_obscurePassword;
+          });
+        },
       ),
+      textInputAction: TextInputAction.done,
+      onFieldSubmitted: (_) => _login(),
+      esFormField: true,
+      validator: (value) =>
+          value == null || value.isEmpty ? 'Campo obligatorio' : null,
     );
   }
 

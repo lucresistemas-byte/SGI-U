@@ -8,6 +8,8 @@ import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_widths.dart';
+import 'app_button.dart';
+import 'app_dialog.dart';
 import 'marca_negocio.dart';
 
 /// Menú lateral. No navega: avisa la sección elegida a AppShell, que cambia
@@ -101,12 +103,37 @@ class _SideMenuState extends State<SideMenu> {
 
           // 7. Cerrar Sesión
           _buildMenuItem(Icons.logout, 'Cerrar Sesión', false, compacto, () {
-            // La navegación al login la hace el listener global de main.dart.
-            context.read<AuthBloc>().add(LogoutRequested());
+            _confirmarCerrarSesion();
           }),
           const SizedBox(height: AppSpacing.espacioGrande),
         ],
       );
+  }
+
+  /// Pide confirmación antes de cerrar la sesión. La navegación al login la
+  /// hace el listener global de main.dart cuando el AuthBloc emite el logout.
+  Future<void> _confirmarCerrarSesion() async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AppDialog(
+        titulo: 'Cerrar sesión',
+        tamano: TamanoDialogo.chico,
+        acciones: [
+          AppButton.ghost(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          AppButton.primary(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+        child: const Text('¿Cerrar la sesión actual?'),
+      ),
+    );
+    if (confirmado == true && mounted) {
+      context.read<AuthBloc>().add(LogoutRequested());
+    }
   }
 
   Widget _buildSeccionItem(Seccion seccion, bool compacto) => _buildMenuItem(
