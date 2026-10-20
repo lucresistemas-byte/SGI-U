@@ -13,8 +13,8 @@ void main() {
     // Quedan fuera `lib/theme/` (define los tokens) y `lib/services/` (usa el
     // paquete `pdf`, otra tipografía: no aplica `AppTypography`).
     const baselineColorHex = 0;
-    const baselineColors = 5;
-    const baselineFontSize = 9;
+    const baselineColors = 0;
+    const baselineFontSize = 0;
 
     final raiz = Directory('lib');
     expect(raiz.existsSync(), isTrue,

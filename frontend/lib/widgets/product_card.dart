@@ -30,59 +30,68 @@ class ProductCard extends StatelessWidget {
           opacity: isAgotado ? 0.6 : 1.0,
           child: SizedBox(
             width: 140,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.inventory, size: 40),
-                const SizedBox(height: AppSpacing.espacioChico),
-                Text(
-                  product.nombre,
-                  textAlign: TextAlign.center,
-                  style: AppTypography.textoChico
-                      .copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: AppSpacing.espacioMinimo),
-                Text(
-                  formatPesos(product.precioUnitario),
-                  style: AppTypography.textoChico,
-                ),
-                const SizedBox(height: AppSpacing.espacioMinimo),
-                // --- Indicador de Stock y Unidad de Medida ---
-                Text(
-                  isAgotado
-                      ? 'Agotado'
-                      : 'Stock: ${textoStock(product.stockActual, product.unidadStock)}',
-                  key: const ValueKey('product_card_stock_text'),
-                  style: AppTypography.etiqueta.copyWith(
-                    color: isAgotado
-                        ? AppColors.error
-                        : AppColors.textoTerciario,
-                    fontWeight:
-                        isAgotado ? FontWeight.w700 : FontWeight.w400,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.espacioMinimo,
+                horizontal: AppSpacing.espacioMinimo,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.inventory, size: 36),
+                  const SizedBox(height: AppSpacing.espacioMinimo),
+                  Text(
+                    product.nombre,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.textoChico
+                        .copyWith(fontWeight: FontWeight.w700),
                   ),
-                ),
-                if (product.unidadStock.isNotEmpty)
-                  Container(
-                    key: const ValueKey('product_card_unidad_badge'),
-                    margin: const EdgeInsets.only(top: AppSpacing.espacioMinimo),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.espacioChico,
-                      vertical: AppSpacing.espacioMinimo,
+                  const SizedBox(height: AppSpacing.espacioMinimo),
+                  Text(
+                    formatPesos(product.precioUnitario),
+                    style: AppTypography.textoChico,
+                  ),
+                  const SizedBox(height: AppSpacing.espacioMinimo),
+                  // --- Indicador de Stock y Unidad de Medida ---
+                  Text(
+                    isAgotado
+                        ? 'Agotado'
+                        : 'Stock: ${textoStock(product.stockActual, product.unidadStock)}',
+                    key: const ValueKey('product_card_stock_text'),
+                    style: AppTypography.etiqueta.copyWith(
+                      color: isAgotado
+                          ? AppColors.error
+                          : AppColors.textoTerciario,
+                      fontWeight:
+                          isAgotado ? FontWeight.w700 : FontWeight.w400,
                     ),
-                    decoration: const BoxDecoration(
-                      color: AppColors.bordeSuave,
-                      borderRadius: AppRadii.bordeMinimo,
-                    ),
-                    child: Text(
-                      UnidadMedida.deCodigo(product.unidadStock)?.nombre ??
-                          product.unidadStock,
-                      style: AppTypography.pie.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.menuTexto,
+                  ),
+                  if (product.unidadStock.isNotEmpty)
+                    Container(
+                      key: const ValueKey('product_card_unidad_badge'),
+                      margin: const EdgeInsets.only(top: AppSpacing.espacioMinimo),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.espacioChico,
+                        vertical: 2,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: AppColors.bordeSuave,
+                        borderRadius: AppRadii.bordeMinimo,
+                      ),
+                      child: Text(
+                        UnidadMedida.deCodigo(product.unidadStock)?.nombre ??
+                            product.unidadStock,
+                        style: AppTypography.pie.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.menuTexto,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

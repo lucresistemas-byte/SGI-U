@@ -171,7 +171,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       .copyWith(color: AppColors.textoPrincipal),
                 ),
                 const SizedBox(height: 6),
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       'Resumen Ejecutivo',
@@ -186,7 +187,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             );
 
-            if (constraints.maxWidth < 700) {
+            if (constraints.maxWidth < 950) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -451,7 +452,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: AppColors.textoPrincipal.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -478,7 +479,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
-                Text(monto, style: TextStyle(fontSize: grande ? 36 : 32, fontWeight: FontWeight.bold, color: montoColor)),
+                Text(monto, style: (grande ? AppTypography.marca : AppTypography.tituloPantalla).copyWith(color: montoColor)),
                 if (porcentaje != null) ...[
                   const SizedBox(width: AppSpacing.espacioChico),
                   Text(formatPorcentaje(porcentaje),
@@ -517,7 +518,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(monto, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.sobreMarca)),
+            child: Text(monto, style: AppTypography.marca.copyWith(color: AppColors.sobreMarca)),
           ),
           const SizedBox(height: 10),
           explicacion,
@@ -531,51 +532,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final kpis = _dashboardData!.kpis;
     final formatter = NumberFormat.currency(locale: 'es_AR', symbol: '\$');
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '¿Cómo se está moviendo mi negocio?',
-          style: AppTypography.subtitulo.copyWith(color: AppColors.marcaAcento),
-        ),
-        const SizedBox(height: AppSpacing.espacioEstandar),
-        Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final enColumna = constraints.maxWidth < 950;
+        final tarjetas = Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              flex: 4,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _buildMetricCard(
-                      key: const Key('dashboard_cantidad_ventas'),
-                      titulo: 'Cantidad de Ventas',
-                      valor: kpis.cantidadVentas.toString(),
-                      explicacion: TextosFinanzas.cantidadVentas(TextosFinanzas.entreFechas,
-                          deTipo: _filtroTipo != null),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.espacioGrande),
-                  Expanded(
-                    child: _buildMetricCard(
-                      key: const Key('dashboard_ticket'),
-                      titulo: 'Ticket Promedio',
-                      valor: formatter.format(kpis.ticketPromedio),
-                      explicacion: TextosFinanzas.ticketPromedio,
-                    ),
-                  ),
-                ],
+              child: _buildMetricCard(
+                key: const Key('dashboard_cantidad_ventas'),
+                titulo: 'Cantidad de Ventas',
+                valor: kpis.cantidadVentas.toString(),
+                explicacion: TextosFinanzas.cantidadVentas(TextosFinanzas.entreFechas,
+                    deTipo: _filtroTipo != null),
               ),
             ),
             const SizedBox(width: AppSpacing.espacioGrande),
             Expanded(
-              flex: 6,
-              child: _buildChartPlaceholder(),
+              child: _buildMetricCard(
+                key: const Key('dashboard_ticket'),
+                titulo: 'Ticket Promedio',
+                valor: formatter.format(kpis.ticketPromedio),
+                explicacion: TextosFinanzas.ticketPromedio,
+              ),
             ),
           ],
-        ),
-      ],
+        );
+
+        final chart = _buildChartPlaceholder();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '¿Cómo se está moviendo mi negocio?',
+              style: AppTypography.subtitulo.copyWith(color: AppColors.marcaAcento),
+            ),
+            const SizedBox(height: AppSpacing.espacioEstandar),
+            if (enColumna) ...[
+              tarjetas,
+              const SizedBox(height: AppSpacing.espacioGrande),
+              chart,
+            ] else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 4, child: tarjetas),
+                  const SizedBox(width: AppSpacing.espacioGrande),
+                  Expanded(flex: 6, child: chart),
+                ],
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -587,7 +596,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: AppColors.textoPrincipal.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
@@ -598,7 +607,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: AppSpacing.espacioEstandar),
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(valor, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.textoPrincipal)),
+            child: Text(valor, style: AppTypography.marca.copyWith(color: AppColors.textoPrincipal)),
           ),
           const SizedBox(height: AppSpacing.espacioChico),
           ExplicacionMonto(explicacion, textAlign: TextAlign.center),
@@ -614,7 +623,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: AppColors.textoPrincipal.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -622,10 +631,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Evolución del Dinero',
-                  style: AppTypography.textoChico.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textoPrincipal)),
+              Flexible(
+                child: Text('Evolución del Dinero',
+                    style: AppTypography.textoChico.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textoPrincipal)),
+              ),
+              const SizedBox(width: AppSpacing.espacioChico),
               Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.espacioMedio, vertical: 6),
@@ -633,6 +645,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     border: Border.all(color: AppColors.bordeSuave),
                     borderRadius: AppRadii.bordeChico),
                 child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('Diario', style: AppTypography.etiqueta),
                     SizedBox(width: AppSpacing.espacioMinimo),
@@ -662,23 +675,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // --- BLOQUE 3: ALERTAS OPERATIVAS ---
   Widget _buildAlertasOperativas() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Alertas Operativas (El Día a Día)',
-          style: AppTypography.subtitulo.copyWith(color: AppColors.marcaAcento),
-        ),
-        const SizedBox(height: AppSpacing.espacioEstandar),
-        Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final enColumna = constraints.maxWidth < 950;
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: _buildStockCriticoCard()),
-            const SizedBox(width: AppSpacing.espacioGrande),
-            Expanded(child: _buildTopProductosCard()),
+            Text(
+              'Alertas Operativas (El Día a Día)',
+              style: AppTypography.subtitulo.copyWith(color: AppColors.marcaAcento),
+            ),
+            const SizedBox(height: AppSpacing.espacioEstandar),
+            if (enColumna) ...[
+              _buildStockCriticoCard(),
+              const SizedBox(height: AppSpacing.espacioGrande),
+              _buildTopProductosCard(),
+            ] else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _buildStockCriticoCard()),
+                  const SizedBox(width: AppSpacing.espacioGrande),
+                  Expanded(child: _buildTopProductosCard()),
+                ],
+              ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -690,7 +713,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: AppColors.textoPrincipal.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -764,7 +787,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: AppColors.textoPrincipal.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

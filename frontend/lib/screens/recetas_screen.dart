@@ -471,7 +471,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
       return SizedBox(
         width: 110,
         child: Text(unidad?.nombre ?? '—', key: Key('unidad_insumo_fila_$index'),
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            style: AppTypography.etiqueta.copyWith(fontWeight: FontWeight.bold)),
       );
     }
     // Se recrea al cambiar insumo o unidad (initialValue se lee una sola vez).

@@ -65,7 +65,7 @@ abstract final class AppButton {
       children: [
         Icon(icono, size: 18),
         const SizedBox(width: 8),
-        child,
+        Flexible(child: child),
       ],
     );
   }

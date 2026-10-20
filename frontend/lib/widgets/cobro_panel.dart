@@ -71,12 +71,25 @@ class CobroPanel extends StatelessWidget {
                     Row(
                       key: Key('linea_pago_$i'),
                       children: [
-                        Expanded(child: Text(state.pagos[i].metodo.nombre)),
-                        Text(_pesos(state.pagos[i].monto)),
+                        Expanded(
+                          child: Text(
+                            state.pagos[i].metodo.nombre,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.etiqueta,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.espacioMinimo),
+                        Text(
+                          _pesos(state.pagos[i].monto),
+                          style: AppTypography.etiqueta.copyWith(fontWeight: FontWeight.w600),
+                        ),
                         IconButton(
                           key: Key('quitar_pago_$i'),
                           tooltip: 'Quitar pago',
-                          icon: const Icon(Icons.close, size: 18),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.close, size: 14),
                           onPressed: () => bloc.add(QuitarPago(i)),
                         ),
                       ],
