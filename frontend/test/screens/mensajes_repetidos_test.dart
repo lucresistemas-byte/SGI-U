@@ -28,6 +28,9 @@ void main() {
   });
 
   /// Cuenta los SnackBar que se encolaron, cerrándolos de a uno.
+  ///
+  /// `AppSnackBar` arma el contenido como `Row(Icon, Text)`, así que el mensaje
+  /// se toma del `Text` descendiente en vez de castear `content` directo.
   Future<List<String>> snackbarsMostrados(WidgetTester tester) async {
     final textos = <String>[];
     final messenger = tester.state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger));
@@ -35,7 +38,8 @@ void main() {
       await tester.pump();
       final snack = find.byType(SnackBar);
       if (snack.evaluate().isEmpty) break;
-      textos.add(((tester.widget<SnackBar>(snack.first).content) as Text).data ?? '');
+      final texto = find.descendant(of: snack.first, matching: find.byType(Text));
+      textos.add(tester.widget<Text>(texto.first).data ?? '');
       messenger.removeCurrentSnackBar();
       await tester.pump();
     }

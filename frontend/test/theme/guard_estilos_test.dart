@@ -9,12 +9,12 @@ import 'package:flutter_test/flutter_test.dart';
 /// por pantalla; el guard evita que vuelvan a aparecer.
 void main() {
   test('guard: sin regresión de hardcodeos fuera de lib/theme', () {
-    // Línea base medida tras migrar Materia Prima (Etapa 2, Fase D4).
+    // Línea base medida tras migrar Pedidos (Etapa 2, Fase D5).
     // Quedan fuera `lib/theme/` (define los tokens) y `lib/services/` (usa el
     // paquete `pdf`, otra tipografía: no aplica `AppTypography`).
-    const baselineColorHex = 144;
-    const baselineColors = 80;
-    const baselineFontSize = 71;
+    const baselineColorHex = 124;
+    const baselineColors = 69;
+    const baselineFontSize = 64;
 
     final raiz = Directory('lib');
     expect(raiz.existsSync(), isTrue,
