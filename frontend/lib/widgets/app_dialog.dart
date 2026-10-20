@@ -64,7 +64,7 @@ class AppDialog extends StatelessWidget {
                 ),
               if (child != null) ...[
                 const SizedBox(height: AppSpacing.espacioMedio),
-                child!,
+                Flexible(child: SingleChildScrollView(child: child!)),
               ],
               if (acciones.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.espacioSeccion),

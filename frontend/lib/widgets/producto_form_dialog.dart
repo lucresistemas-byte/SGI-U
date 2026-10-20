@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart' show AppTypography;
 import '../utils/numeros.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/product.dart';
 import '../blocs/pos_bloc.dart';
 import '../blocs/pos_event.dart';
 import '../blocs/pos_state.dart';
+import 'app_button.dart';
+import 'app_dialog.dart';
 
 class ProductoFormDialog extends StatefulWidget {
   final Product? productoAEditar;
@@ -299,7 +304,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
               : 'Ganancia por unidad: ${formatPesos(ganancia)}'
                   '${real != null ? ' (${formatDecimal(real, decimales: 2)} %)' : ''}',
           key: const Key('ganancia_pesos_form'),
-          style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.verdePrincipal),
+          style: AppTypography.textoChico.copyWith(
+              fontWeight: FontWeight.w600, color: AppColors.marca),
         ),
         Text(
           bajoMinimo
@@ -309,7 +315,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                       'si el costo sube, sube solo al mínimo.'
                   : 'El precio sigue al costo y al %, redondeado hacia arriba a \$100.',
           key: const Key('modo_precio_form'),
-          style: TextStyle(fontSize: 12, color: bajoMinimo ? Colors.red.shade700 : const Color(0xFF64748B)),
+          style: AppTypography.etiqueta.copyWith(
+              color: bajoMinimo ? AppColors.error : AppColors.textoInactivo),
         ),
         if (_precioManual)
           TextButton(
@@ -346,15 +353,23 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
           context.read<PosBloc>().add(const ClearSuccess());
         }
       },
-      child: AlertDialog(
-        title: Text(_esEdicion ? 'Editar Producto' : 'Nuevo Producto',
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: StatefulBuilder(
+      child: AppDialog(
+        titulo: _esEdicion ? 'Editar Producto' : 'Nuevo Producto',
+        acciones: [
+          AppButton.ghost(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          AppButton.primary(
+            onPressed: _isFormValid() ? _guardarProducto : null,
+            child: const Text('Guardar Producto'),
+          ),
+        ],
+        child: StatefulBuilder(
           builder: (context, setStateDialog) {
             // No agregamos listeners aquí (se agregan en initState)
 
-            return SingleChildScrollView(
-              child: Form(
+            return Form(
                 key: _formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -367,10 +382,11 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                             ? 'Tipo: ${widget.productoAEditar!.esElaborado ? 'Elaborado' : 'Reventa'}'
                             : 'Tipo: Reventa. Los productos elaborados se crean desde Recetas.',
                         key: const Key('tipo_producto_form'),
-                        style: const TextStyle(color: Color(0xFF475569)),
+                        style: AppTypography.textoChico
+                            .copyWith(color: AppColors.textoSecundario),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.espacioMedio),
                     // Código: lo genera el sistema; solo se muestra al editar.
                     Align(
                       alignment: Alignment.centerLeft,
@@ -379,10 +395,11 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                             ? 'Código: ${widget.productoAEditar!.codigo}'
                             : 'El código se genera automáticamente al guardar.',
                         key: const Key('codigo_producto_form'),
-                        style: const TextStyle(color: Color(0xFF475569)),
+                        style: AppTypography.textoChico
+                            .copyWith(color: AppColors.textoSecundario),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.espacioEstandar),
                     // Nombre
                     TextFormField(
                       controller: _nombreController,
@@ -391,7 +408,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                       validator: (value) =>
                           value == null || value.isEmpty ? 'Requerido' : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.espacioEstandar),
                     // Costo y Margen (% Ganancia)
                     Row(
                       children: [
@@ -417,7 +434,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                             },
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: AppSpacing.espacioEstandar),
                         Expanded(
                           child: TextFormField(
                             key: const ValueKey('producto_form_porcentaje_field'),
@@ -441,7 +458,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.espacioEstandar),
                     // Precio de Venta
                     TextFormField(
                       key: const ValueKey('producto_form_precio_field'),
@@ -471,9 +488,9 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.espacioChico),
                     _resumenPrecio(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.espacioEstandar),
                     // Unidad de Medida
                     DropdownButtonFormField<String>(
                       key: const ValueKey('producto_form_unidad_medida_dropdown'),
@@ -494,7 +511,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                         }
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.espacioEstandar),
                     TextFormField(
                       key: const Key('producto_stock_minimo_input'),
                       controller: _stockMinimoController,
@@ -510,7 +527,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.espacioEstandar),
                     // Stock inicial (creación)
                     if (!_esEdicion) ...[
                       TextFormField(
@@ -532,29 +549,30 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.espacioEstandar),
                     ] else ...[
                       // Ajuste de stock (edición)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                                'Stock actual: $_stockActualMostrado ${_unidadMedida == 'UNIDAD' ? 'unidades' : _unidadMedida}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 12),
+                       Container(
+                         padding: const EdgeInsets.all(AppSpacing.espacioMedio),
+                         decoration: BoxDecoration(
+                           color: AppColors.fondoAlternativo,
+                           borderRadius: AppRadii.bordeChico,
+                           border: Border.all(color: AppColors.borde),
+                         ),
+                         child: Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                             Text(
+                                 'Stock actual: $_stockActualMostrado ${_unidadMedida == 'UNIDAD' ? 'unidades' : _unidadMedida}',
+                                 style: AppTypography.texto.copyWith(
+                                     fontWeight: FontWeight.bold)),
+                             const SizedBox(height: AppSpacing.espacioMedio),
                             Row(
                               children: [
                                 Expanded(
                                   child: DropdownButtonFormField<String>(
                                     initialValue: _ajusteTipo,
+                                    isExpanded: true,
                                     decoration: const InputDecoration(
                                         labelText: 'Acción'),
                                     items: [
@@ -574,7 +592,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                                     },
                                   ),
                                 ),
-                                const SizedBox(width: 16),
+                                const SizedBox(width: AppSpacing.espacioEstandar),
                                 Expanded(
                                   child: TextFormField(
                                     controller: _ajusteCantidadController,
@@ -602,13 +620,14 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: AppSpacing.espacioMedio),
                             Row(
                               children: [
                                 Expanded(
                                   child: DropdownButtonFormField<String>(
                                     key: ValueKey('ajuste_movimiento_$_ajusteTipo'),
                                     initialValue: _ajusteMovimiento,
+                                    isExpanded: true,
                                     decoration: const InputDecoration(labelText: 'Tipo'),
                                     items: [
                                       for (final m in _movimientos.entries)
@@ -617,7 +636,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                                     onChanged: (value) => setStateDialog(() => _ajusteMovimiento = value!),
                                   ),
                                 ),
-                                const SizedBox(width: 16),
+                                const SizedBox(width: AppSpacing.espacioEstandar),
                                 Expanded(
                                   flex: 2,
                                   child: TextFormField(
@@ -630,12 +649,14 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                               ],
                             ),
                             if (_soloResta)
-                              const Padding(
-                                padding: EdgeInsets.only(top: 8),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.only(top: AppSpacing.espacioChico),
                                 child: Text(
                                   'Para sumar stock use "Producir" en la lista: descuenta los ingredientes o insumos.',
-                                  key: Key('ajuste_usar_producir'),
-                                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                                  key: const Key('ajuste_usar_producir'),
+                                  style: AppTypography.etiqueta
+                                      .copyWith(color: AppColors.textoInactivo),
                                 ),
                               ),
                             if (_ajusteCantidadController.text
@@ -648,17 +669,18 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                                         _ajusteCantidadController.text.trim()) >
                                     0)
                               Padding(
-                                padding: const EdgeInsets.only(top: 8),
+                                padding:
+                                    const EdgeInsets.only(top: AppSpacing.espacioChico),
                                 child: Text(
                                   'Stock resultante: ${_calcularStockResultante()} ${_unidadMedida == 'UNIDAD' ? 'unidades' : _unidadMedida}',
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Colors.green),
+                                  style: AppTypography.etiqueta
+                                      .copyWith(color: AppColors.exito),
                                 ),
                               ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.espacioEstandar),
                     ],
                     if (_esEdicion && widget.productoAEditar!.esElaborado)
                       CheckboxListTile(
@@ -674,7 +696,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                     Row(
                       children: [
                         const Text('Estado:'),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: AppSpacing.espacioEstandar),
                         Switch(
                           value: _activo,
                           onChanged: (value) =>
@@ -685,31 +707,16 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                     ),
                     if (_backendError != null)
                       Padding(
-                        padding: const EdgeInsets.only(top: 16),
+                        padding: const EdgeInsets.all(AppSpacing.espacioEstandar),
                         child: Text(_backendError!,
-                            style: const TextStyle(color: Colors.red)),
+                            style: AppTypography.texto
+                                .copyWith(color: AppColors.error)),
                       ),
                   ],
                 ),
-              ),
             );
           },
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: _isFormValid() ? _guardarProducto : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
-              disabledBackgroundColor: Colors.grey.shade400,
-            ),
-            child: const Text('Guardar Producto',
-                style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }
