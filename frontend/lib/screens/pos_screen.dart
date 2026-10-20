@@ -8,10 +8,16 @@ import '../blocs/pos_event.dart';
 import '../blocs/pos_state.dart';
 import '../models/product.dart';
 import '../models/cart_item.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import '../widgets/product_card.dart';
 import '../widgets/cobro_panel.dart';
 import '../widgets/app_scaffold.dart';
-import '../theme/app_colors.dart';
+import '../widgets/app_button.dart';
+import '../widgets/app_dialog.dart';
+import '../widgets/app_snack_bar.dart';
+import '../widgets/estado_seccion.dart';
 import '../services/ticket_service.dart';
 import '../widgets/cargando_diferido.dart';
 
@@ -52,11 +58,11 @@ class PosView extends StatelessWidget {
         if (state.errorMessage != null) {
           showDialog(
             context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('Error'),
-              content: Text(state.errorMessage!),
-              actions: [
-                TextButton(
+            builder: (_) => AppDialog(
+              titulo: 'Error',
+              tamano: TamanoDialogo.chico,
+              acciones: [
+                AppButton.primary(
                   onPressed: () {
                     context.read<PosBloc>().add(const ClearError());
                     Navigator.pop(context);
@@ -64,6 +70,7 @@ class PosView extends StatelessWidget {
                   child: const Text('OK'),
                 ),
               ],
+              child: Text(state.errorMessage!),
             ),
           );
         }
@@ -71,12 +78,12 @@ class PosView extends StatelessWidget {
           final sale = state.completedSale;
           showDialog(
             context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('Éxito'),
-              content: Text(state.successMessage!),
-              actions: [
+            builder: (_) => AppDialog(
+              titulo: 'Éxito',
+              tamano: TamanoDialogo.chico,
+              acciones: [
                 if (sale != null)
-                  TextButton.icon(
+                  AppButton.ghost(
                     onPressed: () async {
                       try {
                         final pdfBytes =
@@ -89,16 +96,14 @@ class PosView extends StatelessWidget {
                         }
                       } catch (e) {
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error al generar ticket: $e')),
-                          );
+                          AppSnackBar.error(context, 'Error al generar ticket: $e');
                         }
                       }
                     },
-                    icon: const Icon(Icons.receipt_long),
-                    label: const Text('Ver ticket'),
+                    icono: Icons.receipt_long,
+                    child: const Text('Ver ticket'),
                   ),
-                TextButton(
+                AppButton.primary(
                   onPressed: () {
                     context.read<PosBloc>().add(const ClearSuccess());
                     Navigator.pop(context);
@@ -106,6 +111,7 @@ class PosView extends StatelessWidget {
                   child: const Text('Nueva venta'),
                 ),
               ],
+              child: Text(state.successMessage!),
             ),
           );
         }
@@ -133,13 +139,13 @@ class LeftPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(AppSpacing.espacioEstandar),
       child: Column(
         children: [
           const SearchAddBar(),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.espacioMedio),
           const PosCategoryFilter(),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.espacioMedio),
           SizedBox(
             height: 200,
             child: BlocBuilder<PosBloc, PosState>(
@@ -150,13 +156,11 @@ class LeftPanel extends StatelessWidget {
                 // El POS muestra solo lo vendible (no preparaciones base ni inactivos).
                 final displayProducts = state.filteredVendibles;
                 if (displayProducts.isEmpty) {
-                  return Center(
-                    child: Text(
-                      state.selectedCategory != null
-                          ? 'No hay productos en la categoría "${state.selectedCategory}"'
-                          : 'No se encontraron productos',
-                      style: const TextStyle(color: Colors.grey),
-                    ),
+                  return EmptyState(
+                    icono: Icons.search_off,
+                    mensaje: state.selectedCategory != null
+                        ? 'No hay productos en la categoría "${state.selectedCategory}"'
+                        : 'No se encontraron productos',
                   );
                 }
                 return ListView.builder(
@@ -176,13 +180,8 @@ class LeftPanel extends StatelessWidget {
                               .read<PosBloc>()
                               .add(AddToCart(product.codigo, quantity));
                         } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                  'Stock máximo alcanzado. Solo quedan ${product.stockActual} en stock.'),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
+                          AppSnackBar.error(context,
+                              'Stock máximo alcanzado. Solo quedan ${product.stockActual} en stock.');
                         }
                       },
                     );
@@ -191,7 +190,7 @@ class LeftPanel extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.espacioEstandar),
           const Expanded(child: CartTable()),
         ],
       ),
@@ -216,7 +215,7 @@ class PosCategoryFilter extends StatelessWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.espacioChico),
             itemBuilder: (context, index) {
               final cat = categories[index];
               final isSelected =
@@ -226,12 +225,11 @@ class PosCategoryFilter extends StatelessWidget {
                 key: ValueKey('pos_category_chip_$cat'),
                 label: Text(cat),
                 selected: isSelected,
-                selectedColor: AppColors.verdeTeal.withValues(alpha: 0.2),
-                checkmarkColor: AppColors.verdeTeal,
-                labelStyle: TextStyle(
-                  color: isSelected ? AppColors.verdeTeal : Colors.black87,
+                selectedColor: AppColors.seleccionFondo,
+                checkmarkColor: AppColors.marcaActiva,
+                labelStyle: AppTypography.etiqueta.copyWith(
+                  color: isSelected ? AppColors.marcaActiva : AppColors.textoPrincipal,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 13,
                 ),
                 onSelected: (selected) {
                   final target = (selected && cat != 'Todas') ? cat : null;
@@ -264,13 +262,8 @@ class _SearchAddBarState extends State<SearchAddBar> {
       _searchController?.clear();
       context.read<PosBloc>().add(const SearchProductsEvent(''));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Stock insuficiente. Quedan ${textoStock(product.stockActual, product.unidadStock)} de "${product.nombre}".'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      AppSnackBar.error(context,
+          'Stock insuficiente. Quedan ${textoStock(product.stockActual, product.unidadStock)} de "${product.nombre}".');
     }
   }
 
@@ -298,7 +291,7 @@ class _SearchAddBarState extends State<SearchAddBar> {
               alignment: Alignment.topLeft,
               child: Material(
                 elevation: 4.0,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppSpacing.espacioChico),
                 child: ConstrainedBox(
                   constraints:
                       const BoxConstraints(maxHeight: 250, maxWidth: 450),
@@ -316,15 +309,14 @@ class _SearchAddBarState extends State<SearchAddBar> {
                         ),
                         subtitle: Text(
                           '${option.codigo} • Stock: ${textoStock(option.stockActual, option.unidadStock)} • ${formatPesos(option.precioUnitario)}',
-                          style: TextStyle(
+                          style: AppTypography.etiqueta.copyWith(
                             color: option.stockActual <= 0
-                                ? Colors.red
-                                : Colors.grey.shade600,
-                            fontSize: 12,
+                                ? AppColors.error
+                                : AppColors.textoTerciario,
                           ),
                         ),
                         trailing: const Icon(Icons.add_shopping_cart,
-                            size: 20, color: AppColors.verdeTeal),
+                            size: 20, color: AppColors.marcaActiva),
                         onTap: () => onSelected(option),
                       );
                     },
@@ -450,13 +442,8 @@ class _CartQuantityInputState extends State<CartQuantityInput> {
     }
 
     if (newQty > widget.product.stockActual) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Stock máximo para "${widget.item.nombre}" es ${textoStock(widget.product.stockActual, widget.product.unidadStock)}.'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      AppSnackBar.error(context,
+          'Stock máximo para "${widget.item.nombre}" es ${textoStock(widget.product.stockActual, widget.product.unidadStock)}.');
       _controller.text = widget.product.stockActual.toString();
       if (_lastAppliedQty != widget.product.stockActual) {
         _lastAppliedQty = widget.product.stockActual;
@@ -507,19 +494,19 @@ class _CartQuantityInputState extends State<CartQuantityInput> {
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
             ],
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            style: AppTypography.etiqueta.copyWith(fontWeight: FontWeight.bold),
             decoration: InputDecoration(
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
               isDense: true,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: Colors.grey.shade400),
+                borderSide: const BorderSide(color: AppColors.bordeSuave),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
                 borderSide:
-                    const BorderSide(color: AppColors.verdeTeal, width: 1.5),
+                    const BorderSide(color: AppColors.marcaActiva, width: 1.5),
               ),
             ),
             onChanged: (val) {
@@ -549,13 +536,8 @@ class _CartQuantityInputState extends State<CartQuantityInput> {
               context.read<PosBloc>().add(UpdateCartItemQuantity(
                   widget.item.codigo, widget.item.cantidad + 1));
             } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                      'Stock máximo alcanzado. Solo quedan ${widget.product.stockActual} de ${widget.item.nombre}'),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
+              AppSnackBar.error(context,
+                  'Stock máximo alcanzado. Solo quedan ${widget.product.stockActual} de ${widget.item.nombre}');
             }
           },
         ),
@@ -573,14 +555,17 @@ class CartTable extends StatelessWidget {
     return BlocBuilder<PosBloc, PosState>(
       builder: (context, state) {
         if (state.cart.isEmpty) {
-          return const Center(child: Text('No hay productos agregados'));
+          return const EmptyState(
+            icono: Icons.shopping_cart_outlined,
+            mensaje: 'No hay productos agregados',
+          );
         }
         return SingleChildScrollView(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              columnSpacing: 16,
-              horizontalMargin: 12,
+              columnSpacing: AppSpacing.espacioEstandar,
+              horizontalMargin: AppSpacing.espacioMedio,
               columns: const [
                 DataColumn(label: Text('Producto')),
                 DataColumn(label: Text('Cantidad')),
@@ -611,7 +596,7 @@ class CartTable extends StatelessWidget {
                       Text(formatPesos(item.subtotal))),
                   DataCell(
                     IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                      icon: const Icon(Icons.delete, color: AppColors.error),
                       onPressed: () {
                         context
                             .read<PosBloc>()
@@ -636,8 +621,8 @@ class RightPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.grey.shade100,
-      padding: const EdgeInsets.all(16.0),
+      color: AppColors.fondoApp,
+      padding: const EdgeInsets.all(AppSpacing.espacioEstandar),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -646,17 +631,17 @@ class RightPanel extends StatelessWidget {
             builder: (context, state) {
               return Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(AppSpacing.espacioEstandar),
                   child: Column(
                     children: [
-                      const Text('Total',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
+                      Text('Total',
+                          style: AppTypography.subtitulo.copyWith(
+                              color: AppColors.textoPrincipal)),
+                      const SizedBox(height: AppSpacing.espacioChico),
                       Text(
                         formatPesos(state.totalAmount),
-                        style: const TextStyle(
-                            fontSize: 28, fontWeight: FontWeight.bold),
+                        style: AppTypography.numeroKpi
+                            .copyWith(color: AppColors.textoPrincipal),
                       ),
                     ],
                   ),
@@ -664,79 +649,59 @@ class RightPanel extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.espacioEstandar),
           // Se habilita solo cuando los pagos cubren el total.
           BlocBuilder<PosBloc, PosState>(
             buildWhen: (a, b) => a.cobroCubierto != b.cobroCubierto || a.isProcessing != b.isProcessing,
             builder: (context, state) => SizedBox(
               width: double.infinity,
               height: 70,
-              child: ElevatedButton(
+              child: AppButton.primary(
                 key: const Key('confirmar_cobro_button'),
                 onPressed: state.cobroCubierto && !state.isProcessing
                     ? () => context.read<PosBloc>().add(const ConfirmSale())
                     : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.verdePrincipal,
-                  foregroundColor: AppColors.blanco,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('CONFIRMAR COBRO',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                child: const Text('CONFIRMAR COBRO'),
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.espacioMedio),
           SizedBox(
             width: double.infinity,
             height: 50,
-            child: OutlinedButton(
+            child: AppButton.secondary(
               onPressed: () {
                 final state = context.read<PosBloc>().state;
                 // Solo mostrar confirmación si hay algo que limpiar
                 if (state.cart.isEmpty && state.pagos.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('No hay selecciones para limpiar')),
-                  );
+                  AppSnackBar.info(context, 'No hay selecciones para limpiar');
                   return;
                 }
 
                 showDialog(
                   context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text('Limpiar selección'),
-                    content: const Text(
-                        '¿Está seguro de que desea descartar todos los productos y los pagos cargados?'),
-                    actions: [
-                      TextButton(
+                  builder: (_) => AppDialog(
+                    titulo: 'Limpiar selección',
+                    tamano: TamanoDialogo.medio,
+                    acciones: [
+                      AppButton.ghost(
                         onPressed: () => Navigator.pop(context),
                         child: const Text('Cancelar'),
                       ),
-                      TextButton(
+                      AppButton.danger(
                         onPressed: () {
                           context.read<PosBloc>().add(const ClearSelection());
                           Navigator.pop(context);
                         },
-                        style: TextButton.styleFrom(
-                            foregroundColor: AppColors.rojoEgresos),
                         child: const Text('Limpiar'),
                       ),
                     ],
+                    child: const Text(
+                        '¿Está seguro de que desea descartar todos los productos y los pagos cargados?'),
                   ),
                 );
               },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.grey),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('LIMPIAR SELECCIÓN',
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey)),
+              child: const Text('LIMPIAR SELECCIÓN'),
             ),
           ),
         ],

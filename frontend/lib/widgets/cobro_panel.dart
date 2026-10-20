@@ -4,7 +4,11 @@ import '../blocs/pos_bloc.dart';
 import '../blocs/pos_event.dart';
 import '../blocs/pos_state.dart';
 import '../models/metodo_pago.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import '../utils/numeros.dart';
+import 'app_button.dart';
 import 'metodo_pago_dropdown.dart';
 
 String _pesos(double v) => formatPesos(v);
@@ -25,35 +29,44 @@ class CobroPanel extends StatelessWidget {
         return Card(
           key: const Key('cobro_panel'),
           child: Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.all(AppSpacing.espacioMedio),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Cobro', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
+                Text('Cobro',
+                    style: AppTypography.texto.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textoPrincipal)),
+                const SizedBox(height: AppSpacing.espacioChico),
                 if (state.metodosPago.isEmpty)
-                  const Text('No hay métodos de pago activos. Revise Configuración → Métodos de pago.',
-                      key: Key('sin_metodos_pago'))
+                  Text(
+                      'No hay métodos de pago activos. Revise Configuración → Métodos de pago.',
+                      key: const Key('sin_metodos_pago'),
+                      style: AppTypography.textoChico
+                          .copyWith(color: AppColors.textoSecundario))
                 else ...[
-                  const Text('Pagar lo que falta con:', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                  Text('Pagar lo que falta con:',
+                      style: AppTypography.etiqueta
+                          .copyWith(color: AppColors.textoInactivo)),
                   const SizedBox(height: 6),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: AppSpacing.espacioChico,
+                    runSpacing: AppSpacing.espacioChico,
                     children: [
                       for (final m in state.metodosPago)
-                        OutlinedButton(
+                        AppButton.secondary(
                           key: Key('pagar_restante_${m.id}'),
-                          onPressed: puedeCargar ? () => bloc.add(PagarRestante(m.id)) : null,
+                          onPressed:
+                              puedeCargar ? () => bloc.add(PagarRestante(m.id)) : null,
                           child: Text(m.nombre),
                         ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.espacioMedio),
                   _AgregarPago(metodos: state.metodosPago, habilitado: puedeCargar),
                 ],
                 if (state.pagos.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.espacioChico),
                   for (var i = 0; i < state.pagos.length; i++)
                     Row(
                       key: Key('linea_pago_$i'),
@@ -79,12 +92,13 @@ class CobroPanel extends StatelessWidget {
                 if (state.cart.isNotEmpty && state.restante > 0)
                   Text('Falta: ${_pesos(state.restante)}',
                       key: const Key('pago_falta'),
-                      style: const TextStyle(color: Color(0xFFB45309), fontWeight: FontWeight.w600))
+                      style: AppTypography.etiqueta.copyWith(
+                          color: AppColors.alerta, fontWeight: FontWeight.w600))
                 else if (state.vuelto > 0)
                   Text('Vuelto: ${_pesos(state.vuelto)}',
                       key: const Key('pago_vuelto'),
-                      style: const TextStyle(
-                          color: Color(0xFF13894E), fontSize: 18, fontWeight: FontWeight.bold)),
+                      style: AppTypography.subtitulo.copyWith(
+                          color: AppColors.exito, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -139,7 +153,7 @@ class _AgregarPagoState extends State<_AgregarPago> {
             onSubmitted: (_) => _agregar(),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.espacioChico),
         Expanded(
           child: MetodoPagoDropdown(
             key: const Key('pago_metodo_dropdown'),
