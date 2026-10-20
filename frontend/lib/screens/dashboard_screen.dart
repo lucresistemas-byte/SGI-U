@@ -6,7 +6,14 @@ import '../services/api_service.dart';
 import '../models/dashboard_models.dart';
 import '../models/metodo_pago.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../widgets/app_button.dart';
+import '../widgets/app_data_table.dart';
 import '../widgets/cargando_diferido.dart';
+import '../widgets/estado_seccion.dart';
+import '../widgets/estado_chip.dart';
 import '../navigation/ir_a_seccion.dart';
 import '../navigation/seccion.dart';
 import '../utils/numeros.dart';
@@ -47,7 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   /// Métodos activos de Configuración (los del filtro).
   List<MetodoPago> _metodosPago = const [];
-  
+
   DashboardResponse? _dashboardData;
   bool _isLoading = true;
   String? _errorMessage;
@@ -101,53 +108,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // Al cambiar un filtro quedan los datos anteriores a la vista (con una
       // barra de carga) en vez de vaciar la pantalla.
       body: _isLoading && _dashboardData == null
-          ? const CargandoDiferido(color: AppColors.verdeClaro)
+          ? const CargandoDiferido(color: AppColors.marcaAcento)
           : _errorMessage != null
-              ? _buildErrorWidget()
+              ? ErrorState(
+                  mensaje: 'Hubo un problema: $_errorMessage',
+                  onReintentar: _cargarDatos,
+                )
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(32.0),
+                  padding: const EdgeInsets.all(AppSpacing.espacioPantalla),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SizedBox(
                         height: 3,
                         child: _isLoading
-                            ? const LinearProgressIndicator(color: AppColors.verdeClaro)
+                            ? const LinearProgressIndicator(color: AppColors.marcaAcento)
                             : null,
                       ),
                       _buildCabecera(),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: AppSpacing.espacioPantalla),
                       _buildTarjetasFinancieras(),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: AppSpacing.espacioPantalla),
                       _buildMetricasComerciales(),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: AppSpacing.espacioPantalla),
                       _buildAlertasOperativas(),
                     ],
                   ),
                 ),
-    );
-  }
-
-  Widget _buildErrorWidget() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: AppColors.rojoEgresos),
-          const SizedBox(height: 16),
-          Text(
-            'Hubo un problema: $_errorMessage',
-            style: const TextStyle(fontSize: 16, color: Color(0xFF333333)),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _cargarDatos,
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.verdeClaro),
-            child: const Text('Reintentar', style: TextStyle(color: Colors.white)),
-          )
-        ],
-      ),
     );
   }
 
@@ -159,8 +146,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         LayoutBuilder(
           builder: (context, constraints) {
             final filtros = Wrap(
-              spacing: 12,
-              runSpacing: 8,
+              spacing: AppSpacing.espacioMedio,
+              runSpacing: AppSpacing.espacioChico,
               children: [
                 SelectorPeriodo(
                   periodo: _periodo,
@@ -178,19 +165,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
             final titulo = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'SGI-U - Tablero de Control',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF111111)),
+                  style: AppTypography.tituloPantalla
+                      .copyWith(color: AppColors.textoPrincipal),
                 ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Text(
+                    Text(
                       'Resumen Ejecutivo',
-                      style: TextStyle(fontSize: 18, color: Color(0xFF555555)),
+                      style: AppTypography.subtitulo
+                          .copyWith(color: AppColors.textoSecundario),
                     ),
-                    const SizedBox(width: 8),
-                    Icon(Icons.info_outline, size: 18, color: Colors.grey.shade500),
+                    const SizedBox(width: AppSpacing.espacioChico),
+                    const Icon(Icons.info_outline,
+                        size: 18, color: AppColors.textoTerciario),
                   ],
                 ),
               ],
@@ -201,7 +191,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   titulo,
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.espacioEstandar),
                   filtros,
                 ],
               );
@@ -212,25 +202,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(flex: 5, child: titulo),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppSpacing.espacioEstandar),
                 Expanded(flex: 7, child: filtros),
               ],
             );
           },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.espacioEstandar),
         Row(
           children: [
             Container(
               width: 8,
               height: 8,
-              decoration: const BoxDecoration(color: Color(0xFF008A3D), shape: BoxShape.circle),
+              decoration: const BoxDecoration(
+                  color: AppColors.marcaAcento, shape: BoxShape.circle),
             ),
-            const SizedBox(width: 8),
-            const Expanded(
+            const SizedBox(width: AppSpacing.espacioChico),
+            Expanded(
               child: Text(
                 'Visualiza la salud financiera y el desempeño de tu negocio en el período seleccionado.',
-                style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
+                style: AppTypography.textoChico
+                    .copyWith(color: AppColors.textoTerciario),
               ),
             ),
           ],
@@ -245,19 +237,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final seleccion = _metodosPago.any((m) => m.id == _filtroMetodoPagoId) ? _filtroMetodoPagoId : null;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.espacioMedio, vertical: AppSpacing.espacioMinimo),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.fondoSuperficie,
+        border: Border.all(color: AppColors.bordeSuave),
+        borderRadius: AppRadii.bordeChico,
       ),
       child: DropdownButton<int?>(
         key: const Key('dashboard_filtro_metodo_pago'),
         value: seleccion,
         underline: const SizedBox.shrink(),
         isDense: true,
-        icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey.shade700),
-        style: const TextStyle(fontSize: 14, color: Color(0xFF333333), fontWeight: FontWeight.w500),
+        icon: const Icon(Icons.keyboard_arrow_down,
+            size: 18, color: AppColors.textoSecundario),
+        style: AppTypography.textoChico
+            .copyWith(color: AppColors.textoPrincipal, fontWeight: FontWeight.w500),
         items: [
           const DropdownMenuItem<int?>(value: null, child: Text('Todos los métodos de pago')),
           for (final m in _metodosPago) DropdownMenuItem<int?>(value: m.id, child: Text(m.nombre)),
@@ -272,24 +267,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildTipoProductoDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.espacioMedio, vertical: AppSpacing.espacioMinimo),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.fondoSuperficie,
+        border: Border.all(color: AppColors.bordeSuave),
+        borderRadius: AppRadii.bordeChico,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 18, color: Colors.grey.shade700),
+          const Icon(Icons.inventory_2_outlined,
+              size: 18, color: AppColors.textoSecundario),
           const SizedBox(width: 10),
           DropdownButton<String?>(
             key: const Key('dashboard_filtro_tipo'),
             value: _filtroTipo,
             underline: const SizedBox.shrink(),
             isDense: true,
-            icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey.shade700),
-            style: const TextStyle(fontSize: 14, color: Color(0xFF333333), fontWeight: FontWeight.w500),
+            icon: const Icon(Icons.keyboard_arrow_down,
+                size: 18, color: AppColors.textoSecundario),
+            style: AppTypography.textoChico.copyWith(
+                color: AppColors.textoPrincipal, fontWeight: FontWeight.w500),
             items: [
               const DropdownMenuItem<String?>(value: null, child: Text('Todos los tipos')),
               for (final (valor, texto) in _tiposProducto)
@@ -319,11 +318,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           '¿Me está quedando plata?',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF008A3D)),
+          style: AppTypography.subtitulo
+              .copyWith(color: AppColors.marcaAcento),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.espacioEstandar),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -336,10 +336,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 explicacion: ExplicacionMonto(_filtroTipo == null
                     ? TextosFinanzas.ingresos(cuando)
                     : TextosFinanzas.ingresosDeTipo(cuando)),
-                montoColor: const Color(0xFF008A3D),
+                montoColor: AppColors.marcaAcento,
               ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: AppSpacing.espacioGrande),
             Expanded(
               flex: 2,
               child: _buildStandardCard(
@@ -347,10 +347,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 titulo: 'Egresos del Período',
                 monto: formatter.format(kpis.egresosPeriodo ?? 0),
                 explicacion: ExplicacionMonto(TextosFinanzas.egresos(cuando), extras: _notaTipo),
-                montoColor: const Color(0xFFD32F2F),
+                montoColor: AppColors.error,
               ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: AppSpacing.espacioGrande),
             Expanded(
               flex: 3,
               child: _buildSaldoCard(
@@ -361,14 +361,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   siNegativo: TextosFinanzas.saldoCajaNegativo,
                   negativo: saldo < 0,
                   extras: _notaTipo,
-                  color: Colors.white70,
-                  colorNegativo: const Color(0xFFFFE0B2),
+                  color: AppColors.sobreMarca.withValues(alpha: 0.7),
+                  colorNegativo: AppColors.alertaFondo,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.espacioGrande),
         _buildTarjetasGanancia(),
       ],
     );
@@ -389,10 +389,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             titulo: 'Costo',
             monto: formatPesos(r.costoVendido),
             explicacion: const ExplicacionMonto(TextosFinanzas.costo),
-            montoColor: const Color(0xFF555555),
+            montoColor: AppColors.textoSecundario,
           ),
         ),
-        const SizedBox(width: 20),
+        const SizedBox(width: AppSpacing.espacioGrande),
         Expanded(
           flex: 2,
           child: _buildStandardCard(
@@ -408,7 +408,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             montoColor: colorResultado(r.gananciaBruta),
           ),
         ),
-        const SizedBox(width: 20),
+        const SizedBox(width: AppSpacing.espacioGrande),
         Expanded(
           flex: 3,
           child: _buildStandardCard(
@@ -447,10 +447,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       key: key,
       constraints: BoxConstraints(minHeight: grande ? 230 : 0),
-      padding: EdgeInsets.all(grande ? 28 : 24),
+      padding: EdgeInsets.all(grande ? 28 : AppSpacing.espacioSeccion),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.fondoSuperficie,
+        borderRadius: AppRadii.bordeTarjeta,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
@@ -459,7 +459,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             children: [
               Flexible(
-                child: Text(titulo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
+                child: Text(titulo,
+                    style: AppTypography.textoChico.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textoPrincipal)),
               ),
               if (ayuda != null) ...[
                 const SizedBox(width: 6),
@@ -467,7 +470,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.espacioMedio),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -477,9 +480,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Text(monto, style: TextStyle(fontSize: grande ? 36 : 32, fontWeight: FontWeight.bold, color: montoColor)),
                 if (porcentaje != null) ...[
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.espacioChico),
                   Text(formatPorcentaje(porcentaje),
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: montoColor)),
+                      style: AppTypography.textoChico.copyWith(
+                          fontWeight: FontWeight.w600, color: montoColor)),
                 ],
               ],
             ),
@@ -498,19 +502,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
       constraints: const BoxConstraints(minHeight: 230),
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: const Color(0xFF227B63),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: const Color(0xFF227B63).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
+        color: AppColors.marcaActiva,
+        borderRadius: AppRadii.bordeTarjeta,
+        boxShadow: [BoxShadow(color: AppColors.marcaActiva.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(titulo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.white70)),
-          const SizedBox(height: 12),
+          Text(titulo,
+              style: AppTypography.textoChico.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.sobreMarca.withValues(alpha: 0.7))),
+          const SizedBox(height: AppSpacing.espacioMedio),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(monto, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white)),
+            child: Text(monto, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.sobreMarca)),
           ),
           const SizedBox(height: 10),
           explicacion,
@@ -527,11 +534,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           '¿Cómo se está moviendo mi negocio?',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF008A3D)),
+          style: AppTypography.subtitulo.copyWith(color: AppColors.marcaAcento),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.espacioEstandar),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -549,7 +556,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           deTipo: _filtroTipo != null),
                     ),
                   ),
-                  const SizedBox(width: 20),
+                  const SizedBox(width: AppSpacing.espacioGrande),
                   Expanded(
                     child: _buildMetricCard(
                       key: const Key('dashboard_ticket'),
@@ -561,7 +568,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: AppSpacing.espacioGrande),
             Expanded(
               flex: 6,
               child: _buildChartPlaceholder(),
@@ -575,21 +582,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildMetricCard({Key? key, required String titulo, required String valor, required String explicacion}) {
     return Container(
       key: key,
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.espacioSeccion, horizontal: AppSpacing.espacioEstandar),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.fondoSuperficie,
+        borderRadius: AppRadii.bordeTarjeta,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
-          Text(titulo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
-          const SizedBox(height: 16),
+          Text(titulo,
+              style: AppTypography.textoChico.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textoPrincipal)),
+          const SizedBox(height: AppSpacing.espacioEstandar),
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(valor, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Color(0xFF111111))),
+            child: Text(valor, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.textoPrincipal)),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.espacioChico),
           ExplicacionMonto(explicacion, textAlign: TextAlign.center),
         ],
       ),
@@ -599,10 +610,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildChartPlaceholder() {
     return Container(
       height: 185,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.fondoSuperficie,
+        borderRadius: AppRadii.bordeTarjeta,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
@@ -611,12 +622,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Evolución del Dinero', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
+              Text('Evolución del Dinero',
+                  style: AppTypography.textoChico.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textoPrincipal)),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6)),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.espacioMedio, vertical: 6),
+                decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.bordeSuave),
+                    borderRadius: AppRadii.bordeChico),
                 child: const Row(
-                  children: [Text('Diario', style: TextStyle(fontSize: 12)), SizedBox(width: 4), Icon(Icons.keyboard_arrow_down, size: 14)],
+                  children: [
+                    Text('Diario', style: AppTypography.etiqueta),
+                    SizedBox(width: AppSpacing.espacioMinimo),
+                    Icon(Icons.keyboard_arrow_down, size: 14),
+                  ],
                 ),
               )
             ],
@@ -626,9 +647,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.bar_chart, size: 48, color: Colors.grey.shade300),
-                const SizedBox(height: 8),
-                Text('Gráfico de barras próximamente...', style: TextStyle(color: Colors.grey.shade500)),
+                const Icon(Icons.bar_chart, size: 48, color: AppColors.textoInactivo),
+                const SizedBox(height: AppSpacing.espacioChico),
+                Text('Gráfico de barras próximamente...',
+                    style: AppTypography.texto.copyWith(color: AppColors.textoTerciario)),
               ],
             ),
           ),
@@ -643,16 +665,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Alertas Operativas (El Día a Día)',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF008A3D)),
+          style: AppTypography.subtitulo.copyWith(color: AppColors.marcaAcento),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.espacioEstandar),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: _buildStockCriticoCard()),
-            const SizedBox(width: 20),
+            const SizedBox(width: AppSpacing.espacioGrande),
             Expanded(child: _buildTopProductosCard()),
           ],
         ),
@@ -664,30 +686,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final listaStock = _dashboardData!.graficos.productosConMenorStock;
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.fondoSuperficie,
+        borderRadius: AppRadii.bordeTarjeta,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Stock Crítico - Reposición Urgente', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
-          const Divider(height: 32, color: Color(0xFFEEEEEE)),
-          DataTable(
-            headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF666666)),
-            dataTextStyle: const TextStyle(fontSize: 13, color: Color(0xFF333333)),
-            columnSpacing: 16,
-            horizontalMargin: 0,
-            dividerThickness: 1,
-            columns: const [
+          Text('Stock Crítico - Reposición Urgente',
+              style: AppTypography.textoChico.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textoPrincipal)),
+          const Divider(height: 32, color: AppColors.fondoAlternativo),
+          AppDataTable(
+            ajustarAncho: false,
+            separacionColumnas: AppSpacing.espacioEstandar,
+            margenHorizontal: 0,
+            columnas: const [
               DataColumn(columnWidth: columnaFlexible, label: Text('Producto')),
               DataColumn(columnWidth: columnaAjustable, label: Text('Stock Actual')),
               DataColumn(columnWidth: columnaAjustable, label: Text('Stock Mínimo')),
               DataColumn(columnWidth: columnaAjustable, label: Text('Estado')),
             ],
-            rows: listaStock.isEmpty
+            filas: listaStock.isEmpty
                 ? [
                     const DataRow(cells: [
                       DataCell(Text('Todo en orden')),
@@ -697,36 +720,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ])
                   ]
                 : listaStock.map((p) {
-                    bool isAgotado = p.estado == 'AGOTADO' || p.stockActual == 0;
-                    return _buildStockRow(p.nombre, '${p.stockActual} un.', '${p.stockMinimo} un.', p.estado, isAgotado);
+                    final agotado = p.estado == 'AGOTADO' || p.stockActual == 0;
+                    return DataRow(
+                      cells: [
+                        DataCell(Text(p.nombre,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w500))),
+                        DataCell(Text('${p.stockActual} un.',
+                            style: TextStyle(
+                                color: agotado ? AppColors.error : AppColors.alerta,
+                                fontWeight: FontWeight.bold))),
+                        DataCell(Text('${p.stockMinimo} un.')),
+                        DataCell(EstadoChip(
+                          etiqueta: p.estado,
+                          tono: agotado ? TonoEstado.error : TonoEstado.alerta,
+                        )),
+                      ],
+                    );
                   }).toList(),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.espacioEstandar),
           Center(
-            child: TextButton.icon(
+            child: AppButton.ghost(
               key: const Key('dashboard_ver_inventario'),
               onPressed: () => IrASeccion.de(context)?.call(Seccion.catalogo),
-              icon: const Text('Ver inventario completo', style: TextStyle(color: Color(0xFF008A3D))),
-              label: const Icon(Icons.arrow_forward, size: 16, color: Color(0xFF008A3D)),
+              icono: Icons.arrow_forward,
+              child: const Text('Ver inventario completo'),
             ),
           )
         ],
       ),
-    );
-  }
-
-  DataRow _buildStockRow(String nombre, String actual, String minimo, String estado, bool agotado) {
-    return DataRow(
-      cells: [
-        DataCell(Text(nombre, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500))),
-        DataCell(Text(actual, style: TextStyle(color: agotado ? const Color(0xFFD32F2F) : const Color(0xFFE65100), fontWeight: FontWeight.bold))),
-        DataCell(Text(minimo)),
-        DataCell(Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: agotado ? const Color(0xFFD32F2F) : const Color(0xFFFFE0B2), borderRadius: BorderRadius.circular(4)),
-          child: Text(estado, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: agotado ? Colors.white : const Color(0xFFE65100))),
-        )),
-      ],
     );
   }
 
@@ -736,32 +760,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
     int ranking = 1;
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.fondoSuperficie,
+        borderRadius: AppRadii.bordeTarjeta,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Top Productos Más Vendidos', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF222222))),
-          const Divider(height: 32, color: Color(0xFFEEEEEE)),
-          DataTable(
+          Text('Top Productos Más Vendidos',
+              style: AppTypography.textoChico.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textoPrincipal)),
+          const Divider(height: 32, color: AppColors.fondoAlternativo),
+          AppDataTable(
             key: const Key('dashboard_top_productos'),
-            headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF666666)),
-            dataTextStyle: const TextStyle(fontSize: 13, color: Color(0xFF333333)),
-            columnSpacing: 16,
-            horizontalMargin: 0,
-            dividerThickness: 1,
-            columns: const [
+            ajustarAncho: false,
+            separacionColumnas: AppSpacing.espacioEstandar,
+            margenHorizontal: 0,
+            columnas: const [
               DataColumn(columnWidth: columnaAjustable, label: Text('#')),
               DataColumn(columnWidth: columnaFlexible, label: Text('Producto')),
               DataColumn(columnWidth: columnaAjustable, label: Text('Cant. Vendida')),
               DataColumn(columnWidth: columnaAjustable, label: Text('Monto Generado')),
               DataColumn(columnWidth: columnaAjustable, label: Text('Ganancia')),
             ],
-            rows: listaTop.isEmpty
+            filas: listaTop.isEmpty
                 ? [
                     const DataRow(cells: [
                       DataCell(Text('-')),
@@ -772,18 +797,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ])
                   ]
                 : listaTop.map((p) {
-                    final fila = _buildTopRow(ranking.toString(), p.nombre, p.cantidadVendida.toString(), formatter.format(p.montoTotal), ranking == 1 ? 1.0 : (ranking == 2 ? 0.8 : 0.5), p.ganancia);
+                    final barWidth = ranking == 1 ? 1.0 : (ranking == 2 ? 0.8 : 0.5);
+                    final fila = _buildTopRow(ranking.toString(), p.nombre, p.cantidadVendida.toString(), formatter.format(p.montoTotal), barWidth, p.ganancia);
                     ranking++;
                     return fila;
                   }).toList(),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.espacioEstandar),
           Center(
-            child: TextButton.icon(
+            child: AppButton.ghost(
               key: const Key('dashboard_ver_reporte'),
               onPressed: () => IrASeccion.de(context)?.call(Seccion.balance),
-              icon: const Text('Ver reporte completo', style: TextStyle(color: Color(0xFF008A3D))),
-              label: const Icon(Icons.arrow_forward, size: 16, color: Color(0xFF008A3D)),
+              icono: Icons.arrow_forward,
+              child: const Text('Ver reporte completo'),
             ),
           )
         ],
@@ -800,11 +826,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         DataCell(Row(
           children: [
             SizedBox(width: 85, child: Text(monto)),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.espacioChico),
             Container(
               height: 6,
               width: 40 * barWidth,
-              decoration: BoxDecoration(color: const Color(0xFF4CAF50), borderRadius: BorderRadius.circular(4)),
+              decoration: const BoxDecoration(
+                  color: AppColors.marcaAcento, borderRadius: AppRadii.bordeMinimo),
             ),
           ],
         )),
@@ -812,7 +839,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ganancia == null ? '-' : formatPesosConSigno(ganancia),
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: ganancia == null ? const Color(0xFF333333) : colorResultado(ganancia),
+            color: ganancia == null ? AppColors.textoPrincipal : colorResultado(ganancia),
           ),
         )),
       ],
