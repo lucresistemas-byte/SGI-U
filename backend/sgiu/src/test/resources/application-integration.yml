@@ -21,3 +21,9 @@ spring:
   sql:
     init:
       mode: never
+
+# Clave de recuperación fija para los tests: con clave configurada el servicio
+# no crea el archivo sgiu-recovery.key en el home del desarrollador.
+sgiu:
+  recovery:
+    key: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="

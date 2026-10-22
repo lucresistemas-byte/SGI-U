@@ -123,4 +123,46 @@ class JwtFilterTest {
         verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         verify(filterChain, never()).doFilter(request, response);
     }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("SEG-09 / REG-08: la ruta de recuperación saltea el filtro y continúa aunque venga un token roto")
+    void rutaRecuperacion_conTokenInvalido_continuaLaCadena() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/auth/recuperar-password");
+
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verifyNoInteractions(jwtUtil, espUsuarioDetailsService);
+        verify(response, never()).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("REG-06: una ruta protegida con token inválido sigue respondiendo 401")
+    void rutaProtegida_conTokenInvalido_responde401() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/productos");
+        when(request.getHeader("Authorization")).thenReturn("Bearer token-roto");
+        when(jwtUtil.extractUsername("token-roto"))
+                .thenThrow(new io.jsonwebtoken.MalformedJwtException("token inválido"));
+
+        StringWriter sw = new StringWriter();
+        when(response.getWriter()).thenReturn(new PrintWriter(sw));
+
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("REG-07: el login sin token sigue funcionando igual que antes")
+    void login_sinToken_continuaLaCadena() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/auth/login");
+        when(request.getHeader("Authorization")).thenReturn(null);
+
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verifyNoInteractions(jwtUtil);
+    }
 }

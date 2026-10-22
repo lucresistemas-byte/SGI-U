@@ -2,6 +2,7 @@ package com.sgiu_group.sgiu.services;
 
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,6 +25,17 @@ public class LoginAttemptService {
 
     private final ConcurrentHashMap<String, Intentos> intentosPorUsuario = new ConcurrentHashMap<>();
 
+    /** Reloj inyectable para probar el vencimiento del bloqueo sin esperarlo. */
+    private final Clock clock;
+
+    public LoginAttemptService() {
+        this(Clock.systemUTC());
+    }
+
+    LoginAttemptService(Clock clock) {
+        this.clock = clock;
+    }
+
     /** true si el usuario está bloqueado por intentos fallidos. */
     public boolean estaBloqueado(String username) {
         if (username == null) {
@@ -33,7 +45,7 @@ public class LoginAttemptService {
         if (intentos == null || intentos.fallos() < MAX_INTENTOS_FALLOS) {
             return false;
         }
-        Duration transcurrido = Duration.between(intentos.ultimoFallo(), Instant.now());
+        Duration transcurrido = Duration.between(intentos.ultimoFallo(), Instant.now(clock));
         if (transcurrido.toMinutes() >= MINUTOS_BLOQUEO) {
             // Se venció el bloqueo: se limpia y se puede volver a intentar.
             intentosPorUsuario.remove(normalizar(username));
@@ -49,7 +61,7 @@ public class LoginAttemptService {
         }
         intentosPorUsuario.compute(normalizar(username), (k, actuales) -> {
             int fallos = (actuales == null) ? 1 : actuales.fallos() + 1;
-            return new Intentos(fallos, Instant.now());
+            return new Intentos(fallos, Instant.now(clock));
         });
     }
 
@@ -66,7 +78,7 @@ public class LoginAttemptService {
         if (intentos == null) {
             return 0;
         }
-        Duration transcurrido = Duration.between(intentos.ultimoFallo(), Instant.now());
+        Duration transcurrido = Duration.between(intentos.ultimoFallo(), Instant.now(clock));
         long restantes = MINUTOS_BLOQUEO - transcurrido.toMinutes();
         return Math.max(1, restantes);
     }

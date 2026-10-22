@@ -29,6 +29,14 @@ public class JwtFilter extends OncePerRequestFilter {
     private static final List<String> RUTAS_CAMBIO_PASSWORD_PERMITIDAS =
             List.of("/api/auth/cambiar-password");
 
+    /**
+     * Rutas públicas donde un token (válido o vencido) no debe influir: el
+     * frontend inyecta el token en cada petición y un token vencido aquí
+     * devolvería 401 antes de llegar al controller.
+     */
+    private static final List<String> RUTAS_PUBLICAS_SIN_TOKEN =
+            List.of("/api/auth/recuperar-password");
+
     @Autowired
     private JwtUtil jwtUtil;
 
@@ -38,6 +46,12 @@ public class JwtFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+
+        // Rutas públicas: se ignoran los tokens por más vencidos que estén.
+        if (esRutaPublicaSinToken(request)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         try {
             final String authorizationHeader = request.getHeader("Authorization");
@@ -87,5 +101,11 @@ public class JwtFilter extends OncePerRequestFilter {
     private static boolean esRutaPermitidaCambioPassword(HttpServletRequest request) {
         String uri = request.getRequestURI();
         return RUTAS_CAMBIO_PASSWORD_PERMITIDAS.stream().anyMatch(uri::endsWith);
+    }
+
+    /** Null-check necesario: los tests no stubbean getRequestURI(). */
+    private static boolean esRutaPublicaSinToken(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        return uri != null && RUTAS_PUBLICAS_SIN_TOKEN.stream().anyMatch(uri::endsWith);
     }
 }

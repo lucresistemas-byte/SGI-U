@@ -2,11 +2,14 @@ package com.sgiu_group.sgiu.controllers.auth;
 
 import com.sgiu_group.sgiu.models.dtos.CambioPasswordRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.LoginRequestDTO;
+import com.sgiu_group.sgiu.models.dtos.RecuperacionPasswordRequestDTO;
 import com.sgiu_group.sgiu.models.entities.EspUsuario;
 import com.sgiu_group.sgiu.repositories.EspUsuarioRepository;
 import com.sgiu_group.sgiu.security.JwtUtil;
+import com.sgiu_group.sgiu.security.RecoveryKeyService;
 import com.sgiu_group.sgiu.services.EspUsuarioDetailsService;
 import com.sgiu_group.sgiu.services.LoginAttemptService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,6 +27,7 @@ import java.util.Map;
 /**
  * Controlador para manejar la autenticación y generación de tokens JWT.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -45,6 +49,9 @@ public class AuthController {
 
     @Autowired
     private LoginAttemptService loginAttemptService;
+
+    @Autowired
+    private RecoveryKeyService recoveryKeyService;
 
     /**
      * Clase interna para representar una respuesta de login.
@@ -199,5 +206,66 @@ public class AuthController {
         final String jwt = jwtUtil.generateToken(userDetails, false);
 
         return ResponseEntity.ok(new LoginResponse(jwt, usuario));
+    }
+
+    /**
+     * Recuperación offline de contraseña: requiere la clave de recuperación de
+     * la instalación (archivo sgiu-recovery.key). Público, sin JWT, sin email.
+     * El usuario inexistente, inactivo o con clave incorrecta reciben la misma
+     * respuesta genérica (sin enumerar usuarios); 5 fallos bloquean 15 minutos.
+     */
+    @PostMapping("/recuperar-password")
+    public ResponseEntity<?> recuperarPassword(@RequestBody RecuperacionPasswordRequestDTO request) {
+        String username = request.username() == null ? "" : request.username().trim();
+        String clave = request.claveRecuperacion() == null ? "" : request.claveRecuperacion().trim();
+        String passwordNueva = request.passwordNueva() == null ? "" : request.passwordNueva().trim();
+
+        if (username.isEmpty() || clave.isEmpty()) {
+            return badRequest("Usuario y clave de recuperación son obligatorios", "DATOS_INCOMPLETOS");
+        }
+        if (passwordNueva.length() < 6) {
+            return badRequest("La nueva contraseña debe tener al menos 6 caracteres", "PASSWORD_INVALIDA");
+        }
+        if (!recoveryKeyService.isReady()) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "No se pudo restablecer la contraseña. Intente nuevamente.",
+                            "codigo", "RECUPERACION_NO_DISPONIBLE"));
+        }
+
+        final String claveIntentos = "recuperacion:" + username;
+        if (loginAttemptService.estaBloqueado(claveIntentos)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("error", "Demasiados intentos. Intente de nuevo en "
+                                    + loginAttemptService.minutosRestantesDeBloqueo(claveIntentos) + " minutos.",
+                            "codigo", "DEMASIADOS_INTENTOS"));
+        }
+
+        // La clave se compara siempre (aunque el usuario no exista) para no
+        // filtrar por tiempo de respuesta si el usuario existe.
+        EspUsuario usuario = usuarioRepository.findByUsername(username);
+        boolean claveOk = recoveryKeyService.coincide(clave);
+
+        if (usuario == null || !Boolean.TRUE.equals(usuario.getActivo()) || !claveOk) {
+            loginAttemptService.registrarFallo(claveIntentos);
+            return badRequest("Usuario o clave de recuperación inválidos.", "RECUPERACION_INVALIDA");
+        }
+
+        usuario.setPassword(passwordEncoder.encode(passwordNueva));
+        usuario.setRequiereCambioPassword(false);
+        usuarioRepository.save(usuario);
+
+        // Los fallos viejos de login no deben bloquear la contraseña nueva.
+        loginAttemptService.registrarExito(username);
+        loginAttemptService.registrarExito(claveIntentos);
+
+        log.info("[AUTH] Contraseña restablecida con clave de recuperación para '{}'", username);
+
+        return ResponseEntity.ok(Map.of(
+                "mensaje", "Contraseña restablecida. Inicie sesión con la nueva contraseña.",
+                "username", usuario.getUsername()));
+    }
+
+    private static ResponseEntity<?> badRequest(String mensaje, String codigo) {
+        return ResponseEntity.badRequest().body(Map.of("error", mensaje, "codigo", codigo));
     }
 }

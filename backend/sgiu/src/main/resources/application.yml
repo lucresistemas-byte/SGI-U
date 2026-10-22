@@ -12,6 +12,10 @@ jwt:
 sgiu:
   cors:
     allowed-origins: ${SGIU_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080}
+  # Recuperación de contraseña: la clave vive en %LOCALAPPDATA%/SGI-U/sgiu-recovery.key.
+  # Solo la ruta es configurable; la clave NUNCA se define por propiedad en producción.
+  recovery:
+    keyPath: ${SGIU_RECOVERY_KEY_PATH:}
 
 spring:
   application:

@@ -50,8 +50,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
-                // Rutas públicas (solo login y documentación)
-                .requestMatchers("/api/auth/login", "/v2/api-docs", "/swagger-ui/**").permitAll()
+                // Rutas públicas (login, recuperación de contraseña y documentación)
+                .requestMatchers("/api/auth/login", "/api/auth/recuperar-password", "/v2/api-docs",
+                        "/swagger-ui/**").permitAll()
                 // Nombre y logo para la pantalla de login (antes de tener token).
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/configuracion/marca").permitAll()
                 // Registro de usuarios: restringido a rol ADMIN
