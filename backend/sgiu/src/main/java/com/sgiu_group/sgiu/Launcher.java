@@ -172,14 +172,42 @@ public class Launcher {
 
     private static void setupInstanceId(String os) {
         try {
-            // Tarea C.3.2: usa InstallationIdentity (UUID persistente en %USERPROFILE%/sgiu-installation.id)
+            // A2: UUID persistente en %USERPROFILE%/sgiu-installation.id
             String instanceId = InstallationIdentity.getOrCreate();
             System.setProperty("sgiu.instance-id", instanceId);
             System.out.println("ID de instalacion: " + instanceId);
+
+            // A2: secreto JWT único por instalación, persistido en sgiu-jwt.secret
+            String jwtSecret = getOrCreateJwtSecret();
+            System.setProperty("SGIU_JWT_SECRET", jwtSecret);
+            System.out.println("Secreto JWT de instalacion cargado.");
         } catch (Exception e) {
             System.err.println("Error obteniendo el ID de instalacion: " + e.getMessage());
             System.setProperty("sgiu.instance-id", "generico");
         }
+    }
+
+    /**
+     * A2: Lee o genera un secreto JWT de 256 bits (base64) único para esta instalación.
+     * El archivo se guarda en %USERPROFILE%/sgiu-jwt.secret y nunca debe compartirse.
+     */
+    private static String getOrCreateJwtSecret() throws java.io.IOException {
+        String userProfile = System.getenv("USERPROFILE");
+        if (userProfile == null || userProfile.isBlank()) {
+            userProfile = System.getProperty("user.home");
+        }
+        java.nio.file.Path secretPath = java.nio.file.Paths.get(userProfile, "sgiu-jwt.secret");
+        if (java.nio.file.Files.exists(secretPath)) {
+            String content = java.nio.file.Files.readString(secretPath, java.nio.charset.StandardCharsets.UTF_8).trim();
+            if (!content.isBlank()) return content;
+        }
+        // Genera 32 bytes aleatorios y codifica en base64
+        byte[] bytes = new byte[32];
+        new java.security.SecureRandom().nextBytes(bytes);
+        String secret = java.util.Base64.getEncoder().encodeToString(bytes);
+        java.nio.file.Files.writeString(secretPath, secret, java.nio.charset.StandardCharsets.UTF_8);
+        System.out.println("Nuevo secreto JWT generado para esta instalacion.");
+        return secret;
     }
 
     private static void configureFirewall() {
@@ -216,10 +244,14 @@ public class Launcher {
         System.out.println("Iniciando Spring Boot...");
         org.springframework.boot.builder.SpringApplicationBuilder builder =
             new org.springframework.boot.builder.SpringApplicationBuilder(SgiuApplication.class);
-        builder.properties(
-            "server.port=3000",
-            "server.address=0.0.0.0"
-        );
+        String os = System.getProperty("os.name").toLowerCase();
+        java.util.List<String> props = new java.util.ArrayList<>();
+        props.add("server.port=3000");
+        props.add("server.address=0.0.0.0");
+        if (os.contains("win")) {
+            props.add("spring.datasource.url=jdbc:mariadb://localhost:3307/sgiu_db");
+        }
+        builder.properties(props.toArray(new String[0]));
         builder.run(args);
         printListeningInfo();
     }

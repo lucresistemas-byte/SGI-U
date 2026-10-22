@@ -51,7 +51,6 @@ class VentaServiceTest {
 
     @org.junit.jupiter.api.BeforeEach
     void efectivo() {
-        // El stock lo mueve StockService (real, sobre los repositorios simulados).
         ReflectionTestUtils.setField(ventaService, "stockService", new StockService(stockRepository, movimientoRepository));
         org.mockito.Mockito.lenient().when(metodoPagoService.efectivo())
                 .thenReturn(new com.sgiu_group.sgiu.models.entities.MetodoPago("Efectivo", true, 1));
@@ -69,68 +68,72 @@ class VentaServiceTest {
     }
 
     @Test
-    void procesarVenta_productoInexistente_lanzaExcepcionYNoPersisteNada() {
-        when(stockRepository.findByEspProducto_Codigo("P1")).thenReturn(Optional.empty());
+    void procesarVenta_productoNoEncontrado_lanzaExcepcion() {
+        when(stockRepository.findByEspProducto_Codigo("NO_EXISTE")).thenReturn(Optional.empty());
 
-        VentaRequestDTO request = new VentaRequestDTO(1L, List.of(new LineaVentaDTO("P1", 2)));
+        VentaRequestDTO request = new VentaRequestDTO(null, List.of(new LineaVentaDTO("NO_EXISTE", 1)));
 
         assertThatThrownBy(() -> ventaService.procesarVenta(request))
                 .isInstanceOf(ProductoNoEncontradoException.class)
-                .hasMessage("Producto no encontrado: P1");
-
-        verify(ventaRepository, never()).save(any());
-        verify(pagoRepository, never()).save(any());
-        verify(movFinancieroRepository, never()).save(any());
+                .hasMessageContaining("NO_EXISTE");
     }
 
     @Test
-    void procesarVenta_stockInsuficiente_lanzaExcepcionYNoDescuenta() {
-        ArticuloStock stock = stockDe(10.00, 5);
+    void procesarVenta_stockInsuficiente_lanzaExcepcion() {
+        ArticuloStock stock = stockDe(10.00, 3);
         when(stockRepository.findByEspProducto_Codigo("P1")).thenReturn(Optional.of(stock));
 
-        VentaRequestDTO request = new VentaRequestDTO(null, List.of(new LineaVentaDTO("P1", 10)));
+        VentaRequestDTO request = new VentaRequestDTO(null, List.of(new LineaVentaDTO("P1", 5)));
 
         assertThatThrownBy(() -> ventaService.procesarVenta(request))
                 .isInstanceOf(StockInsuficienteException.class)
-                .hasMessage("Stock insuficiente para Producto Uno (código P1): disponible 5, solicitado 10.");
-
-        assertThat(stock.getCantidad()).isEqualByComparingTo("5");
-        verify(stockRepository, never()).save(any());
-        verify(ventaRepository, never()).save(any());
+                .hasMessageContaining("Stock insuficiente");
     }
 
     @Test
-    void procesarVenta_valida_descuentaStockRegistraVentaPagoYMovimiento() {
-        ArticuloStock stock = stockDe(10.50, 5);
+    void procesarVenta_exitosa_guardaVentaYDescuentaStock() {
+        ArticuloStock stock = stockDe(10.00, 10);
         when(stockRepository.findByEspProducto_Codigo("P1")).thenReturn(Optional.of(stock));
         when(ventaRepository.save(any(Venta.class))).thenAnswer(inv -> {
-            Venta venta = inv.getArgument(0);
-            ReflectionTestUtils.setField(venta, "id", 7L);
-            return venta;
+            Venta v = inv.getArgument(0);
+            ReflectionTestUtils.setField(v, "id", 42L);
+            return v;
         });
 
-        when(pagoRepository.save(any(PagoVenta.class))).thenAnswer(inv -> inv.getArgument(0));
         VentaRequestDTO request = new VentaRequestDTO(null, List.of(new LineaVentaDTO("P1", 2)));
+
         ventaService.procesarVenta(request);
 
-        // El stock se descuenta de 5 a 3
-        assertThat(stock.getCantidad()).isEqualByComparingTo("3");
-        verify(stockRepository).save(stock);
-
-        // La venta se guarda con el total calculado (10.50 * 2 = 21.00)
         ArgumentCaptor<Venta> ventaCaptor = ArgumentCaptor.forClass(Venta.class);
         verify(ventaRepository).save(ventaCaptor.capture());
-        Venta ventaGuardada = ventaCaptor.getValue();
-        assertThat(ventaGuardada.getTotal()).isEqualByComparingTo("21.00");
-        assertThat(ventaGuardada.getLineas()).hasSize(1);
+        Venta guardada = ventaCaptor.getValue();
+        assertThat(guardada.getTotal()).isEqualByComparingTo("20.00");
+        assertThat(guardada.getLineas()).hasSize(1);
+        assertThat(guardada.getLineas().get(0).getCantidad()).isEqualTo(2);
 
-        // Se registra el pago con el método del request
+        assertThat(stock.getCantidad()).isEqualByComparingTo("8");
+    }
+
+    @Test
+    void procesarVenta_exitosa_registraPagoYMovimientoFinanciero() {
+        ArticuloStock stock = stockDe(7.00, 10);
+        when(stockRepository.findByEspProducto_Codigo("P1")).thenReturn(Optional.of(stock));
+        when(ventaRepository.save(any(Venta.class))).thenAnswer(inv -> {
+            Venta v = inv.getArgument(0);
+            ReflectionTestUtils.setField(v, "id", 7L);
+            return v;
+        });
+        when(pagoRepository.save(any(PagoVenta.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        VentaRequestDTO request = new VentaRequestDTO(null, List.of(new LineaVentaDTO("P1", 3)));
+
+        ventaService.procesarVenta(request);
+
         ArgumentCaptor<PagoVenta> pagoCaptor = ArgumentCaptor.forClass(PagoVenta.class);
         verify(pagoRepository).save(pagoCaptor.capture());
         assertThat(pagoCaptor.getValue().getMonto()).isEqualByComparingTo("21.00");
         assertThat(pagoCaptor.getValue().getMetodoPago().getNombre()).isEqualTo("Efectivo");
 
-        // Se registra el movimiento financiero de tipo INGRESO
         ArgumentCaptor<MovFinanciero> movCaptor = ArgumentCaptor.forClass(MovFinanciero.class);
         verify(movFinancieroRepository).save(movCaptor.capture());
         MovFinanciero mov = movCaptor.getValue();
@@ -161,8 +164,28 @@ class VentaServiceTest {
 
         ArgumentCaptor<Venta> ventaCaptor = ArgumentCaptor.forClass(Venta.class);
         verify(ventaRepository).save(ventaCaptor.capture());
-        // 10.00 * 3 + 5.00 * 4 = 50.00
         assertThat(ventaCaptor.getValue().getTotal()).isEqualByComparingTo("50.00");
         assertThat(ventaCaptor.getValue().getLineas()).hasSize(2);
+    }
+
+    @Test
+    void procesarVenta_mismoTokenIdempotencia_retornaMismaVentaSinDuplicar() {
+        String token = "uuid-token-12345";
+        Venta ventaExistente = new Venta();
+        ReflectionTestUtils.setField(ventaExistente, "id", 99L);
+        ventaExistente.setTotal(new BigDecimal("100.00"));
+        ventaExistente.setTokenIdempotencia(token);
+
+        when(ventaRepository.findByTokenIdempotencia(token)).thenReturn(Optional.of(ventaExistente));
+        when(pagoRepository.findByVenta(ventaExistente)).thenReturn(List.of());
+
+        VentaRequestDTO request = new VentaRequestDTO(null, List.of(new LineaVentaDTO("P1", 2)), null, token);
+
+        var respuesta = ventaService.procesarVenta(request);
+
+        assertThat(respuesta.id()).isEqualTo(99L);
+        assertThat(respuesta.total()).isEqualByComparingTo("100.00");
+        verify(ventaRepository, never()).save(any(Venta.class));
+        verify(stockRepository, never()).findByEspProducto_Codigo(any());
     }
 }

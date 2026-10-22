@@ -3,17 +3,39 @@ server:
   address: 0.0.0.0
 
 jwt:
-  secret: a7b8C9d0E1f2G3h4I5j6K7l8M9n0O1p2Q3r4S5t6U7v=
-  expiration: 3600000
+  # Secret sin default sensible en el repositorio: delega en InstallationSecrets si no viene por env
+  secret: ${SGIU_JWT_SECRET:}
+  expiration: ${SGIU_JWT_EXPIRATION:28800000} # 8 horas estándar según RFC 8725 y OWASP ASVS
+
+sgiu:
+  cors:
+    allowed-origins: ${SGIU_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:5173,http://127.0.0.1:8080,app://sgiu}
+  backup:
+    cron: ${SGIU_BACKUP_CRON:0 30 3 * * *} # 03:30 AM diario
+    retencion-dias: 14
+    catchup:
+      enabled: true
+
+b2:
+  bucket: ${B2_BUCKET_NAME:sgiu-sandra-pruebas}
+  endpoint: ${B2_ENDPOINT:https://s3.ca-east-006.backblazeb2.com}
+  region: ${B2_REGION:ca-east-006}
+  keyId: ${B2_APPLICATION_KEY_ID:${AWS_ACCESS_KEY_ID:}}
+  applicationKey: ${B2_APPLICATION_KEY:${AWS_SECRET_ACCESS_KEY:}}
 
 spring:
   application:
     name: sgiu
+  config:
+    import:
+      - optional:file:secrets.properties
+      - optional:classpath:secrets.properties
 
   datasource:
-    url: jdbc:mariadb://localhost:3306/sgiu_db
-    username: sgiu_user
-    password: sgiu_1234
+    # MariaDB portable Windows preconfigurado en puerto 3307
+    url: ${SPRING_DATASOURCE_URL:jdbc:mariadb://${SGIU_DB_HOST:localhost}:${SGIU_DB_PORT:3307}/${SGIU_DB_NAME:sgiu_db}}
+    username: ${SGIU_DB_USER:sgiu_user}
+    password: ${SGIU_DB_PASSWORD:sgiu_1234}
     driver-class-name: org.mariadb.jdbc.Driver
 
   # El esquema lo crea y versiona Flyway (db/migration); Hibernate solo valida.
@@ -28,9 +50,10 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MariaDBDialect
-        format_sql: true
+        format_sql: false
 
-    show-sql: true
+    # Desactivado en producción para evitar fuga de información en logs; activo solo en demo
+    show-sql: false
 
   # Sin data.sql: los datos de ejemplo solo se cargan con el perfil "demo".
   sql:
@@ -41,4 +64,4 @@ logging:
   level:
     org:
       springframework:
-        security: DEBUG
+        security: INFO

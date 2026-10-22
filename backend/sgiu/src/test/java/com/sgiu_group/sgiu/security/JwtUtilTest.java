@@ -18,19 +18,25 @@ class JwtUtilTest {
 
     private final UserDetails usuario = User.withUsername("luciox")
             .password("secreto")
-            .roles("USER")
+            .roles("ADMIN")
             .build();
 
     private final UserDetails otroUsuario = User.withUsername("otro")
             .password("secreto")
-            .roles("USER")
+            .roles("ADMIN")
             .build();
 
     @BeforeEach
     void setUp() {
         jwtUtil = new JwtUtil();
         ReflectionTestUtils.setField(jwtUtil, "secretKey", SECRET);
-        ReflectionTestUtils.setField(jwtUtil, "jwtExpiration", 3_600_000L);
+        ReflectionTestUtils.setField(jwtUtil, "jwtExpiration", 28_800_000L);
+    }
+
+    @Test
+    void defaultExpiration_esDe8Horas() {
+        JwtUtil util = new JwtUtil();
+        assertThat(util.getJwtExpiration()).isEqualTo(28_800_000L);
     }
 
     @Test

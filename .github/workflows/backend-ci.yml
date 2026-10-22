@@ -1,0 +1,56 @@
+# A11: CI básico — build reproducible con JDK 21 + tests
+# Se ejecuta en cada push a feat/**, fix/** y en PRs hacia lucre-develop.
+name: SGI-U Backend CI
+
+on:
+  push:
+    branches:
+      - "feat/**"
+      - "fix/**"
+      - lucre-develop
+      - develop
+  pull_request:
+    branches:
+      - lucre-develop
+      - develop
+
+jobs:
+  build-and-test:
+    name: Build & Test (JDK 21)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: maven
+
+      - name: Compilar y ejecutar tests
+        working-directory: backend/sgiu
+        run: mvn -B verify --no-transfer-progress
+        env:
+          # Tests usan H2 en memoria — no necesita MariaDB real
+          SPRING_DATASOURCE_URL: jdbc:h2:mem:sgiu_test;DB_CLOSE_DELAY=-1
+          SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.h2.Driver
+          SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+          # JWT genérico para tests
+          SGIU_JWT_SECRET: test-secret-ci-only-not-production
+
+      - name: Verificar que el JAR se construyó con JDK 21
+        working-directory: backend/sgiu
+        run: |
+          JAR=$(ls target/*.jar | grep -v sources | head -1)
+          echo "JAR encontrado: $JAR"
+          unzip -p "$JAR" META-INF/MANIFEST.MF | grep -E "Build-Jdk|Created-By" || true
+          # Fuerza fallo si se compiló con JDK > 21 (bytecode version 65 = Java 21)
+          javap -verbose -classpath "$JAR" com.sgiu_group.sgiu.SgiuApplication 2>/dev/null | \
+            grep "major version" | awk '{if ($NF > 65) {print "ERROR: bytecode > Java 21 (major="$NF")"; exit 1}}'
+
+      - name: Reportar resultado
+        if: always()
+        run: echo "CI finalizado con status=${{ job.status }}"

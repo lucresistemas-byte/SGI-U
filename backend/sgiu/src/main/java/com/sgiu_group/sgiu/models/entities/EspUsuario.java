@@ -1,31 +1,40 @@
 package com.sgiu_group.sgiu.models.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
-/**
- * Entidad que representa un usuario del sistema.
- */
 @Entity
-@Table(name = "esp_usuarios", uniqueConstraints = @jakarta.persistence.UniqueConstraint(columnNames = "username"))
+@Table(name = "esp_usuarios")
 public class EspUsuario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @NotBlank(message = "El nombre de usuario es obligatorio")
+    @Size(min = 3, max = 50, message = "El nombre de usuario debe tener entre 3 y 50 caracteres")
+    @Column(nullable = false, unique = true, length = 50)
     private String username;
 
+    @NotBlank(message = "La contraseña es obligatoria")
+    @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres")
     @Column(nullable = false)
     private String password;
 
+    @NotNull(message = "El estado activo es obligatorio")
     @Column(nullable = false)
-    private Boolean activo;
+    private Boolean activo = true;
+
+    /**
+     * SGI-U opera con rol único ADMIN (single-admin / permisos simples).
+     */
+    @Column(nullable = false, length = 20)
+    private String rol = "ADMIN";
+
+    @Column(name = "requiere_cambio_password", nullable = false)
+    private Boolean requiereCambioPassword = false;
 
     // Constructors
     public EspUsuario() {
@@ -35,6 +44,16 @@ public class EspUsuario {
         this.username = username;
         this.password = password;
         this.activo = activo;
+        this.rol = "ADMIN";
+        this.requiereCambioPassword = false;
+    }
+
+    public EspUsuario(String username, String password, Boolean activo, String rol, Boolean requiereCambioPassword) {
+        this.username = username;
+        this.password = password;
+        this.activo = activo;
+        this.rol = (rol != null && !rol.isBlank()) ? rol : "ADMIN";
+        this.requiereCambioPassword = requiereCambioPassword;
     }
 
     // Getters and Setters
@@ -68,5 +87,21 @@ public class EspUsuario {
 
     public void setActivo(Boolean activo) {
         this.activo = activo;
+    }
+
+    public String getRol() {
+        return (rol != null && !rol.isBlank()) ? rol : "ADMIN";
+    }
+
+    public void setRol(String rol) {
+        this.rol = (rol != null && !rol.isBlank()) ? rol : "ADMIN";
+    }
+
+    public Boolean getRequiereCambioPassword() {
+        return requiereCambioPassword;
+    }
+
+    public void setRequiereCambioPassword(Boolean requiereCambioPassword) {
+        this.requiereCambioPassword = requiereCambioPassword;
     }
 }

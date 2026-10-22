@@ -1,6 +1,7 @@
 package com.sgiu_group.sgiu.repositories;
 
 import com.sgiu_group.sgiu.models.entities.PagoVenta;
+import com.sgiu_group.sgiu.models.entities.Venta;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,6 +11,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface PagoVentaRepository extends JpaRepository<PagoVenta, Long> {
+
+    List<PagoVenta> findByVenta(Venta venta);
+
+    List<PagoVenta> findByVentaId(Long ventaId);
 
     /**
      * Por método: nombre, cantidad de ventas que lo usaron y monto cobrado con

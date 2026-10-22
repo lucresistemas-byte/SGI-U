@@ -24,3 +24,7 @@ TAREAS_NUEVAS.md
 .~lock.*
 HALLAZGOS_TEST_BACKEND.md
 .obsidian/
+
+# A2: Credenciales locales (B2, JWT override) — NUNCA subir al repo
+secrets.properties
+backend/sgiu/src/main/resources/secrets.properties
