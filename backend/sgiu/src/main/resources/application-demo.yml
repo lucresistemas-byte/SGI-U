@@ -1,5 +1,10 @@
 # Perfil "demo": además del esquema, Flyway carga los datos de ejemplo de
-# db/demo (pastelería de demostración). No usar en una instalación real.
+# db/demo (pastelería de demostración). show-sql habilitado para desarrollo y demo.
 spring:
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
   flyway:
     locations: classpath:db/migration,classpath:db/demo

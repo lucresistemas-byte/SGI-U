@@ -1,6 +1,6 @@
 @echo off
 :: =============================================================================
-:: SGI-U — Script de Restauración de Backup (A7)
+:: SGI-U — Script de Restauración de Backup (Bloque 1 / Seguridad)
 :: Uso: restore-windows.bat <ruta_al_archivo.sql.gz>
 ::
 :: Requisitos:
@@ -9,20 +9,23 @@
 ::   - El archivo .sql.gz debe ser el dump DESCIFRADO (sin .enc)
 ::     (si el backup está cifrado como .sql.gz.enc, primero descifrar
 ::      con la clave sgiu-backup.key usando EncryptionService o
-::      ejecutando el procedimiento documentado en docs/RESTORE_GUIA.md)
+::      ejecutando el procedimiento documentado en guías de restauración)
 ::
-:: Lo que hace este script:
+:: Validaciones de integridad (NIST SP 800-38D / FIPS 180-4):
 ::   1. Valida que el archivo existe y tiene extensión .sql.gz
-::   2. Descomprime el .gz a un .sql temporal
-::   3. Ejecuta mariadb.exe para restaurar contra sgiu_db
-::   4. Elimina el .sql temporal
+::   2. Valida tamaño mínimo (> 15 KB para descartar volcados truncados)
+::   3. Valida checksum SHA-256 si existe archivo .sha256 acompañante
+::   4. Descomprime el .gz a un .sql temporal
+::   5. Valida cabecera SQL
+::   6. Ejecuta mariadb.exe para restaurar contra sgiu_db
+::   7. Elimina el .sql temporal
 :: =============================================================================
 
 setlocal enabledelayedexpansion
 
 echo.
 echo =====================================================
-echo   SGI-U Restauracion de Base de Datos (Tarea A7)
+echo   SGI-U Restauracion de Base de Datos
 echo =====================================================
 echo.
 
@@ -46,6 +49,34 @@ if errorlevel 1 (
     exit /b 1
 )
 
+:: ---- Validar tamaño (> 15 KB = 15360 bytes) ----
+for %%F in ("%DUMP_FILE%") do set "FILE_SIZE=%%~zF"
+if %FILE_SIZE% LSS 15360 (
+    echo [ERROR] El archivo de backup es demasiado pequenio (%FILE_SIZE% bytes). Minimo requerido: 15360 bytes.
+    echo         Posible archivo corrupto, vacio o truncado.
+    exit /b 1
+)
+
+:: ---- Validar Checksum SHA-256 si existe archivo companion ----
+set "SHA_FILE=%DUMP_FILE%.sha256"
+if not exist "%SHA_FILE%" (
+    :: Verificar si existe con nombre alternativo .sha256
+    set "SHA_FILE=%~dpn1.sha256"
+)
+
+if exist "%SHA_FILE%" (
+    echo [INFO] Archivo de verificacion SHA-256 detectado: %SHA_FILE%
+    echo [INFO] Validando integridad criptografica ...
+    powershell -NoProfile -Command ^
+      "$actual = (Get-FileHash -Path '%DUMP_FILE%' -Algorithm SHA256).Hash.ToLower(); $content = (Get-Content '%SHA_FILE%').Trim(); $expected = ($content -split '\s+')[0].ToLower(); if ($actual -ne $expected) { Write-Host '[ERROR] CHECKSUM NO COINCIDE. Calculado:' $actual 'Esperado:' $expected; exit 2 } else { Write-Host '[OK] Checksum SHA-256 integro y verificado:' $actual }"
+    if errorlevel 1 (
+        echo [ERROR] Fallo de integridad: el volcado ha sido alterado o corrompido.
+        exit /b 1
+    )
+) else (
+    echo [ADVERTENCIA] No se encontro archivo companion .sha256 para validacion previa.
+)
+
 :: ---- Configuracion de BD ----
 set "DB_HOST=localhost"
 set "DB_PORT=3307"
@@ -56,7 +87,6 @@ set "DB_PASS=sgiu_1234"
 :: ---- Resolver ruta de mariadb.exe ----
 set "MARIADB_EXE=mariadb"
 set "SCRIPT_DIR=%~dp0"
-:: Busca en content\bin relativo al directorio del instalador
 if exist "%SCRIPT_DIR%..\content\bin\mariadb.exe" (
     set "MARIADB_EXE=%SCRIPT_DIR%..\content\bin\mariadb.exe"
 )

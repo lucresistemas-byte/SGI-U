@@ -28,7 +28,6 @@ import java.util.Set;
 @Service
 public class VentaService {
 
-    // Definimos las dependencias como final (inmutables)
     private final VentaRepository ventaRepository;
     private final ArticuloStockRepository stockRepository;
     private final PagoVentaRepository pagoRepository;
@@ -40,7 +39,6 @@ public class VentaService {
     /** Cuánto dura congelado el precio de un carrito después de un cambio de precio. */
     private static final long HORAS_PRECIO_CONGELADO = 24;
 
-    // Inyección por constructor: No requiere @Autowired manual
     public VentaService(VentaRepository ventaRepository,
                         ArticuloStockRepository stockRepository,
                         PagoVentaRepository pagoRepository,
@@ -58,16 +56,32 @@ public class VentaService {
     }
 
     /**
-     * Sandra produce por tanda: la venta verifica y descuenta solo el stock
-     * del producto final. Los insumos se descuentan al producir, no al vender,
-     * así que la receta no interviene acá.
+     * Procesa la venta de productos aplicando validaciones de negocio, stock, cobro e idempotencia.
      */
     @Transactional
     public VentaResponseDTO procesarVenta(VentaRequestDTO request) {
+        // Control de Idempotencia: previene cobros dobles y doble deducción de inventario
+        if (request.ventaIdempotencyToken() != null && !request.ventaIdempotencyToken().isBlank()) {
+            var ventaExistente = ventaRepository.findByTokenIdempotencia(request.ventaIdempotencyToken().trim());
+            if (ventaExistente.isPresent()) {
+                Venta v = ventaExistente.get();
+                List<PagoVenta> pagos = pagoRepository.findByVenta(v);
+                List<VentaResponseDTO.PagoRegistradoDTO> registrados = new ArrayList<>();
+                for (PagoVenta p : pagos) {
+                    registrados.add(new VentaResponseDTO.PagoRegistradoDTO(
+                            p.getMetodoPago().getId(), p.getMetodoPago().getNombre(), p.getMonto()));
+                }
+                return new VentaResponseDTO(v.getId(), v.getTotal(), BigDecimal.ZERO, registrados);
+            }
+        }
+
         Venta venta = new Venta();
-        // Setear valores requeridos por PR #13 para evitar errores de nulidad
-        venta.setIdSesionCaja(0); // Valor por defecto temporal
-        venta.setCreadoPorUsuario(0); // Valor por defecto temporal
+        venta.setIdSesionCaja(0);
+        venta.setCreadoPorUsuario(0);
+        if (request.ventaIdempotencyToken() != null && !request.ventaIdempotencyToken().isBlank()) {
+            venta.setTokenIdempotencia(request.ventaIdempotencyToken().trim());
+        }
+
         BigDecimal totalAcumulado = BigDecimal.ZERO;
 
         // Fase 1: validación de stock y total de todas las líneas antes de tocar nada
@@ -79,9 +93,6 @@ public class VentaService {
             stockPorCodigo.put(dto.codigoProducto(), stock);
             validarVendible(stock.getEspProducto());
 
-            // RN02: Verificación de stock de producto final. La reventa +
-            // materia prima se vende por unidades enteras (1 caja = 100 g):
-            // lo suelto nunca se vende.
             EspProducto producto = stock.getEspProducto();
             if (producto.stockParaVender(dto.cantidad()).compareTo(stock.getCantidad()) > 0) {
                 throw new StockInsuficienteException("Stock insuficiente para "
@@ -89,21 +100,18 @@ public class VentaService {
                         + "): disponible " + producto.unidadesDeVentaEn(stock.getCantidad())
                         + ", solicitado " + dto.cantidad() + ".");
             }
-            // Precio de la BD (RN05), salvo el congelado en el carrito.
             BigDecimal precio = precioDeLaLinea(producto, dto);
             precioPorLinea.put(dto, precio);
             totalAcumulado = totalAcumulado.add(precio.multiply(new BigDecimal(dto.cantidad())));
         }
 
-        // Los pagos se validan antes de tocar el stock: si no cubren el
-        // total, no se modifica nada.
+        // Los pagos se validan antes de tocar el stock: si no cubren el total, no se modifica nada.
         Cobro cobro = armarCobro(request, totalAcumulado);
 
         // Fase 2: armado de líneas de venta
         for (LineaVentaDTO dto : request.lineas()) {
             ArticuloStock stock = stockPorCodigo.get(dto.codigoProducto());
 
-            // Creamos la línea de venta
             LineaVenta linea = new LineaVenta(venta, stock.getEspProducto(), dto.cantidad());
             linea.setPrecioUnitario(precioPorLinea.get(dto));
             venta.addLinea(linea);
@@ -112,8 +120,7 @@ public class VentaService {
         venta.setTotal(totalAcumulado);
         Venta ventaGuardada = ventaRepository.save(venta);
 
-        // Descuento de inventario (en unidad base: 1 caja = 100 g), con un
-        // movimiento VENTA por línea en el historial de stock.
+        // Descuento de inventario en unidad base
         for (LineaVentaDTO dto : request.lineas()) {
             ArticuloStock stock = stockPorCodigo.get(dto.codigoProducto());
             EspProducto producto = stock.getEspProducto();
@@ -121,8 +128,6 @@ public class VentaService {
                     "Venta #" + ventaGuardada.getId(), null, ventaGuardada);
         }
 
-        // Una fila de pago y un movimiento por línea, así el balance y el
-        // dashboard se pueden desglosar por método.
         List<VentaResponseDTO.PagoRegistradoDTO> registrados = new ArrayList<>();
         for (Map.Entry<MetodoPago, BigDecimal> linea : cobro.montos().entrySet()) {
             PagoVenta pago = pagoRepository.save(new PagoVenta(ventaGuardada, linea.getValue(), linea.getKey()));
@@ -203,8 +208,7 @@ public class VentaService {
                     + total + "). Falta $" + total.subtract(pagado) + ".");
         }
 
-        // El vuelto sale del efectivo: se registra solo lo que corresponde a
-        // la venta (y si el efectivo era todo vuelto, no se registra).
+        // El vuelto sale del efectivo
         BigDecimal vuelto = pagado.subtract(total);
         if (vuelto.signum() > 0) {
             MetodoPago efectivo = montos.keySet().stream().filter(MetodoPago::esEfectivo).findFirst().orElseThrow();
@@ -218,7 +222,6 @@ public class VentaService {
         return new Cobro(montos, vuelto);
     }
 
-    /** Solo se vende lo que el POS muestra (ver EspProducto.esVendibleEnPos). */
     private static void validarVendible(EspProducto producto) {
         if (producto.esVendibleEnPos()) {
             return;

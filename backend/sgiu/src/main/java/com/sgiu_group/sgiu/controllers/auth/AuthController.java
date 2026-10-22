@@ -5,6 +5,7 @@ import com.sgiu_group.sgiu.models.dtos.LoginRequestDTO;
 import com.sgiu_group.sgiu.models.entities.EspUsuario;
 import com.sgiu_group.sgiu.repositories.EspUsuarioRepository;
 import com.sgiu_group.sgiu.security.JwtUtil;
+import com.sgiu_group.sgiu.security.LoginRateLimiter;
 import com.sgiu_group.sgiu.services.EspUsuarioDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -22,10 +23,10 @@ import java.util.Map;
 
 /**
  * Controlador para manejar la autenticación y generación de tokens JWT.
+ * Implementa Rate Limiting contra fuerza bruta y consolidación de rol único ADMIN.
  */
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
 public class AuthController {
 
     @Autowired
@@ -43,6 +44,9 @@ public class AuthController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private LoginRateLimiter loginRateLimiter;
+
     /**
      * Clase interna para representar una respuesta de login.
      */
@@ -59,7 +63,7 @@ public class AuthController {
             this.id = usuario.getId();
             this.username = usuario.getUsername();
             this.activo = usuario.getActivo();
-            this.rol = (usuario.getRol() != null && !usuario.getRol().isBlank()) ? usuario.getRol() : "ADMIN";
+            this.rol = "ADMIN";
             this.requiereCambioPassword = Boolean.TRUE.equals(usuario.getRequiereCambioPassword());
         }
 
@@ -90,21 +94,37 @@ public class AuthController {
 
     /**
      * Endpoint para autenticar usuario y generar token JWT.
+     * Protegido con Rate Limiting: 5 intentos fallidos bloquean por 15 minutos (HTTP 429).
      */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequestDTO request) {
+        String key = (request != null && request.username() != null) ? request.username().trim().toLowerCase() : "unknown";
+
+        if (loginRateLimiter.estaBloqueado(key)) {
+            long minRestantes = loginRateLimiter.getMinutosRestantesBloqueo(key);
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("error", "Demasiados intentos fallidos. Cuenta bloqueada temporalmente por " + minRestantes + " minutos."));
+        }
+
         try {
-            // Restauramos la validación estricta de credenciales
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.username(),
                             request.password()
                     )
             );
-        }catch (BadCredentialsException e) {
+        } catch (BadCredentialsException e) {
+            loginRateLimiter.registrarFallo(key);
+            if (loginRateLimiter.estaBloqueado(key)) {
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                        .body(Map.of("error", "Se superó el límite de 5 intentos fallidos. Cuenta bloqueada temporalmente por 15 minutos."));
+            }
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                                  .body(Map.of("error", "Credenciales incorrectas"));
         }
+
+        // Login exitoso: se resetea el contador de intentos fallidos
+        loginRateLimiter.resetear(key);
 
         final UserDetails userDetails = usuarioDetailsService.loadUserByUsername(request.username());
 
@@ -120,6 +140,7 @@ public class AuthController {
 
     /**
      * Endpoint para registrar un nuevo usuario (restringido a administradores).
+     * En SGI-U todos los usuarios poseen el rol único ADMIN.
      */
     @PostMapping("/register")
     @PreAuthorize("hasRole('ADMIN')")
@@ -132,7 +153,7 @@ public class AuthController {
         usuario.setUsername(request.username());
         usuario.setPassword(passwordEncoder.encode(request.password()));
         usuario.setActivo(true);
-        usuario.setRol("USER");
+        usuario.setRol("ADMIN");
         usuario.setRequiereCambioPassword(false);
 
         usuarioRepository.save(usuario);
@@ -168,11 +189,11 @@ public class AuthController {
         }
 
         if (!passwordEncoder.matches(request.passwordActual(), usuario.getPassword())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "La contraseña actual no es correcta"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "La contraseña actual es incorrecta"));
         }
 
-        usuario.setPassword(passwordEncoder.encode(request.passwordNueva().trim()));
+        usuario.setPassword(passwordEncoder.encode(request.passwordNueva()));
         usuario.setRequiereCambioPassword(false);
         usuarioRepository.save(usuario);
 

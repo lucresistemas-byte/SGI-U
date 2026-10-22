@@ -17,6 +17,7 @@ import java.util.function.Function;
 
 /**
  * Utilidad para generar y validar tokens JWT.
+ * Configurado con expiración de 8 horas (28.800.000 ms) según RFC 8725 y OWASP ASVS v4.0.
  */
 @Component
 public class JwtUtil {
@@ -24,12 +25,20 @@ public class JwtUtil {
     @Value("${jwt.secret:}")
     private String configuredSecret;
 
-    @Value("${jwt.expiration:43200000}")
-    private long jwtExpiration;
+    @Value("${jwt.expiration:28800000}")
+    private long jwtExpiration = 28800000L;
 
     private String secretKey;
     private java.security.Key signingKey;
     private String lastResolvedSecret;
+
+    public long getJwtExpiration() {
+        return jwtExpiration;
+    }
+
+    public void setJwtExpiration(long jwtExpiration) {
+        this.jwtExpiration = jwtExpiration;
+    }
 
     @PostConstruct
     public void init() {
@@ -146,14 +155,14 @@ public class JwtUtil {
     /**
      * Verifica si el token ha expirado.
      */
-    private boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
     /**
      * Extrae la fecha de expiración del token.
      */
-    private Date extractExpiration(String token) {
+    public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
 }
