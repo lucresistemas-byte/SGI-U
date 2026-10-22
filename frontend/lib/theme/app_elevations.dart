@@ -7,6 +7,11 @@ abstract final class AppElevations {
   /// Tarjetas planas (borde en vez de sombra).
   static const double sombraTarjeta = 0;
 
+  /// Sombra suave de tarjeta (tarjetas de resumen/KPI con elevación sutil).
+  static const List<BoxShadow> sombraTarjetaSuave = [
+    BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4)),
+  ];
+
   /// Modales y overlays.
   static const double sombraModal = 4;
 

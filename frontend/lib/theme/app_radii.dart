@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 abstract final class AppRadii {
   static const double radioMinimo = 4;
   static const double radioChico = 8;
+
+  /// Radio de controles chicos (caja de cantidad del POS).
+  static const double radioControl = 6;
   static const double radioTarjeta = 12;
   static const double radioCampo = 16;
   static const double radioBoton = 18;
@@ -16,6 +19,8 @@ abstract final class AppRadii {
       BorderRadius.all(Radius.circular(radioMinimo));
   static const BorderRadius bordeChico =
       BorderRadius.all(Radius.circular(radioChico));
+  static const BorderRadius bordeControl =
+      BorderRadius.all(Radius.circular(radioControl));
   static const BorderRadius bordeTarjeta =
       BorderRadius.all(Radius.circular(radioTarjeta));
   static const BorderRadius bordeCampo =

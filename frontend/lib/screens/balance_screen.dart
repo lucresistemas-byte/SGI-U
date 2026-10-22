@@ -311,9 +311,9 @@ class _BalanceScreenState extends State<BalanceScreen> {
           final double cardWidth = constraints.maxWidth;
           final double circleSize = (cardWidth * 0.22).clamp(36.0, 56.0);
           final double iconSize = circleSize * 0.5;
-
-
-
+          final double titleSize = (cardWidth * 0.08).clamp(14.0, 16.0);
+          final double moneySize =
+              grande ? 30 : (cardWidth * 0.15).clamp(20.0, 28.0);
 
           return Container(
             key: key,
@@ -332,8 +332,8 @@ class _BalanceScreenState extends State<BalanceScreen> {
                       child: Text(titulo,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTypography.textoChico.copyWith(
-
+                          style: TextStyle(
+                              fontSize: titleSize,
                               color: AppColors.textoTerciario)),
                     ),
                     if (ayuda != null) ...[
@@ -357,16 +357,13 @@ class _BalanceScreenState extends State<BalanceScreen> {
                           children: [
                             Text(
                               texto ?? _currencyFormat.format(valor),
-                              style: (grande ? AppTypography.tituloPantalla : AppTypography.numeroKpi).copyWith(
-
-                                  fontWeight: FontWeight.bold,
-                                  color: colorValor),
+                              style: AppTypography.numeroKpi.copyWith(
+                                  fontSize: moneySize, color: colorValor),
                             ),
                             if (porcentaje != null) ...[
                               const SizedBox(width: AppSpacing.espacioChico),
                               Text(formatPorcentaje(porcentaje),
                                   style: AppTypography.textoChico.copyWith(
-
                                       fontWeight: FontWeight.w600,
                                       color: colorValor)),
                             ],

@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../models/dashboard_models.dart';
 import '../models/metodo_pago.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_elevations.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -171,8 +172,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       .copyWith(color: AppColors.textoPrincipal),
                 ),
                 const SizedBox(height: 6),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
+                Row(
                   children: [
                     Text(
                       'Resumen Ejecutivo',
@@ -187,7 +187,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             );
 
-            if (constraints.maxWidth < 950) {
+            if (constraints.maxWidth < 700) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -448,11 +448,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       key: key,
       constraints: BoxConstraints(minHeight: grande ? 230 : 0),
-      padding: EdgeInsets.all(grande ? 28 : AppSpacing.espacioSeccion),
-      decoration: BoxDecoration(
+      padding: EdgeInsets.all(
+          grande ? AppSpacing.espacioDestacado : AppSpacing.espacioSeccion),
+      decoration: const BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: AppColors.textoPrincipal.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: AppElevations.sombraTarjetaSuave,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -479,7 +480,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
-                Text(monto, style: (grande ? AppTypography.marca : AppTypography.tituloPantalla).copyWith(color: montoColor)),
+                Text(monto, style: (grande ? AppTypography.numeroKpiGrande : AppTypography.numeroKpiMediano).copyWith(color: montoColor)),
                 if (porcentaje != null) ...[
                   const SizedBox(width: AppSpacing.espacioChico),
                   Text(formatPorcentaje(porcentaje),
@@ -501,7 +502,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       key: const Key('dashboard_saldo_caja'),
       constraints: const BoxConstraints(minHeight: 230),
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
       decoration: BoxDecoration(
         color: AppColors.marcaActiva,
         borderRadius: AppRadii.bordeTarjeta,
@@ -518,7 +519,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(monto, style: AppTypography.marca.copyWith(color: AppColors.sobreMarca)),
+            child: Text(monto, style: AppTypography.numeroKpiGrande.copyWith(color: AppColors.sobreMarca)),
           ),
           const SizedBox(height: 10),
           explicacion,
@@ -532,59 +533,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final kpis = _dashboardData!.kpis;
     final formatter = NumberFormat.currency(locale: 'es_AR', symbol: '\$');
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final enColumna = constraints.maxWidth < 950;
-        final tarjetas = Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '¿Cómo se está moviendo mi negocio?',
+          style: AppTypography.subtitulo.copyWith(color: AppColors.marcaAcento),
+        ),
+        const SizedBox(height: AppSpacing.espacioEstandar),
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: _buildMetricCard(
-                key: const Key('dashboard_cantidad_ventas'),
-                titulo: 'Cantidad de Ventas',
-                valor: kpis.cantidadVentas.toString(),
-                explicacion: TextosFinanzas.cantidadVentas(TextosFinanzas.entreFechas,
-                    deTipo: _filtroTipo != null),
+              flex: 4,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _buildMetricCard(
+                      key: const Key('dashboard_cantidad_ventas'),
+                      titulo: 'Cantidad de Ventas',
+                      valor: kpis.cantidadVentas.toString(),
+                      explicacion: TextosFinanzas.cantidadVentas(TextosFinanzas.entreFechas,
+                          deTipo: _filtroTipo != null),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.espacioGrande),
+                  Expanded(
+                    child: _buildMetricCard(
+                      key: const Key('dashboard_ticket'),
+                      titulo: 'Ticket Promedio',
+                      valor: formatter.format(kpis.ticketPromedio),
+                      explicacion: TextosFinanzas.ticketPromedio,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(width: AppSpacing.espacioGrande),
             Expanded(
-              child: _buildMetricCard(
-                key: const Key('dashboard_ticket'),
-                titulo: 'Ticket Promedio',
-                valor: formatter.format(kpis.ticketPromedio),
-                explicacion: TextosFinanzas.ticketPromedio,
-              ),
+              flex: 6,
+              child: _buildChartPlaceholder(),
             ),
           ],
-        );
-
-        final chart = _buildChartPlaceholder();
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '¿Cómo se está moviendo mi negocio?',
-              style: AppTypography.subtitulo.copyWith(color: AppColors.marcaAcento),
-            ),
-            const SizedBox(height: AppSpacing.espacioEstandar),
-            if (enColumna) ...[
-              tarjetas,
-              const SizedBox(height: AppSpacing.espacioGrande),
-              chart,
-            ] else
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 4, child: tarjetas),
-                  const SizedBox(width: AppSpacing.espacioGrande),
-                  Expanded(flex: 6, child: chart),
-                ],
-              ),
-          ],
-        );
-      },
+        ),
+      ],
     );
   }
 
@@ -593,10 +586,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       key: key,
       padding: const EdgeInsets.symmetric(
           vertical: AppSpacing.espacioSeccion, horizontal: AppSpacing.espacioEstandar),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: AppColors.textoPrincipal.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: AppElevations.sombraTarjetaSuave,
       ),
       child: Column(
         children: [
@@ -607,7 +600,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: AppSpacing.espacioEstandar),
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(valor, style: AppTypography.marca.copyWith(color: AppColors.textoPrincipal)),
+            child: Text(valor, style: AppTypography.numeroKpiGrande.copyWith(color: AppColors.textoPrincipal)),
           ),
           const SizedBox(height: AppSpacing.espacioChico),
           ExplicacionMonto(explicacion, textAlign: TextAlign.center),
@@ -620,10 +613,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       height: 185,
       padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: AppColors.textoPrincipal.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: AppElevations.sombraTarjetaSuave,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -631,21 +624,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(
-                child: Text('Evolución del Dinero',
-                    style: AppTypography.textoChico.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textoPrincipal)),
-              ),
-              const SizedBox(width: AppSpacing.espacioChico),
+              Text('Evolución del Dinero',
+                  style: AppTypography.textoChico.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textoPrincipal)),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.espacioMedio, vertical: 6),
+                    horizontal: AppSpacing.espacioMedio,
+                    vertical: AppSpacing.espacioMedioChico),
                 decoration: BoxDecoration(
                     border: Border.all(color: AppColors.bordeSuave),
                     borderRadius: AppRadii.bordeChico),
                 child: const Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('Diario', style: AppTypography.etiqueta),
                     SizedBox(width: AppSpacing.espacioMinimo),
@@ -675,33 +665,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // --- BLOQUE 3: ALERTAS OPERATIVAS ---
   Widget _buildAlertasOperativas() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final enColumna = constraints.maxWidth < 950;
-        return Column(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Alertas Operativas (El Día a Día)',
+          style: AppTypography.subtitulo.copyWith(color: AppColors.marcaAcento),
+        ),
+        const SizedBox(height: AppSpacing.espacioEstandar),
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Alertas Operativas (El Día a Día)',
-              style: AppTypography.subtitulo.copyWith(color: AppColors.marcaAcento),
-            ),
-            const SizedBox(height: AppSpacing.espacioEstandar),
-            if (enColumna) ...[
-              _buildStockCriticoCard(),
-              const SizedBox(height: AppSpacing.espacioGrande),
-              _buildTopProductosCard(),
-            ] else
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _buildStockCriticoCard()),
-                  const SizedBox(width: AppSpacing.espacioGrande),
-                  Expanded(child: _buildTopProductosCard()),
-                ],
-              ),
+            Expanded(child: _buildStockCriticoCard()),
+            const SizedBox(width: AppSpacing.espacioGrande),
+            Expanded(child: _buildTopProductosCard()),
           ],
-        );
-      },
+        ),
+      ],
     );
   }
 
@@ -710,10 +690,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: AppColors.textoPrincipal.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: AppElevations.sombraTarjetaSuave,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -784,10 +764,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.fondoSuperficie,
         borderRadius: AppRadii.bordeTarjeta,
-        boxShadow: [BoxShadow(color: AppColors.textoPrincipal.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: AppElevations.sombraTarjetaSuave,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

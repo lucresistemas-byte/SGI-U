@@ -148,7 +148,9 @@ class _PaqueteFormDialogState extends State<PaqueteFormDialog> {
           SizedBox(
             width: 140,
             child: fila.insumo == null
-                ? const Padding(padding: EdgeInsets.only(top: 16), child: Text('—'))
+                ? const Padding(
+                    padding: EdgeInsets.only(top: AppSpacing.espacioEstandar),
+                    child: Text('—'))
                 : DropdownButtonFormField<UnidadMedida>(
                     key: ValueKey('paquete_unidad_fila_${index}_${fila.insumo!.id}'),
                     initialValue: fila.unidad,
@@ -164,7 +166,7 @@ class _PaqueteFormDialogState extends State<PaqueteFormDialog> {
           SizedBox(
             width: 110,
             child: Padding(
-              padding: const EdgeInsets.only(top: 16),
+              padding: const EdgeInsets.only(top: AppSpacing.espacioEstandar),
               child: Text(formatPesos(fila.costo), key: Key('paquete_subtotal_fila_$index'), textAlign: TextAlign.right),
             ),
           ),

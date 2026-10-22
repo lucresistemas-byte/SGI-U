@@ -13,6 +13,7 @@ import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../widgets/app_button.dart';
+import '../widgets/campo_buscador.dart';
 import '../widgets/app_data_table.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_scaffold.dart';
@@ -296,33 +297,11 @@ class _InsumosScreenState extends State<InsumosScreen> {
                   const SizedBox(height: AppSpacing.espacioGrande),
 
                   // Barra de búsqueda
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.fondoSuperficie,
-                      borderRadius: AppRadii.bordeTarjeta,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.textoPrincipal.withValues(alpha: 0.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.espacioEstandar),
-                    child: TextField(
-                      key: const Key('buscar_insumo_input'),
-                      controller: _searchController,
-                      decoration: const InputDecoration(
-                        hintText: 'Buscar insumo por nombre o código...',
-                        prefixIcon:
-                            Icon(Icons.search, color: AppColors.textoInactivo),
-                        border: InputBorder.none,
-                      ),
-                      onChanged: (val) {
-                        _bloc.add(FiltrarInsumos(val));
-                      },
-                    ),
+                  CampoBuscador(
+                    controller: _searchController,
+                    campoKey: const Key('buscar_insumo_input'),
+                    hintText: 'Buscar insumo por nombre o código...',
+                    onChanged: (val) => _bloc.add(FiltrarInsumos(val)),
                   ),
                   const SizedBox(height: AppSpacing.espacioGrande),
 

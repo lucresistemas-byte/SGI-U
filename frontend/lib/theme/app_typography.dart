@@ -20,6 +20,18 @@ abstract final class AppTypography {
   static const TextStyle numeroKpi =
       TextStyle(fontSize: 26, fontWeight: FontWeight.w700);
 
+  /// Número destacado de una tarjeta KPI principal (dashboard/balance).
+  static const TextStyle numeroKpiGrande =
+      TextStyle(fontSize: 36, fontWeight: FontWeight.w700);
+
+  /// Número de una tarjeta de resumen financiera (dashboard).
+  static const TextStyle numeroKpiMediano =
+      TextStyle(fontSize: 32, fontWeight: FontWeight.w700);
+
+  /// Número de una tarjeta de total (movimientos, versión chica).
+  static const TextStyle numeroResumen =
+      TextStyle(fontSize: 22, fontWeight: FontWeight.w700);
+
   /// Encabezado de tarjeta/modal (absorbe 20–24).
   static const TextStyle tituloTarjeta =
       TextStyle(fontSize: 20, fontWeight: FontWeight.w600);

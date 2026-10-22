@@ -11,6 +11,7 @@ import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../widgets/app_button.dart';
+import '../widgets/campo_buscador.dart';
 import '../widgets/app_data_table.dart';
 import '../widgets/app_snack_bar.dart';
 import '../widgets/cargando_diferido.dart';
@@ -208,28 +209,13 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 320,
-                    decoration: BoxDecoration(
-                      color: AppColors.fondoSuperficie,
-                      borderRadius: AppRadii.bordeChico,
-                      border: Border.all(color: AppColors.borde),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Buscar producto...',
-                        hintStyle: AppTypography.texto
-                            .copyWith(color: AppColors.textoInactivo),
-                        suffixIcon: const Icon(Icons.search,
-                            color: AppColors.textoInactivo),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.espacioEstandar,
-                            vertical: AppSpacing.espacioMedio),
-                      ),
-                    ),
-                  ),
+                   CampoBuscador(
+                     controller: _searchController,
+                     hintText: 'Buscar producto...',
+                     ancho: 320,
+                     conSombra: false,
+                     iconoAlFrente: false,
+                   ),
                   const SizedBox(width: AppSpacing.espacioEstandar),
                   Expanded(
                     child: BlocBuilder<PosBloc, PosState>(

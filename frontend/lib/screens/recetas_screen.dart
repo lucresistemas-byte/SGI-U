@@ -11,6 +11,7 @@ import '../utils/numeros.dart';
 import '../models/receta.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_elevations.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -297,7 +298,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
           },
           builder: (context, state) {
             return Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(AppSpacing.espacioSeccion),
               child: _isBuilding
                   ? _buildRecipeBuilder(context, state)
                   : _buildRecipeList(context, state),
@@ -485,7 +486,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
         decoration: const InputDecoration(
           labelText: 'Unidad',
           border: OutlineInputBorder(),
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          contentPadding: AppSpacing.campoDenso,
         ),
         items: [for (final u in insumo.familia.unidades) DropdownMenuItem(value: u, child: Text(u.nombre))],
         onChanged: (u) {
@@ -561,7 +562,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
               children: [
                 // Card Datos Básicos
                 Card(
-                  elevation: 0,
+                  elevation: AppElevations.sombraTarjeta,
                   shape: const RoundedRectangleBorder(
                     borderRadius: AppRadii.bordeTarjeta,
                     side: BorderSide(color: AppColors.bordeSuave),
@@ -788,7 +789,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                         ),
                         child: Padding(
                           key: Key('fila_insumo_$index'),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: AppSpacing.filaLista,
                           child: Row(
                             children: [
                               // Insumo Dropdown / Name
@@ -810,7 +811,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                         decoration: const InputDecoration(
                                           labelText: 'Insumo',
                                           border: OutlineInputBorder(),
-                                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                          contentPadding: AppSpacing.campoDenso,
                                         ),
                                         items: ofrecidos.map((i) {
                                           return DropdownMenuItem<int>(
@@ -847,7 +848,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
                                   decoration: const InputDecoration(
                                     labelText: 'Cantidad',
                                     border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    contentPadding: AppSpacing.campoDenso,
                                   ),
                                   onChanged: (val) {
                                     final cant = parseDecimal(val) ?? 0.0;

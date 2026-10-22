@@ -9,6 +9,8 @@ import '../blocs/pos_state.dart';
 import '../models/product.dart';
 import '../models/cart_item.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_elevations.dart';
+import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../widgets/product_card.dart';
@@ -290,8 +292,8 @@ class _SearchAddBarState extends State<SearchAddBar> {
             return Align(
               alignment: Alignment.topLeft,
               child: Material(
-                elevation: 4.0,
-                borderRadius: BorderRadius.circular(AppSpacing.espacioChico),
+                elevation: AppElevations.sombraModal,
+                borderRadius: AppRadii.bordeChico,
                 child: ConstrainedBox(
                   constraints:
                       const BoxConstraints(maxHeight: 250, maxWidth: 450),
@@ -495,18 +497,17 @@ class _CartQuantityInputState extends State<CartQuantityInput> {
               FilteringTextInputFormatter.digitsOnly,
             ],
             style: AppTypography.etiqueta.copyWith(fontWeight: FontWeight.bold),
-            decoration: InputDecoration(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+            decoration: const InputDecoration(
+              contentPadding: AppSpacing.campoCompacto,
               isDense: true,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: AppColors.bordeSuave),
+                borderRadius: AppRadii.bordeControl,
+                borderSide: BorderSide(color: AppColors.bordeSuave),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: AppRadii.bordeControl,
                 borderSide:
-                    const BorderSide(color: AppColors.marcaActiva, width: 1.5),
+                    BorderSide(color: AppColors.marcaActiva, width: 1.5),
               ),
             ),
             onChanged: (val) {
