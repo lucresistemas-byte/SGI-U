@@ -29,7 +29,7 @@ class MetodoPagoDropdown extends StatelessWidget {
       key: ValueKey('metodo_pago_${metodos.length}_$valor'),
       initialValue: metodos.any((m) => m.id == valor) ? valor : null,
       isExpanded: true,
-      decoration: InputDecoration(labelText: etiqueta, border: const OutlineInputBorder()),
+      decoration: InputDecoration(labelText: etiqueta),
       hint: Text(metodos.isEmpty ? 'Cargando métodos...' : 'Elegir método'),
       items: [
         for (final m in metodos) DropdownMenuItem(value: m.id, child: Text(m.nombre)),

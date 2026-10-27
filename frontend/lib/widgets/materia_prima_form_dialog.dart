@@ -3,7 +3,11 @@ import '../models/insumo.dart';
 import '../models/unidad_medida.dart';
 import '../models/unidad_stock.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import '../utils/numeros.dart';
+import 'app_button.dart';
+import 'app_dialog.dart';
 
 /// Alta/edición de un artículo de Materia Prima. Sandra carga la presentación
 /// en que compra (p. ej. "Bolsa 25 kg": 25 kilos a $30.000) y el sistema
@@ -231,7 +235,7 @@ class _MateriaPrimaFormDialogState extends State<MateriaPrimaFormDialog> {
       key: key,
       initialValue: valor,
       isExpanded: true,
-      decoration: InputDecoration(labelText: etiqueta, border: const OutlineInputBorder()),
+      decoration: InputDecoration(labelText: etiqueta),
       items: [
         for (final u in opciones)
           DropdownMenuItem(
@@ -247,8 +251,9 @@ class _MateriaPrimaFormDialogState extends State<MateriaPrimaFormDialog> {
   List<Widget> _seccionVenta() {
     final resumen = _resumenVenta;
     return [
-      const SizedBox(height: 16),
-      const Text('Venta', style: TextStyle(fontWeight: FontWeight.w600)),
+      const SizedBox(height: AppSpacing.espacioEstandar),
+      Text('Venta',
+          style: AppTypography.texto.copyWith(fontWeight: FontWeight.w600)),
       CheckboxListTile(
         key: const Key('insumo_venta_igual_compra_check'),
         contentPadding: EdgeInsets.zero,
@@ -259,7 +264,7 @@ class _MateriaPrimaFormDialogState extends State<MateriaPrimaFormDialog> {
         onChanged: (v) => setState(() => _ventaIgualCompra = v ?? true),
       ),
       if (!_ventaIgualCompra) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.espacioChico),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -269,21 +274,21 @@ class _MateriaPrimaFormDialogState extends State<MateriaPrimaFormDialog> {
                 key: const Key('insumo_venta_nombre_input'),
                 controller: _ventaNombre,
                 decoration: const InputDecoration(
-                    labelText: 'Se vende por *', hintText: 'Ej: Caja', border: OutlineInputBorder()),
+                    labelText: 'Se vende por *', hintText: 'Ej: Caja'),
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.espacioChico),
             Expanded(
               child: TextFormField(
                 key: const Key('insumo_venta_cantidad_input'),
                 controller: _ventaCantidad,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Contiene *', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Contiene *'),
                 validator: (v) => _validarDecimal(v, positivo: true),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.espacioChico),
             Expanded(
               child: _unidadDropdown(
                 key: ValueKey('insumo_venta_unidad_${_familia.codigo}'),
@@ -295,7 +300,7 @@ class _MateriaPrimaFormDialogState extends State<MateriaPrimaFormDialog> {
           ],
         ),
       ],
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpacing.espacioMedio),
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -305,11 +310,11 @@ class _MateriaPrimaFormDialogState extends State<MateriaPrimaFormDialog> {
               controller: _porcentaje,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
-                  labelText: '% de ganancia *', suffixText: '%', border: OutlineInputBorder()),
+                  labelText: '% de ganancia *', suffixText: '%'),
               validator: (v) => _validarDecimal(v),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.espacioChico),
           Expanded(
             child: TextFormField(
               key: const Key('insumo_precio_venta_input'),
@@ -319,19 +324,18 @@ class _MateriaPrimaFormDialogState extends State<MateriaPrimaFormDialog> {
                 labelText: 'Precio fijo (opcional)',
                 prefixText: r'$ ',
                 helperText: 'Vacío: costo × (1 + %), redondeado a \$100.',
-                border: OutlineInputBorder(),
               ),
               validator: _validarPrecioFijo,
             ),
           ),
         ],
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpacing.espacioChico),
       Text(
         resumen ?? 'Complete la presentación y la unidad de venta para calcular el precio.',
         key: const Key('insumo_resumen_venta'),
         style: TextStyle(
-            color: resumen == null ? const Color(0xFF64748B) : AppColors.verdePrincipal,
+            color: resumen == null ? AppColors.textoInactivo : AppColors.marca,
             fontWeight: FontWeight.w600),
       ),
     ];
@@ -343,169 +347,169 @@ class _MateriaPrimaFormDialogState extends State<MateriaPrimaFormDialog> {
     final unidadesFamilia = _familia.unidades;
     final unidadesStock = _unidadesStock;
     final stockUnidad = unidadesStock.any((u) => u.codigo == _stockUnidad) ? _stockUnidad : _unidad.codigo;
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text(_esEdicion ? 'Editar Insumo' : 'Nuevo Insumo', style: const TextStyle(fontWeight: FontWeight.bold)),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!_esEdicion)
-                  DropdownButtonFormField<String>(
-                    key: const Key('insumo_tipo_dropdown'),
-                    initialValue: _tipo,
-                    hint: const Text('Elegir tipo'),
-                    decoration: const InputDecoration(
-                      labelText: 'Tipo *',
-                      helperText: 'El código se genera automáticamente al guardar.',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      for (final t in Insumo.tipos.entries) DropdownMenuItem(value: t.key, child: Text(t.value)),
-                    ],
-                    validator: (v) => v == null ? 'Elija el tipo' : null,
-                    onChanged: (v) => setState(() => _tipo = v),
-                  )
-                else
-                  Text(
-                    'Código: ${widget.existente!.codigo} · Tipo: ${widget.existente!.descripcionTipo}',
-                    key: const Key('insumo_codigo_tipo_fijo'),
-                    style: const TextStyle(color: Color(0xFF475569)),
-                  ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  key: const Key('insumo_nombre_input'),
-                  controller: _nombre,
-                  decoration: const InputDecoration(
-                      labelText: 'Nombre *', hintText: 'Ej: Harina 000', border: OutlineInputBorder()),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
-                ),
-                const SizedBox(height: 12),
-                _unidadDropdown(
-                  key: const Key('insumo_unidad_dropdown'),
-                  valor: _unidad,
-                  opciones: UnidadMedida.conFamilia,
-                  etiqueta: 'Unidad para mostrar *',
-                  conFamilia: true,
-                  onChanged: _cambiarUnidad,
-                ),
-                const SizedBox(height: 16),
-                const Text('Presentación de compra', style: TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                TextFormField(
-                  key: const Key('insumo_presentacion_descripcion_input'),
-                  controller: _presentacionDescripcion,
-                  decoration: const InputDecoration(
-                      labelText: 'Descripción', hintText: 'Ej: Bolsa 25 kg', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        key: const Key('insumo_presentacion_cantidad_input'),
-                        controller: _presentacionCantidad,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Trae *', border: OutlineInputBorder()),
-                        validator: (v) => _validarDecimal(v, positivo: true),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _unidadDropdown(
-                        key: ValueKey('insumo_presentacion_unidad_${_familia.codigo}'),
-                        valor: _presentacionUnidad,
-                        opciones: unidadesFamilia,
-                        onChanged: (u) => setState(() => _presentacionUnidad = u),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextFormField(
-                        key: const Key('insumo_presentacion_precio_input'),
-                        controller: _presentacionPrecio,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
-                            labelText: 'Precio *', prefixText: r'$ ', border: OutlineInputBorder()),
-                        validator: (v) => _validarDecimal(v),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  costo == null ? 'Complete la presentación para calcular el costo.' : 'Costo: ${_textoCosto(costo)}',
-                  key: const Key('insumo_costo_calculado'),
-                  style: TextStyle(
-                      color: costo == null ? const Color(0xFF64748B) : AppColors.verdePrincipal,
-                      fontWeight: FontWeight.w600),
-                ),
-                if (_esReventaMateriaPrima) ..._seccionVenta(),
-                const SizedBox(height: 16),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (!_esEdicion) ...[
-                      Expanded(
-                        child: TextFormField(
-                          key: const Key('insumo_stock_input'),
-                          controller: _stock,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: const InputDecoration(labelText: 'Stock inicial', border: OutlineInputBorder()),
-                          validator: (v) => _validarDecimal(v, requerido: false),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    Expanded(
-                      child: TextFormField(
-                        key: const Key('insumo_stock_minimo_input'),
-                        controller: _stockMinimo,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Stock mínimo', border: OutlineInputBorder()),
-                        validator: (v) => _validarDecimal(v, requerido: false),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: DropdownButtonFormField<String>(
-                        // Se recrea si cambian las opciones (initialValue se lee una sola vez).
-                        key: ValueKey('insumo_stock_unidad_${_familia.codigo}_${unidadesStock.length}_$stockUnidad'),
-                        initialValue: stockUnidad,
-                        isExpanded: true,
-                        decoration: const InputDecoration(labelText: 'Unidad', border: OutlineInputBorder()),
-                        items: [
-                          for (final u in unidadesStock)
-                            DropdownMenuItem(value: u.codigo, child: Text(u.nombre, overflow: TextOverflow.ellipsis)),
-                        ],
-                        onChanged: (u) {
-                          if (u != null) setState(() => _stockUnidad = u);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+    return AppDialog(
+      titulo: _esEdicion ? 'Editar Insumo' : 'Nuevo Insumo',
+      tamano: TamanoDialogo.grande,
+      acciones: [
+        AppButton.ghost(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
         ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
-        ElevatedButton(
+        AppButton.primary(
           key: const Key('guardar_insumo_button'),
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.verdePrincipal, foregroundColor: Colors.white),
           onPressed: _guardar,
           child: const Text('Guardar'),
         ),
       ],
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!_esEdicion)
+              DropdownButtonFormField<String>(
+                key: const Key('insumo_tipo_dropdown'),
+                initialValue: _tipo,
+                hint: const Text('Elegir tipo'),
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Tipo *',
+                  helperText: 'El código se genera automáticamente al guardar.',
+                ),
+                items: [
+                  for (final t in Insumo.tipos.entries)
+                    DropdownMenuItem(value: t.key, child: Text(t.value)),
+                ],
+                validator: (v) => v == null ? 'Elija el tipo' : null,
+                onChanged: (v) => setState(() => _tipo = v),
+              )
+            else
+              Text(
+                'Código: ${widget.existente!.codigo} · Tipo: ${widget.existente!.descripcionTipo}',
+                key: const Key('insumo_codigo_tipo_fijo'),
+                style: AppTypography.textoChico
+                    .copyWith(color: AppColors.textoSecundario),
+              ),
+            const SizedBox(height: AppSpacing.espacioMedio),
+            TextFormField(
+              key: const Key('insumo_nombre_input'),
+              controller: _nombre,
+              decoration: const InputDecoration(
+                  labelText: 'Nombre *', hintText: 'Ej: Harina 000'),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+            ),
+            const SizedBox(height: AppSpacing.espacioMedio),
+            _unidadDropdown(
+              key: const Key('insumo_unidad_dropdown'),
+              valor: _unidad,
+              opciones: UnidadMedida.conFamilia,
+              etiqueta: 'Unidad para mostrar *',
+              conFamilia: true,
+              onChanged: _cambiarUnidad,
+            ),
+            const SizedBox(height: AppSpacing.espacioEstandar),
+            Text('Presentación de compra',
+                style: AppTypography.texto.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: AppSpacing.espacioChico),
+            TextFormField(
+              key: const Key('insumo_presentacion_descripcion_input'),
+              controller: _presentacionDescripcion,
+              decoration: const InputDecoration(
+                  labelText: 'Descripción', hintText: 'Ej: Bolsa 25 kg'),
+            ),
+            const SizedBox(height: AppSpacing.espacioMedio),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    key: const Key('insumo_presentacion_cantidad_input'),
+                    controller: _presentacionCantidad,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Trae *'),
+                    validator: (v) => _validarDecimal(v, positivo: true),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.espacioChico),
+                Expanded(
+                  child: _unidadDropdown(
+                    key: ValueKey('insumo_presentacion_unidad_${_familia.codigo}'),
+                    valor: _presentacionUnidad,
+                    opciones: unidadesFamilia,
+                    onChanged: (u) => setState(() => _presentacionUnidad = u),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.espacioChico),
+                Expanded(
+                  child: TextFormField(
+                    key: const Key('insumo_presentacion_precio_input'),
+                    controller: _presentacionPrecio,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                        labelText: 'Precio *', prefixText: r'$ '),
+                    validator: (v) => _validarDecimal(v),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.espacioChico),
+            Text(
+              costo == null ? 'Complete la presentación para calcular el costo.' : 'Costo: ${_textoCosto(costo)}',
+              key: const Key('insumo_costo_calculado'),
+              style: TextStyle(
+                  color: costo == null ? AppColors.textoInactivo : AppColors.marca,
+                  fontWeight: FontWeight.w600),
+            ),
+            if (_esReventaMateriaPrima) ..._seccionVenta(),
+            const SizedBox(height: AppSpacing.espacioEstandar),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!_esEdicion) ...[
+                  Expanded(
+                    child: TextFormField(
+                      key: const Key('insumo_stock_input'),
+                      controller: _stock,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(labelText: 'Stock inicial'),
+                      validator: (v) => _validarDecimal(v, requerido: false),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.espacioChico),
+                ],
+                Expanded(
+                  child: TextFormField(
+                    key: const Key('insumo_stock_minimo_input'),
+                    controller: _stockMinimo,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Stock mínimo'),
+                    validator: (v) => _validarDecimal(v, requerido: false),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.espacioChico),
+                Expanded(
+                  flex: 2,
+                  child: DropdownButtonFormField<String>(
+                    // Se recrea si cambian las opciones (initialValue se lee una sola vez).
+                    key: ValueKey('insumo_stock_unidad_${_familia.codigo}_${unidadesStock.length}_$stockUnidad'),
+                    initialValue: stockUnidad,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Unidad'),
+                    items: [
+                      for (final u in unidadesStock)
+                        DropdownMenuItem(value: u.codigo, child: Text(u.nombre, overflow: TextOverflow.ellipsis)),
+                    ],
+                    onChanged: (u) {
+                      if (u != null) setState(() => _stockUnidad = u);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

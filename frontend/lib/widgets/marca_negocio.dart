@@ -3,6 +3,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
+import '../theme/app_typography.dart';
 
 /// Dónde se muestra la marca del negocio.
 enum EstiloMarca {
@@ -51,8 +54,8 @@ class MarcaNegocio extends StatelessWidget {
             return CircleAvatar(
               key: const Key('iniciales_negocio'),
               radius: 20,
-              backgroundColor: const Color(0xFFC8E6C9),
-              foregroundColor: const Color(0xFF004D40),
+              backgroundColor: AppColors.seleccionFondo,
+              foregroundColor: AppColors.marcaActiva,
               child: ini.isEmpty
                   ? const Icon(Icons.storefront, size: 20)
                   : Text(ini, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -68,8 +71,8 @@ class MarcaNegocio extends StatelessWidget {
                   child: Text(
                     nombre,
                     key: const Key('nombre_negocio_menu'),
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                    style: AppTypography.tituloTarjeta
+                        .copyWith(color: AppColors.textoPrincipal),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -86,8 +89,8 @@ class MarcaNegocio extends StatelessWidget {
                   child: Text(
                     nombre,
                     key: const Key('nombre_negocio_login'),
-                    style: const TextStyle(
-                        fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF1E2430)),
+                    style: AppTypography.tituloTarjeta
+                        .copyWith(color: AppColors.textoPrincipal),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -99,7 +102,7 @@ class MarcaNegocio extends StatelessWidget {
   }
 
   Widget _logo(Uint8List bytes, double lado, Key key) => ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadii.bordeChico,
         child: Image.memory(
           bytes,
           key: key,

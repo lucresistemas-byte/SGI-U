@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import '../utils/periodo.dart';
 
 /// Hoy · Esta semana · Este mes · Mes pasado · Elegir fechas. Cada opción se
@@ -57,15 +61,15 @@ class SelectorPeriodo extends StatelessWidget {
                 avatar: tipo == TipoPeriodo.elegido ? const Icon(Icons.calendar_today, size: 16) : null,
                 selected: periodo.tipo == tipo,
                 showCheckmark: false,
-                selectedColor: const Color(0xFFC8E6C9),
+                selectedColor: AppColors.seleccionFondo,
                 onSelected: (_) => _elegir(context, tipo),
               ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.espacioChico),
         Text(rango,
             key: const Key('periodo_rango'),
-            style: const TextStyle(fontSize: 13, color: Color(0xFF555555))),
+            style: AppTypography.etiqueta.copyWith(color: AppColors.textoTerciario)),
       ],
     );
   }

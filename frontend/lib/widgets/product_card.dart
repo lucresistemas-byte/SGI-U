@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/unidad_medida.dart';
 import '../utils/numeros.dart';
 import '../models/product.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -15,9 +19,9 @@ class ProductCard extends StatelessWidget {
     final bool isAgotado = product.stockActual <= 0;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8),
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.espacioChico),
       // Si está agotado, le ponemos un fondo un poquito más gris
-      color: isAgotado ? Colors.grey[200] : Colors.white,
+      color: isAgotado ? AppColors.fondoAlternativo : AppColors.fondoSuperficie,
       child: InkWell(
         // Magia aquí: si pasamos 'null' al onTap, Flutter automáticamente desactiva el botón y el clic
         onTap: isAgotado ? null : () => onAdd(1),
@@ -30,42 +34,51 @@ class ProductCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.inventory, size: 40),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.espacioChico),
                 Text(
-                  product.nombre, 
-                  textAlign: TextAlign.center, 
-                  style: const TextStyle(fontWeight: FontWeight.bold)
+                  product.nombre,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.textoChico
+                      .copyWith(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 4),
-                Text(formatPesos(product.precioUnitario)),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.espacioMinimo),
+                Text(
+                  formatPesos(product.precioUnitario),
+                  style: AppTypography.textoChico,
+                ),
+                const SizedBox(height: AppSpacing.espacioMinimo),
                 // --- Indicador de Stock y Unidad de Medida ---
                 Text(
                   isAgotado
                       ? 'Agotado'
                       : 'Stock: ${textoStock(product.stockActual, product.unidadStock)}',
                   key: const ValueKey('product_card_stock_text'),
-                  style: TextStyle(
-                    color: isAgotado ? Colors.red : Colors.grey[600],
-                    fontWeight: isAgotado ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 12,
+                  style: AppTypography.etiqueta.copyWith(
+                    color: isAgotado
+                        ? AppColors.error
+                        : AppColors.textoTerciario,
+                    fontWeight:
+                        isAgotado ? FontWeight.w700 : FontWeight.w400,
                   ),
                 ),
                 if (product.unidadStock.isNotEmpty)
                   Container(
                     key: const ValueKey('product_card_unidad_badge'),
-                    margin: const EdgeInsets.only(top: 2),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.blueGrey.shade50,
-                      borderRadius: BorderRadius.circular(4),
+                    margin: const EdgeInsets.only(top: AppSpacing.espacioMinimo),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.espacioChico,
+                      vertical: AppSpacing.espacioMinimo,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: AppColors.bordeSuave,
+                      borderRadius: AppRadii.bordeMinimo,
                     ),
                     child: Text(
-                      UnidadMedida.deCodigo(product.unidadStock)?.nombre ?? product.unidadStock,
-                      style: TextStyle(
-                        fontSize: 10,
+                      UnidadMedida.deCodigo(product.unidadStock)?.nombre ??
+                          product.unidadStock,
+                      style: AppTypography.pie.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: Colors.blueGrey.shade700,
+                        color: AppColors.menuTexto,
                       ),
                     ),
                   ),

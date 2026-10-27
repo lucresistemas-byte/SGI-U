@@ -3,6 +3,11 @@ import '../models/product.dart';
 import '../models/stock.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import 'app_button.dart';
+import 'app_dialog.dart';
 
 /// Producir (cargar stock de) un elaborado o un paquete: descuenta sus
 /// ingredientes o insumos. En dos pasos: si algo no alcanza, muestra qué
@@ -70,104 +75,104 @@ class _ProduccionDialogState extends State<ProduccionDialog> {
   Widget build(BuildContext context) {
     final p = widget.producto;
     final hayFaltantes = _faltantes.isNotEmpty;
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text('Producir ${p.nombre}', style: const TextStyle(fontWeight: FontWeight.bold)),
-      content: SizedBox(
-        width: 480,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              p.esPaquete
-                  ? 'Suma stock del paquete y descuenta los insumos de su armado.'
-                  : 'Suma stock y descuenta los ingredientes de la receta según el rinde '
-                      '(las preparaciones base se descuentan por sus ingredientes).',
-              style: const TextStyle(color: Color(0xFF64748B)),
-            ),
-            if (p.puedeProducir != null) ...[
-              const SizedBox(height: 8),
-              Text('Con el stock actual se pueden producir hasta ${p.puedeProducir}.',
-                  key: const Key('produccion_puede_producir')),
-            ],
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                SizedBox(
-                  width: 140,
-                  child: TextField(
-                    key: const Key('produccion_cantidad_input'),
-                    controller: _cantidad,
-                    enabled: !hayFaltantes,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Cantidad *', border: OutlineInputBorder()),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    key: const Key('produccion_motivo_input'),
-                    controller: _motivo,
-                    enabled: !hayFaltantes,
-                    decoration: const InputDecoration(
-                        labelText: 'Detalle (opcional)', hintText: 'Ej: Tanda del sábado', border: OutlineInputBorder()),
-                  ),
-                ),
-              ],
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!, key: const Key('produccion_error'), style: const TextStyle(color: Colors.redAccent)),
-            ],
-            if (hayFaltantes) ...[
-              const SizedBox(height: 16),
-              Container(
-                key: const Key('produccion_faltantes'),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF2F2),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFFECACA)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('No alcanza el stock. No se aplicó nada.',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFB91C1C))),
-                    const SizedBox(height: 6),
-                    for (final f in _faltantes)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text('• ${f.mensaje}', key: Key('faltante_${f.codigo}')),
-                      ),
-                    const SizedBox(height: 8),
-                    const Text('Si produce igual, esos artículos quedan con stock negativo (en rojo).',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                  ],
-                ),
-              ),
-            ],
-          ],
+    return AppDialog(
+      titulo: 'Producir ${p.nombre}',
+      tamano: TamanoDialogo.medio,
+      acciones: [
+        AppButton.ghost(
+          onPressed: _enviando ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
         ),
-      ),
-      actions: [
-        TextButton(onPressed: _enviando ? null : () => Navigator.of(context).pop(), child: const Text('Cancelar')),
         if (hayFaltantes)
-          ElevatedButton(
+          AppButton.danger(
             key: const Key('producir_igual_button'),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFB91C1C), foregroundColor: Colors.white),
             onPressed: _enviando ? null : () => _producir(confirmar: true),
             child: const Text('Producir igual'),
           )
         else
-          ElevatedButton(
+          AppButton.primary(
             key: const Key('producir_button'),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.verdePrincipal, foregroundColor: Colors.white),
             onPressed: _enviando ? null : () => _producir(confirmar: false),
             child: const Text('Producir'),
           ),
       ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            p.esPaquete
+                ? 'Suma stock del paquete y descuenta los insumos de su armado.'
+                : 'Suma stock y descuenta los ingredientes de la receta según el rinde '
+                    '(las preparaciones base se descuentan por sus ingredientes).',
+            style: AppTypography.texto.copyWith(color: AppColors.textoInactivo),
+          ),
+          if (p.puedeProducir != null) ...[
+            const SizedBox(height: AppSpacing.espacioChico),
+            Text('Con el stock actual se pueden producir hasta ${p.puedeProducir}.',
+                key: const Key('produccion_puede_producir')),
+          ],
+          const SizedBox(height: AppSpacing.espacioEstandar),
+          Row(
+            children: [
+              SizedBox(
+                width: 140,
+                child: TextField(
+                  key: const Key('produccion_cantidad_input'),
+                  controller: _cantidad,
+                  enabled: !hayFaltantes,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Cantidad *', border: OutlineInputBorder()),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.espacioMedio),
+              Expanded(
+                child: TextField(
+                  key: const Key('produccion_motivo_input'),
+                  controller: _motivo,
+                  enabled: !hayFaltantes,
+                  decoration: const InputDecoration(
+                      labelText: 'Detalle (opcional)', hintText: 'Ej: Tanda del sábado', border: OutlineInputBorder()),
+                ),
+              ),
+            ],
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: AppSpacing.espacioMedio),
+            Text(_error!,
+                key: const Key('produccion_error'),
+                style: const TextStyle(color: AppColors.error)),
+          ],
+          if (hayFaltantes) ...[
+            const SizedBox(height: AppSpacing.espacioEstandar),
+            Container(
+              key: const Key('produccion_faltantes'),
+              padding: const EdgeInsets.all(AppSpacing.espacioMedio),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.08),
+                borderRadius: AppRadii.bordeChico,
+                border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('No alcanza el stock. No se aplicó nada.',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.error)),
+                  const SizedBox(height: AppSpacing.espacioChico),
+                  for (final f in _faltantes)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.espacioMinimo),
+                      child: Text('• ${f.mensaje}', key: Key('faltante_${f.codigo}')),
+                    ),
+                  const SizedBox(height: AppSpacing.espacioChico),
+                  Text('Si produce igual, esos artículos quedan con stock negativo (en rojo).',
+                      style: AppTypography.etiqueta.copyWith(color: AppColors.textoInactivo)),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

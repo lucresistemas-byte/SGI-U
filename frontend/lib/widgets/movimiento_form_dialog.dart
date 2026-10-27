@@ -6,6 +6,11 @@ import '../blocs/finanzas/finanzas_event.dart';
 import '../blocs/finanzas/finanzas_state.dart';
 import '../models/categoria_movimiento.dart';
 import '../models/metodo_pago.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import 'app_button.dart';
+import 'app_dialog.dart';
 import 'metodo_pago_dropdown.dart';
 
 class MovimientoFormDialog extends StatefulWidget {
@@ -131,199 +136,154 @@ class _MovimientoFormDialogState extends State<MovimientoFormDialog> {
           });
         }
       },
-      child: Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Container(
-          width: 420,
-          padding: const EdgeInsets.all(24),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Agregar Nuevo Movimiento',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF222222),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Fecha y tipo en una fila (el diálogo no crece).
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              key: const Key('movimiento_fecha'),
-                              onTap: _guardando ? null : _elegirFecha,
-                              child: InputDecorator(
-                                decoration: const InputDecoration(
-                                  labelText: 'Fecha',
-                                  border: OutlineInputBorder(),
-                                  suffixIcon: Icon(Icons.calendar_today, size: 18),
-                                ),
-                                child: Text(
-                                  DateUtils.isSameDay(_fecha, DateTime.now())
-                                      ? 'Hoy (${DateFormat('dd/MM').format(_fecha)})'
-                                      : DateFormat('dd/MM/yyyy').format(_fecha),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              initialValue: _tipo,
-                              decoration: const InputDecoration(
-                                  labelText: 'Tipo', border: OutlineInputBorder()),
-                              items: _tipos
-                                  .map((tipo) => DropdownMenuItem(
-                                      value: tipo, child: Text(tipo)))
-                                  .toList(),
-                              // Cada tipo tiene sus categorías: al cambiarlo se
-                              // reinicia la categoría a la primera del nuevo tipo.
-                              onChanged: (value) => setState(() {
-                                _tipo = value!;
-                                _categoria =
-                                    CategoriaMovimiento.paraTipo(_tipo).first.codigo;
-                              }),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Categoría
-                      DropdownButtonFormField<String>(
-                        // La key recrea el campo al cambiar el tipo, para que
-                        // tome la categoría reiniciada.
-                        key: ValueKey(_tipo),
-                        initialValue: _categoria,
+      child: AppDialog(
+        titulo: 'Agregar Nuevo Movimiento',
+        tamano: TamanoDialogo.chico,
+        acciones: [
+          AppButton.ghost(
+            onPressed: _guardando
+                ? null
+                : () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          AppButton.primary(
+            // El botón reacciona dinámicamente y se deshabilita mientras guarda
+            onPressed: (_isFormValid() && !_guardando) ? _guardar : null,
+            child: _guardando
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.sobreMarca),
+                  )
+                : const Text('Guardar'),
+          ),
+        ],
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Fecha y tipo en una fila (el diálogo no crece).
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      key: const Key('movimiento_fecha'),
+                      onTap: _guardando ? null : _elegirFecha,
+                      child: InputDecorator(
                         decoration: const InputDecoration(
-                            labelText: 'Categoría',
-                            border: OutlineInputBorder()),
-                        items: CategoriaMovimiento.paraTipo(_tipo)
-                            .map((cat) => DropdownMenuItem(
-                                value: cat.codigo, child: Text(cat.etiqueta)))
-                            .toList(),
-                        onChanged: (value) =>
-                            setState(() => _categoria = value!),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Método de pago
-                      MetodoPagoDropdown(
-                        key: const Key('movimiento_metodo_pago'),
-                        metodos: _metodosPago,
-                        valor: _metodoPagoId,
-                        etiqueta: 'Método de Pago',
-                        onChanged: (id) => setState(() => _metodoPagoId = id),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Monto
-                      TextFormField(
-                        controller: _montoController,
-                        // ESTA ES LA MAGIA: Al teclear, actualiza el estado y enciende el botón
-                        onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(
-                          labelText: 'Monto (\$)',
-                          hintText: 'Ingrese un valor positivo',
-                          border: OutlineInputBorder(),
+                          labelText: 'Fecha',
+                          suffixIcon: Icon(Icons.calendar_today, size: 18),
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'El monto es obligatorio';
-                          }
-                          final monto =
-                              double.tryParse(value.replaceAll(',', '.'));
-                          if (monto == null) return 'Ingrese un número válido';
-                          if (monto <= 0) {
-                            return 'El monto debe ser mayor a cero';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Descripción
-                      TextFormField(
-                        controller: _descripcionController,
-                        // ESTA ES LA OTRA MAGIA
-                        onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(
-                          labelText: 'Descripción',
-                          hintText: 'Motivo o detalle del movimiento',
-                          border: OutlineInputBorder(),
+                        child: Text(
+                          DateUtils.isSameDay(_fecha, DateTime.now())
+                              ? 'Hoy (${DateFormat('dd/MM').format(_fecha)})'
+                              : DateFormat('dd/MM/yyyy').format(_fecha),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        validator: (value) => value == null || value.isEmpty
-                            ? 'Campo obligatorio'
-                            : null,
                       ),
-                    ],
-                  ),
-                ),
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(
-                          color: Color(0xFFD32F2F), fontSize: 13),
                     ),
                   ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: _guardando
-                          ? null
-                          : () => Navigator.of(context).pop(false),
-                      child: const Text('Cancelar',
-                          style: TextStyle(color: Color(0xFF006B3D))),
+                  const SizedBox(width: AppSpacing.espacioMedio),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _tipo,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Tipo'),
+                      items: _tipos
+                          .map((tipo) => DropdownMenuItem(
+                              value: tipo, child: Text(tipo)))
+                          .toList(),
+                      // Cada tipo tiene sus categorías: al cambiarlo se
+                      // reinicia la categoría a la primera del nuevo tipo.
+                      onChanged: (value) => setState(() {
+                        _tipo = value!;
+                        _categoria =
+                            CategoriaMovimiento.paraTipo(_tipo).first.codigo;
+                      }),
                     ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      // El botón reacciona dinámicamente y se deshabilita mientras guarda
-                      onPressed:
-                          (_isFormValid() && !_guardando) ? _guardar : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isFormValid()
-                            ? const Color(0xFF006B3D)
-                            : Colors.grey.shade400,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20)),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 10),
-                      ),
-                      child: _guardando
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Text('Guardar',
-                              style: TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w600)),
-                    ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.espacioEstandar),
+
+              // Categoría
+              DropdownButtonFormField<String>(
+                // La key recrea el campo al cambiar el tipo, para que
+                // tome la categoría reiniciada.
+                key: ValueKey(_tipo),
+                initialValue: _categoria,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Categoría'),
+                items: CategoriaMovimiento.paraTipo(_tipo)
+                    .map((cat) => DropdownMenuItem(
+                        value: cat.codigo, child: Text(cat.etiqueta)))
+                    .toList(),
+                onChanged: (value) => setState(() => _categoria = value!),
+              ),
+              const SizedBox(height: AppSpacing.espacioEstandar),
+
+              // Método de pago
+              MetodoPagoDropdown(
+                key: const Key('movimiento_metodo_pago'),
+                metodos: _metodosPago,
+                valor: _metodoPagoId,
+                etiqueta: 'Método de Pago',
+                onChanged: (id) => setState(() => _metodoPagoId = id),
+              ),
+              const SizedBox(height: AppSpacing.espacioEstandar),
+
+              // Monto
+              TextFormField(
+                controller: _montoController,
+                // Al teclear, actualiza el estado y enciende el botón.
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'Monto (\$)',
+                  hintText: 'Ingrese un valor positivo',
                 ),
-              ],
-            ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'El monto es obligatorio';
+                  }
+                  final monto = double.tryParse(value.replaceAll(',', '.'));
+                  if (monto == null) return 'Ingrese un número válido';
+                  if (monto <= 0) {
+                    return 'El monto debe ser mayor a cero';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppSpacing.espacioEstandar),
+
+              // Descripción
+              TextFormField(
+                controller: _descripcionController,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'Descripción',
+                  hintText: 'Motivo o detalle del movimiento',
+                ),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Campo obligatorio'
+                    : null,
+              ),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.espacioMedio),
+                  child: Text(
+                    _error!,
+                    style: AppTypography.etiqueta
+                        .copyWith(color: AppColors.error),
+                  ),
+                ),
+            ],
           ),
         ),
       ),

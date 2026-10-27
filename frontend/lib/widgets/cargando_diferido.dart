@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 /// Indicador de carga del área de contenido de una sección: no muestra nada
 /// durante [demora] y recién después un spinner centrado. Así las cargas
 /// rápidas no parpadean con un spinner que aparece y desaparece.
@@ -42,6 +44,6 @@ class _CargandoDiferidoState extends State<CargandoDiferido> {
   @override
   Widget build(BuildContext context) {
     if (!_visible) return const SizedBox.shrink();
-    return Center(child: CircularProgressIndicator(color: widget.color));
+    return Center(child: CircularProgressIndicator(color: widget.color ?? AppColors.marca));
   }
 }

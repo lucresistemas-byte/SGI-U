@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_colors.dart';
 
 /// Fondo del área de contenido de una sección. El menú lateral, el AppBar y
@@ -11,7 +12,7 @@ class AppScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.grisFondo,
+      backgroundColor: AppColors.fondoApp,
       body: body,
     );
   }

@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../models/categoria.dart';
 import '../../services/api_service.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_elevations.dart';
+import '../../theme/app_radii.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_typography.dart';
+import '../app_button.dart';
+import '../app_dialog.dart';
+import '../app_snack_bar.dart';
 
 /// Configuración > Categorías: crear, renombrar y desactivar/reactivar.
 /// No se eliminan; una desactivada no se ofrece en los formularios, pero los
@@ -50,12 +58,11 @@ class _CategoriasCardState extends State<CategoriasCard> {
     try {
       await accion();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(exito)));
+      AppSnackBar.exito(context, exito);
       await _cargar();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.redAccent));
+      AppSnackBar.error(context, e.toString());
     }
   }
 
@@ -63,22 +70,26 @@ class _CategoriasCardState extends State<CategoriasCard> {
     final ctrl = TextEditingController(text: inicial);
     return showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(titulo),
-        content: TextField(
+      builder: (dialogContext) => AppDialog(
+        titulo: titulo,
+        tamano: TamanoDialogo.chico,
+        acciones: [
+          AppButton.ghost(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancelar'),
+          ),
+          AppButton.primary(
+            onPressed: () => Navigator.of(dialogContext).pop(ctrl.text.trim()),
+            child: const Text('Guardar'),
+          ),
+        ],
+        child: TextField(
           key: const Key('categoria_nombre_input'),
           controller: ctrl,
           autofocus: true,
           decoration: const InputDecoration(labelText: 'Nombre'),
           onSubmitted: (v) => Navigator.of(dialogContext).pop(v.trim()),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(ctrl.text.trim()),
-            child: const Text('Guardar'),
-          ),
-        ],
       ),
     );
   }
@@ -104,20 +115,23 @@ class _CategoriasCardState extends State<CategoriasCard> {
   Widget build(BuildContext context) {
     return Card(
       key: const Key('config_categorias'),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      elevation: AppElevations.sombraTarjeta,
+      shape: const RoundedRectangleBorder(
+        borderRadius: AppRadii.bordeCampo,
+        side: BorderSide(color: AppColors.bordeSuave),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(AppSpacing.espacioGrande),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Expanded(
-                  child: Text('Categorías', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Expanded(
+                  child: Text('Categorías',
+                      style: AppTypography.texto.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textoPrincipal)),
                 ),
                 TextButton.icon(
                   key: const Key('categoria_nueva_btn'),
@@ -127,15 +141,20 @@ class _CategoriasCardState extends State<CategoriasCard> {
                 ),
               ],
             ),
-            const Text(
+            Text(
               'Etiquetas para filtrar y para los reportes. No se eliminan: se desactivan.',
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              style: AppTypography.etiqueta
+                  .copyWith(color: AppColors.textoInactivo),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.espacioChico),
             if (_cargando)
-              const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator())
+              const Padding(
+                  padding: EdgeInsets.all(AppSpacing.espacioMedio),
+                  child: LinearProgressIndicator())
             else if (_error != null)
-              Text(_error!, style: const TextStyle(color: Colors.red))
+              Text(_error!,
+                  style: AppTypography.textoChico
+                      .copyWith(color: AppColors.error))
             else if (_categorias.isEmpty)
               const Text('Todavía no hay categorías.')
             else
@@ -144,7 +163,10 @@ class _CategoriasCardState extends State<CategoriasCard> {
                   key: Key('categoria_${c.id}'),
                   contentPadding: EdgeInsets.zero,
                   title: Text(c.nombre,
-                      style: c.activo ? null : const TextStyle(color: Color(0xFF94A3B8))),
+                      style: c.activo
+                          ? null
+                          : AppTypography.texto
+                              .copyWith(color: AppColors.textoInactivo)),
                   subtitle: c.activo ? null : const Text('Inactiva'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -159,7 +181,9 @@ class _CategoriasCardState extends State<CategoriasCard> {
                         key: Key('categoria_estado_${c.id}'),
                         tooltip: c.activo ? 'Desactivar' : 'Reactivar',
                         icon: Icon(c.activo ? Icons.toggle_on : Icons.toggle_off,
-                            color: c.activo ? const Color(0xFF13894E) : const Color(0xFF94A3B8)),
+                            color: c.activo
+                                ? AppColors.estadoActivo
+                                : AppColors.textoInactivo),
                         onPressed: () => _cambiarEstado(c),
                       ),
                     ],

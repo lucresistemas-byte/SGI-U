@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -13,8 +14,10 @@ import 'blocs/pedidos/pedidos_bloc.dart';
 import 'navigation/app_shell.dart';
 import 'navigation/seccion.dart';
 import 'navigation/transiciones.dart';
+import 'screens/catalogo_estilos_screen.dart';
 import 'screens/login_screen.dart';
 import 'repositories/auth_repository.dart';
+import 'theme/app_theme.dart';
 import 'services/api_service.dart';
 import 'services/storage_service.dart';
 import 'services/reconnection_service.dart';
@@ -108,13 +111,13 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         navigatorKey: navigatorKey,
         title: 'SGI-U',
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF13894E)),
-          // Ninguna navegación de pantalla completa se anima, en ninguna
-          // plataforma (los diálogos tienen su propia animación).
-          pageTransitionsTheme: transicionesInstantaneas,
-        ),
+        // El estilo vive en `lib/theme/` (tokens + AppTheme). Las transiciones
+        // instantáneas se configuran dentro de AppTheme.
+        theme: AppTheme.light,
+        // Catálogo de estilos: solo en modo dev (referencia del sistema).
+        routes: {
+          if (kDebugMode) CatalogoEstilosScreen.ruta: (_) => const CatalogoEstilosScreen(),
+        },
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
