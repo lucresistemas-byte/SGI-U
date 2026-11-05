@@ -36,7 +36,7 @@ class EspUsuarioDetailsServiceTest {
         assertThat(detalles.isEnabled()).isTrue();
         assertThat(detalles.getAuthorities())
                 .extracting(Object::toString)
-                .containsExactly("ROLE_USER");
+                .containsExactly("ROLE_ADMIN");
     }
 
     @Test

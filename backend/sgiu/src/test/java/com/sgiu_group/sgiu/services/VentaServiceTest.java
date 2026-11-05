@@ -177,7 +177,7 @@ class VentaServiceTest {
         ventaExistente.setTokenIdempotencia(token);
 
         when(ventaRepository.findByTokenIdempotencia(token)).thenReturn(Optional.of(ventaExistente));
-        when(pagoRepository.findByVenta(ventaExistente)).thenReturn(List.of());
+        when(pagoRepository.findByVentaId(99L)).thenReturn(List.of());
 
         VentaRequestDTO request = new VentaRequestDTO(null, List.of(new LineaVentaDTO("P1", 2)), null, token);
 

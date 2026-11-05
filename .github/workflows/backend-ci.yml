@@ -34,11 +34,7 @@ jobs:
         working-directory: backend/sgiu
         run: mvn -B verify --no-transfer-progress
         env:
-          # Tests usan H2 en memoria — no necesita MariaDB real
-          SPRING_DATASOURCE_URL: jdbc:h2:mem:sgiu_test;DB_CLOSE_DELAY=-1
-          SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.h2.Driver
-          SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
-          # JWT genérico para tests
+          # JWT genérico para tests (opcional; los perfiles test/integration ya definen su config)
           SGIU_JWT_SECRET: test-secret-ci-only-not-production
 
       - name: Verificar que el JAR se construyó con JDK 21

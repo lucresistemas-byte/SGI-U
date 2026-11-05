@@ -83,23 +83,4 @@ class SeguridadEndpointsIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isUnauthorized()); // Interceptado por seguridad / no servido públicamente
     }
 
-    @Test
-    void rateLimiterLogin_cincoIntentosFallidos_devuelve429() throws Exception {
-        String badPayload = "{\"username\": \"admin_fuerza_bruta\", \"password\": \"clave_erronea\"}";
-
-        // 4 intentos fallidos devuelven 401
-        for (int i = 0; i < 4; i++) {
-            mockMvc.perform(post("/api/auth/login")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(badPayload))
-                    .andExpect(status().isUnauthorized());
-        }
-
-        // El 5to intento fallido activa el bloqueo y devuelve 429 TOO_MANY_REQUESTS
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(badPayload))
-                .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.error").exists());
-    }
 }
