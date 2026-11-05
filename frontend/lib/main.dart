@@ -14,6 +14,7 @@ import 'navigation/app_shell.dart';
 import 'navigation/seccion.dart';
 import 'navigation/transiciones.dart';
 import 'screens/login_screen.dart';
+import 'screens/cambio_password_screen.dart';
 import 'repositories/auth_repository.dart';
 import 'services/api_service.dart';
 import 'services/storage_service.dart';
@@ -168,6 +169,10 @@ class StartupDecider extends StatelessWidget {
       builder: (context, authState) {
         if (authState is Authenticated) {
           return pantallaPrincipal;
+        }
+        // A2: contraseña de fábrica pendiente: solo se deja cambiar la clave.
+        if (authState is PasswordChangeRequired) {
+          return const CambioPasswordScreen();
         }
         if (authState is AuthInitial) {
           // Spinner solo durante el chequeo inicial del token guardado

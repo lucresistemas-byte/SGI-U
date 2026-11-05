@@ -25,12 +25,9 @@ public class JwtUtil {
     @Value("${jwt.secret:}")
     private String configuredSecret;
 
+    /** A2: JWT de 8 horas (decisión del equipo 2026-10-15). */
     @Value("${jwt.expiration:28800000}")
     private long jwtExpiration = 28800000L;
-
-    private String secretKey;
-    private java.security.Key signingKey;
-    private String lastResolvedSecret;
 
     public long getJwtExpiration() {
         return jwtExpiration;
@@ -39,6 +36,10 @@ public class JwtUtil {
     public void setJwtExpiration(long jwtExpiration) {
         this.jwtExpiration = jwtExpiration;
     }
+
+    private String secretKey;
+    private java.security.Key signingKey;
+    private String lastResolvedSecret;
 
     @PostConstruct
     public void init() {
@@ -56,10 +57,11 @@ public class JwtUtil {
         String secretToUse;
         if (this.secretKey != null && !this.secretKey.isBlank()) {
             secretToUse = this.secretKey;
-        } else if (configuredSecret != null && !configuredSecret.isBlank()
-                && !configuredSecret.equals("a7b8C9d0E1f2G3h4I5j6K7l8M9n0O1p2Q3r4S5t6U7v=")) {
+        } else if (configuredSecret != null && !configuredSecret.isBlank()) {
             secretToUse = configuredSecret;
         } else {
+            // A2: sin secreto configurado, cada instalación usa el suyo
+            // generado en InstallationSecrets (fuera del repo).
             secretToUse = InstallationSecrets.getOrCreateJwtSecret();
         }
 
@@ -82,25 +84,20 @@ public class JwtUtil {
         this.signingKey = io.jsonwebtoken.security.Keys.hmacShaKeyFor(keyBytes);
     }
 
-    /**
-     * Extrae el nombre de usuario del token.
-     */
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    /**
-     * Extrae una reclamo específico del token.
-     */
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
-    /**
-     * Genera un token JWT para los detalles del usuario proporcionados incluyendo roles.
-     */
     public String generateToken(UserDetails userDetails) {
+        return generateToken(userDetails, false);
+    }
+
+    public String generateToken(UserDetails userDetails, boolean requiereCambioPassword) {
         Map<String, Object> claims = new HashMap<>();
         if (userDetails.getAuthorities() != null && !userDetails.getAuthorities().isEmpty()) {
             var roles = userDetails.getAuthorities().stream()
@@ -110,19 +107,18 @@ public class JwtUtil {
             String rol = roles.get(0).replace("ROLE_", "");
             claims.put("rol", rol);
         }
+        claims.put("cambioPassword", requiereCambioPassword);
         return createToken(claims, userDetails.getUsername());
     }
 
-    /**
-     * Genera un token JWT con reclamos personalizados.
-     */
+    public boolean requiereCambioPassword(String token) {
+        return Boolean.TRUE.equals(extractClaim(token, claims -> claims.get("cambioPassword", Boolean.class)));
+    }
+
     public String generateToken(Map<String, Object> extraClaims, String username) {
         return createToken(extraClaims, username);
     }
 
-    /**
-     * Crea el token JWT con los reclamos proporcionados.
-     */
     private String createToken(Map<String, Object> extraClaims, String subject) {
         return Jwts.builder()
                 .setClaims(extraClaims)
@@ -133,9 +129,6 @@ public class JwtUtil {
                 .compact();
     }
 
-    /**
-     * Extrae todos los reclamos del token.
-     */
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
@@ -144,24 +137,15 @@ public class JwtUtil {
                 .getBody();
     }
 
-    /**
-     * Valida el token contra los detalles del usuario.
-     */
     public boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
     }
 
-    /**
-     * Verifica si el token ha expirado.
-     */
     public boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
-    /**
-     * Extrae la fecha de expiración del token.
-     */
     public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }

@@ -208,6 +208,17 @@ class ApiService implements PosApi {
     }
   }
 
+  /// A2: cambio de contraseña obligatorio (primer uso con la clave de fábrica).
+  /// Devuelve el mapa del backend con el token NUEVO sin el reclamo pendiente.
+  Future<Map<String, dynamic>> cambiarPassword(
+      String passwordActual, String passwordNueva) async {
+    final response = await dio.post('/api/auth/cambiar-password', data: {
+      'passwordActual': passwordActual,
+      'passwordNueva': passwordNueva,
+    }).timeout(const Duration(seconds: 10));
+    return response.data;
+  }
+
   @override
   Future<List<dynamic>> getProducts() async {
     try {

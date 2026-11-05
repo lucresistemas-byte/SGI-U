@@ -12,6 +12,7 @@ import java.util.Optional;
 
 public interface VentaRepository extends JpaRepository<Venta, Long> {
 
+    /** A2: idempotencia de venta; si el token ya se usó, se devuelve la venta existente. */
     Optional<Venta> findByTokenIdempotencia(String tokenIdempotencia);
 
     @Query("SELECT COUNT(v) FROM Venta v WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta")

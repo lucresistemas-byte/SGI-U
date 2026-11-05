@@ -50,6 +50,25 @@ public class EncryptionService {
     }
 
     /**
+     * Inicialización para el modo CLI de restauración ({@code --restore}):
+     * solo CARGA la clave existente y falla si no existe. Nunca crea una
+     * clave nueva en una restauración: eso produciría un error GCM confuso.
+     */
+    public void initSolaLectura() throws Exception {
+        Path keyPath = resolveKeyPath();
+        if (!Files.exists(keyPath)) {
+            throw new IllegalStateException(
+                    "No existe la clave maestra de backup en " + keyPath
+                    + ". Sin ella no se puede descifrar el .enc "
+                    + "(recupera sgiu-backup.key de tu copia de seguridad).");
+        }
+        String encoded = Files.readString(keyPath, StandardCharsets.UTF_8).trim();
+        byte[] decoded = Base64.getDecoder().decode(encoded);
+        masterKey = new SecretKeySpec(decoded, "AES");
+        log.info("[CIFRADO A8] Clave maestra cargada (modo restauración) desde {}", keyPath);
+    }
+
+    /**
      * Cifra {@code origen} con AES-256-GCM y escribe el resultado (IV + ciphertext) en {@code destino}.
      * El archivo destino tiene extensión {@code .enc}.
      *
@@ -127,11 +146,21 @@ public class EncryptionService {
         if (keyPathConfig != null && !keyPathConfig.isBlank()) {
             return Path.of(keyPathConfig);
         }
+        // Permite que el modo CLI (--restore) apunte a otra clave sin Spring.
+        String sistema = System.getProperty("sgiu.backup.encryption.keyPath");
+        if (sistema != null && !sistema.isBlank()) {
+            return Path.of(sistema);
+        }
         String localAppData = System.getenv("LOCALAPPDATA");
         if (localAppData == null || localAppData.isBlank()) {
             localAppData = System.getProperty("user.home");
         }
         return Path.of(localAppData, "SGI-U", "sgiu-backup.key");
+    }
+
+    /** Ruta efectiva de la clave maestra (útil para mensajes de restauración). */
+    public Path rutaDeLaClave() {
+        return resolveKeyPath();
     }
 
     /** Expone si el servicio fue inicializado correctamente (útil para health-check). */

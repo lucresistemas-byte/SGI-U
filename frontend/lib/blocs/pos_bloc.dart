@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'pos_event.dart';
 import 'pos_state.dart';
@@ -11,6 +13,11 @@ import '../utils/numeros.dart';
 
 class PosBloc extends Bloc<PosEvent, PosState> {
   final PosApi _apiService;
+
+  /// A2: token de idempotencia del cobro en curso. Se genera al confirmar la
+  /// venta y se conserva si el cobro falla, para que un reintento (del
+  /// usuario o de la red) no registre la venta dos veces.
+  String? _tokenVentaPendiente;
 
   /// Métodos de pago activos. Por defecto los de la API real; con otra
   /// PosApi (tests) no hay métodos salvo que se indique un cargador.
@@ -40,8 +47,11 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     on<ClearError>((event, emit) => emit(state.copyWith(errorMessage: null)));
     on<ClearSuccess>((event, emit) =>
         emit(state.copyWith(successMessage: null, completedSale: null)));
-    on<ClearSelection>((event, emit) => emit(PosState.initial()
-        .copyWith(products: state.products, metodosPago: state.metodosPago)));
+    on<ClearSelection>((event, emit) {
+      _descartarTokenVenta();
+      emit(PosState.initial()
+          .copyWith(products: state.products, metodosPago: state.metodosPago));
+    });
 
     on<CreateProduct>((event, emit) async {
       emit(state.copyWith(
@@ -134,6 +144,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     }
 
     // Si cambia el carrito, cambia el total: el cobro se arma de nuevo.
+    _descartarTokenVenta();
     emit(state.copyWith(cart: newCart, pagos: const []));
   }
 
@@ -149,12 +160,14 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     if (existing != null) {
       newCart[event.productCode] = existing.copyWith(cantidad: event.newQuantity);
     }
+    _descartarTokenVenta();
     emit(state.copyWith(cart: newCart, pagos: const []));
   }
 
   void _onRemoveFromCart(RemoveFromCart event, Emitter<PosState> emit) {
     final newCart = Map<String, CartItem>.from(state.cart);
     newCart.remove(event.productCode);
+    _descartarTokenVenta();
     emit(state.copyWith(cart: newCart, pagos: const []));
   }
 
@@ -169,6 +182,19 @@ class PosBloc extends Bloc<PosEvent, PosState> {
   }
 
   static String _pesos(double v) => formatPesos(v);
+
+  /// A2: token aleatorio de idempotencia (32 hex) para un cobro.
+  static String _nuevoTokenVenta() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  /// Un cambio del carrito o del cobro es una venta distinta: el token de
+  /// idempotencia del intento anterior ya no corresponde.
+  void _descartarTokenVenta() {
+    _tokenVentaPendiente = null;
+  }
 
   /// D.4.1/D.4.2: una línea más del cobro. Un método que no es efectivo no
   /// puede pasarse de lo que falta; el efectivo sí (vuelto).
@@ -235,14 +261,18 @@ class PosBloc extends Bloc<PosEvent, PosState> {
 
       // En efectivo va lo que entregó el cliente: el backend descuenta el
       // vuelto y registra solo lo que corresponde a la venta.
+      // A2: tokenIdempotencia evita la doble venta si el cobro se reintenta.
+      _tokenVentaPendiente ??= _nuevoTokenVenta();
       final saleData = {
         'lineas': lineas,
         'pagos': [
           for (final p in state.pagos) {'metodoPagoId': p.metodo.id, 'monto': p.monto},
         ],
+        'tokenIdempotencia': _tokenVentaPendiente,
       };
 
       await _apiService.createSale(saleData);
+      _tokenVentaPendiente = null;
 
       // D.12: limpiar carrito conservando productos, snapshot de venta y mensaje de éxito.
       // Un solo emit evita re-triggers del BlocListener.

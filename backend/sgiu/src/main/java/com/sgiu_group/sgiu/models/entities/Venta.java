@@ -20,17 +20,15 @@ public class Venta extends BaseEntity {
     private BigDecimal total;
 
     // --- ANCLAJES DE ESCALABILIDAD (Campos Opcionales) ---
-    
+
     @Column(name = "id_sesion_caja")
     private Integer idSesionCaja;
 
     @Column(name = "creado_por_usuario")
     private Integer creadoPorUsuario;
 
-    /**
-     * Token de idempotencia para prevenir cobros dobles y doble deducción de inventario.
-     */
-    @Column(name = "token_idempotencia", unique = true, length = 100)
+    /** A2: token de idempotencia; un reintento con el mismo token no duplica la venta. */
+    @Column(name = "token_idempotencia", length = 64)
     private String tokenIdempotencia;
 
     // --- RELACIONES ---

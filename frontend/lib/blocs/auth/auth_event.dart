@@ -18,6 +18,15 @@ class LoginRequested extends AuthEvent {
 
 class LogoutRequested extends AuthEvent {}
 
+/// A2: cambio de contraseña obligatorio (primer uso con la clave de fábrica).
+class CambiarPasswordRequested extends AuthEvent {
+  final String passwordActual;
+  final String passwordNueva;
+  const CambiarPasswordRequested(this.passwordActual, this.passwordNueva);
+  @override
+  List<Object?> get props => [passwordActual, passwordNueva];
+}
+
 /// Disparado cuando el backend responde 401 en algún endpoint (token
 /// expirado): limpia la sesión y vuelve al login con un aviso.
 class SessionExpired extends AuthEvent {}

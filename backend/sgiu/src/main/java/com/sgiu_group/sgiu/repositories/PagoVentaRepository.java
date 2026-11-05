@@ -1,7 +1,6 @@
 package com.sgiu_group.sgiu.repositories;
 
 import com.sgiu_group.sgiu.models.entities.PagoVenta;
-import com.sgiu_group.sgiu.models.entities.Venta;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,8 +11,7 @@ import java.util.List;
 
 public interface PagoVentaRepository extends JpaRepository<PagoVenta, Long> {
 
-    List<PagoVenta> findByVenta(Venta venta);
-
+    /** A2: pagos de una venta (idempotencia: armar la respuesta de una venta ya registrada). */
     List<PagoVenta> findByVentaId(Long ventaId);
 
     /**

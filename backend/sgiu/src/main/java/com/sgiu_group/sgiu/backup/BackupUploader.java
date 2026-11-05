@@ -1,40 +1,45 @@
 package com.sgiu_group.sgiu.backup;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.time.LocalDate;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
 
 /**
- * Uploader de copias de seguridad hacia Backblaze B2 (API compatible con AWS S3).
- * Cumple con ISO/IEC 27001 (Control 8.13), NIST SP 800-34 y regla 3-2-1.
+ * A6: subida REAL de backups a Backblaze B2 usando la API nativa de B2
+ * (authorize → list_buckets → get_upload_url → upload_file), sin
+ * dependencias externas: solo java.net.http del JDK.
+ * <p>
+ * Credenciales: applicationKeyID en {@code AWS_ACCESS_KEY_ID} y
+ * applicationKey en {@code AWS_SECRET_ACCESS_KEY} (variables de entorno,
+ * nunca en el repo). Sin credenciales el backup queda solo local
+ * ({@code LOCAL_ONLY}); con credenciales, si la subida falla se lanza
+ * excepción: nunca se loguea un éxito ficticio.
  */
 @Slf4j
 @Component
 public class BackupUploader {
 
-    @Value("${b2.bucket:sgiu-sandra-pruebas}")
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @Value("${b2.bucket:sgiu-backups}")
     private String bucketName;
 
-    @Value("${b2.endpoint:https://s3.ca-east-006.backblazeb2.com}")
-    private String endpoint;
-
-    @Value("${b2.region:ca-east-006}")
-    private String region;
+    @Value("${b2.apiUrl:https://api.backblazeb2.com}")
+    private String apiUrlBase;
 
     @Value("${b2.keyId:${AWS_ACCESS_KEY_ID:}}")
     private String keyId;
@@ -42,47 +47,26 @@ public class BackupUploader {
     @Value("${b2.applicationKey:${AWS_SECRET_ACCESS_KEY:}}")
     private String applicationKey;
 
-    private S3Client s3Client;
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(30))
+            .build();
 
-    public void setS3Client(S3Client s3Client) {
-        this.s3Client = s3Client;
-    }
+    // Sesión B2 cacheada (el token de authorize dura la sesión de la API).
+    private volatile String apiUrl;
+    private volatile String accountToken;
+    private volatile String bucketId;
 
     public boolean isConfigurado() {
-        return (s3Client != null) || (keyId != null && !keyId.isBlank() && applicationKey != null && !applicationKey.isBlank());
+        return keyId != null && !keyId.isBlank() && applicationKey != null && !applicationKey.isBlank();
     }
 
-    public synchronized S3Client getOrCreateS3Client() {
-        if (this.s3Client != null) {
-            return this.s3Client;
-        }
-        if (!isConfigurado()) {
-            throw new IllegalStateException("Credenciales de Backblaze B2 no configuradas.");
-        }
-        String regionName = (region != null && !region.isBlank()) ? region.trim() : "ca-east-006";
-        AwsBasicCredentials credentials = AwsBasicCredentials.create(keyId.trim(), applicationKey.trim());
-        this.s3Client = S3Client.builder()
-                .endpointOverride(URI.create(endpoint.trim()))
-                .region(Region.of(regionName))
-                .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                .forcePathStyle(true)
-                .build();
-        return this.s3Client;
-    }
-
+    /**
+     * Sube el archivo cifrado y su checksum a dumps/<codigoCliente>/.
+     * Lanza excepción si la subida falla (A6: sin éxito ficticio).
+     */
     public String subirABucket(File dump, String codigoCliente) {
-        if (dump == null || !dump.exists()) {
-            throw new IllegalArgumentException("El archivo de backup no existe o es nulo.");
-        }
-
-        long tamanio = dump.length();
-        if (tamanio < 15_360L) {
-            throw new IllegalArgumentException("El archivo de backup es menor a 15 KB (" + tamanio + " bytes). Posible volcado incompleto o corrupto.");
-        }
-
         String tenant = (codigoCliente != null && !codigoCliente.isBlank()) ? codigoCliente : "DEFAULT";
-        String s3Key = String.format("dumps/%s/%s", tenant, dump.getName());
-        String rutaRemota = String.format("s3://%s/%s", bucketName, s3Key);
+        String rutaRemota = String.format("b2://%s/dumps/%s/%s", bucketName, tenant, dump.getName());
 
         if (!isConfigurado()) {
             log.info("[BACKUP B2] Credenciales no configuradas. Respaldo conservado localmente en: {}", dump.getAbsolutePath());
@@ -90,32 +74,23 @@ public class BackupUploader {
         }
 
         try {
-            String sha256Hex = calcularSha256(dump);
-            log.info("[BACKUP B2] Subiendo {} ({} bytes, sha256={}) hacia {}", dump.getName(), tamanio, sha256Hex, rutaRemota);
+            log.info("[BACKUP B2] Subiendo {} hacia {}", dump.getName(), rutaRemota);
+            subirArchivo(dump, "dumps/" + tenant + "/" + dump.getName(), "application/octet-stream");
 
-            S3Client client = getOrCreateS3Client();
-
-            PutObjectRequest putRequest = PutObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(s3Key)
-                    .metadata(Map.of("sha256", sha256Hex, "tenant", tenant))
-                    .build();
-
-            client.putObject(putRequest, RequestBody.fromFile(dump));
-            log.info("[BACKUP B2] Archivo {} subido exitosamente a Backblaze B2.", dump.getName());
-
-            // Si existe el archivo companion .sha256, también se sube al bucket
-            File companionSha = new File(dump.getAbsolutePath() + ".sha256");
-            if (companionSha.exists()) {
-                String shaKey = s3Key + ".sha256";
-                PutObjectRequest shaRequest = PutObjectRequest.builder()
-                        .bucket(bucketName)
-                        .key(shaKey)
-                        .build();
-                client.putObject(shaRequest, RequestBody.fromFile(companionSha));
-                log.info("[BACKUP B2] Archivo de verificación {} subido exitosamente.", shaKey);
+            // El checksum acompaña al archivo: permite verificar integridad
+            // antes de restaurar (y antes de descargar el archivo grande).
+            File shaFile = new File(dump.getParentFile(), dump.getName() + ".sha256");
+            if (shaFile.exists()) {
+                subirArchivo(shaFile, "dumps/" + tenant + "/" + shaFile.getName(), "text/plain");
+            }
+            // También el hash del .sql.gz original: sirve para verificar el
+            // archivo resultante DESPUÉS de descifrar el .enc.
+            File shaGz = new File(dump.getParentFile(), quitarExtensionEnc(dump.getName()) + ".sha256");
+            if (shaGz.exists()) {
+                subirArchivo(shaGz, "dumps/" + tenant + "/" + shaGz.getName(), "text/plain");
             }
 
+            log.info("[BACKUP B2] Archivo {} subido exitosamente a Backblaze B2.", dump.getName());
             return rutaRemota;
         } catch (Exception e) {
             log.error("[BACKUP B2] Error al subir backup a B2: {}", e.getMessage(), e);
@@ -124,94 +99,51 @@ public class BackupUploader {
     }
 
     /**
-     * Rotación remota (30 diarios + 12 mensuales).
-     * Conserva los últimos 30 backups diarios y 1 backup mensual para los últimos 12 meses.
-     * Retorna la cantidad de backups remotos eliminados.
+     * A6/rotación remota: borra del bucket los archivos del prefijo
+     * dumps/<tenant>/ con más de {@code dias} días.
      */
-    public int limpiarRemotos(String codigoCliente) {
+    public int limpiarRemotosMasAntiguos(String codigoCliente, int dias) {
         if (!isConfigurado()) {
-            log.debug("[BACKUP B2 LIFECYCLE] B2 no configurado. Se omite rotación remota.");
             return 0;
         }
-
+        String tenant = (codigoCliente != null && !codigoCliente.isBlank()) ? codigoCliente : "DEFAULT";
+        String prefijo = "dumps/" + tenant + "/";
         try {
-            S3Client client = getOrCreateS3Client();
-            String tenant = (codigoCliente != null && !codigoCliente.isBlank()) ? codigoCliente : "DEFAULT";
-            String prefix = String.format("dumps/%s/", tenant);
-
-            ListObjectsV2Request listReq = ListObjectsV2Request.builder()
-                    .bucket(bucketName)
-                    .prefix(prefix)
-                    .build();
-
-            ListObjectsV2Response listRes = client.listObjectsV2(listReq);
-            List<S3Object> objects = listRes.contents();
-            if (objects == null || objects.isEmpty()) {
-                return 0;
-            }
-
-            Pattern datePattern = Pattern.compile(".*_(\\d{4})(\\d{2})(\\d{2})_.*");
-            LocalDate hoy = LocalDate.now();
-            LocalDate limite30Dias = hoy.minusDays(30);
-            LocalDate limite12Meses = hoy.minusMonths(12);
-
-            Map<String, S3Object> mensualConservado = new HashMap<>();
-            List<ObjectIdentifier> paraBorrar = new ArrayList<>();
-
-            for (S3Object obj : objects) {
-                String key = obj.key();
-                if (key.endsWith(".sha256")) {
-                    continue;
-                }
-                Matcher matcher = datePattern.matcher(key);
-                if (matcher.matches()) {
-                    int anio = Integer.parseInt(matcher.group(1));
-                    int mes = Integer.parseInt(matcher.group(2));
-                    int dia = Integer.parseInt(matcher.group(3));
-                    LocalDate fechaBackup = LocalDate.of(anio, mes, dia);
-
-                    if (fechaBackup.isAfter(limite30Dias)) {
-                        // Conservar: dentro de los 30 diarios
-                        continue;
-                    }
-
-                    if (fechaBackup.isAfter(limite12Meses)) {
-                        // Período mensual: conservar solo 1 backup por mes
-                        String claveMes = String.format("%04d-%02d", anio, mes);
-                        if (!mensualConservado.containsKey(claveMes)) {
-                            mensualConservado.put(claveMes, obj);
-                            continue;
-                        }
-                    }
-
-                    // Obsoleto: marcar para eliminación
-                    paraBorrar.add(ObjectIdentifier.builder().key(key).build());
-                    paraBorrar.add(ObjectIdentifier.builder().key(key + ".sha256").build());
+            autenticar();
+            JsonNode listado = postJson(apiUrl + "/b2api/v2/b2_list_file_names",
+                    MAPPER.createObjectNode()
+                            .put("bucketId", bucketId)
+                            .put("prefix", prefijo)
+                            .put("maxFileCount", 1000));
+            int borrados = 0;
+            long corte = System.currentTimeMillis() - dias * 24L * 3600_000L;
+            for (JsonNode archivo : listado.path("files")) {
+                long ts = archivo.path("uploadTimestamp").asLong(0);
+                if (ts > 0 && ts < corte) {
+                    postJson(apiUrl + "/b2api/v2/b2_delete_file_version",
+                            MAPPER.createObjectNode()
+                                    .put("fileName", archivo.path("fileName").asText())
+                                    .put("fileId", archivo.path("fileId").asText()));
+                    borrados++;
+                    log.info("[BACKUP B2] Rotación remota: eliminado {} ({} días)", archivo.path("fileName").asText(), dias);
                 }
             }
-
-            if (!paraBorrar.isEmpty()) {
-                DeleteObjectsRequest delReq = DeleteObjectsRequest.builder()
-                        .bucket(bucketName)
-                        .delete(Delete.builder().objects(paraBorrar).build())
-                        .build();
-                client.deleteObjects(delReq);
-                log.info("[BACKUP B2 LIFECYCLE] Se eliminaron {} objetos obsoletos en B2.", paraBorrar.size());
-            }
-
-            return paraBorrar.size();
+            return borrados;
         } catch (Exception e) {
-            log.warn("[BACKUP B2 LIFECYCLE] Error durante la rotación remota: {}", e.getMessage());
+            // La rotación remota no debe tirar abajo el backup del día.
+            log.warn("[BACKUP B2] Falló la rotación remota ({}): {}", dias, e.getMessage());
             return 0;
         }
     }
 
     public List<String> listarBackups(String codigoCliente) {
-        String tenant = (codigoCliente != null && !codigoCliente.isBlank()) ? codigoCliente : "DEFAULT";
         List<String> listado = new ArrayList<>();
-        File carpetaLocal = new File("backups");
+        File carpetaLocal = carpetaBackups();
         if (carpetaLocal.exists() && carpetaLocal.isDirectory()) {
-            File[] files = carpetaLocal.listFiles((dir, name) -> name.endsWith(".sql.gz.enc") || name.endsWith(".sql.gz"));
+            // El flujo real deja .sql.gz.enc (cifrado) y sus .sha256; el
+            // .sql.gz plano solo existe si el cifrado está deshabilitado.
+            File[] files = carpetaLocal.listFiles((dir, name) ->
+                    name.endsWith(".sql.gz") || name.endsWith(".sql.gz.enc"));
             if (files != null) {
                 for (File f : files) {
                     listado.add(f.getName());
@@ -221,24 +153,122 @@ public class BackupUploader {
         return listado;
     }
 
-    private String calcularSha256(File archivo) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            try (FileInputStream fis = new FileInputStream(archivo)) {
-                byte[] buffer = new byte[8192];
-                int read;
-                while ((read = fis.read(buffer)) != -1) {
-                    md.update(buffer, 0, read);
-                }
+    /** Carpeta de respaldos locales (package-private para tests). */
+    File carpetaBackups() {
+        return new File("backups");
+    }
+
+    // ------------------------------------------------------------------
+    //  API nativa de Backblaze B2
+    // ------------------------------------------------------------------
+
+    private void subirArchivo(File archivo, String nombreRemoto, String contentType) throws Exception {
+        autenticar();
+        JsonNode upload = postJson(apiUrl + "/b2api/v2/b2_get_upload_url",
+                MAPPER.createObjectNode().put("bucketId", bucketId));
+        String uploadUrl = upload.path("uploadUrl").asText();
+        String uploadToken = upload.path("authorizationToken").asText();
+
+        String sha1Hex = sha1Hex(archivo);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(uploadUrl))
+                .timeout(Duration.ofMinutes(10))
+                .header("Authorization", uploadToken)
+                .header("X-Bz-File-Name", java.net.URLEncoder.encode(nombreRemoto, StandardCharsets.UTF_8)
+                        .replace("+", "%20"))
+                .header("X-Bz-Content-Sha1", sha1Hex)
+                .header("Content-Type", contentType)
+                .POST(HttpRequest.BodyPublishers.ofFile(archivo.toPath()))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new IOExceptionB2("b2_upload_file devolvió HTTP " + response.statusCode()
+                    + ": " + truncar(response.body()));
+        }
+        log.info("[BACKUP B2] {} subido ({} bytes, sha1={})", nombreRemoto, archivo.length(), sha1Hex);
+    }
+
+    private synchronized void autenticar() throws Exception {
+        if (apiUrl != null && accountToken != null && bucketId != null) {
+            return;
+        }
+        String credenciales = Base64.getEncoder()
+                .encodeToString((keyId + ":" + applicationKey).getBytes(StandardCharsets.UTF_8));
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(apiUrlBase + "/b2api/v2/b2_authorize_account"))
+                .timeout(Duration.ofSeconds(30))
+                .header("Authorization", "Basic " + credenciales)
+                .GET()
+                .build();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new IOExceptionB2("b2_authorize_account devolvió HTTP " + response.statusCode()
+                    + ": " + truncar(response.body()));
+        }
+        JsonNode json = MAPPER.readTree(response.body());
+        this.apiUrl = json.path("apiUrl").asText();
+        this.accountToken = json.path("authorizationToken").asText();
+
+        JsonNode buckets = postJson(apiUrl + "/b2api/v2/b2_list_buckets",
+                MAPPER.createObjectNode().put("accountId", json.path("accountId").asText()));
+        for (JsonNode b : buckets.path("buckets")) {
+            if (bucketName.equals(b.path("bucketName").asText())) {
+                this.bucketId = b.path("bucketId").asText();
+                break;
             }
-            byte[] digest = md.digest();
-            StringBuilder hex = new StringBuilder();
-            for (byte b : digest) {
-                hex.append(String.format("%02x", b));
+        }
+        if (bucketId == null) {
+            throw new IOExceptionB2("El bucket '" + bucketName + "' no existe en la cuenta B2.");
+        }
+        log.info("[BACKUP B2] Autenticado. Bucket {} = {}", bucketName, bucketId);
+    }
+
+    private JsonNode postJson(String url, com.fasterxml.jackson.databind.JsonNode body) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(30))
+                .header("Authorization", accountToken)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(body)))
+                .build();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new IOExceptionB2("POST " + url + " devolvió HTTP " + response.statusCode()
+                    + ": " + truncar(response.body()));
+        }
+        return MAPPER.readTree(response.body());
+    }
+
+    private static String sha1Hex(File archivo) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-1");
+        try (java.io.FileInputStream fis = new java.io.FileInputStream(archivo)) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = fis.read(buffer)) != -1) {
+                md.update(buffer, 0, read);
             }
-            return hex.toString();
-        } catch (Exception e) {
-            return "sha256-error:" + e.getMessage();
+        }
+        StringBuilder hex = new StringBuilder();
+        for (byte b : md.digest()) {
+            hex.append(String.format("%02x", b));
+        }
+        return hex.toString();
+    }
+
+    private static String quitarExtensionEnc(String nombre) {
+        return nombre.endsWith(".enc") ? nombre.substring(0, nombre.length() - 4) : nombre;
+    }
+
+    private static String truncar(String s) {
+        if (s == null) return "";
+        return s.length() > 300 ? s.substring(0, 300) + "…" : s;
+    }
+
+    /** Error propio de la comunicación con B2. */
+    static class IOExceptionB2 extends RuntimeException {
+        IOExceptionB2(String mensaje) {
+            super(mensaje);
         }
     }
 }

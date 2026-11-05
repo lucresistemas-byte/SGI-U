@@ -1,38 +1,35 @@
 @echo off
 :: =============================================================================
-:: SGI-U — Script de Restauración de Backup (Bloque 1 / Seguridad)
-:: Uso: restore-windows.bat <ruta_al_archivo.sql.gz>
+:: SGI-U — Script de Restauración de Backup (A7 + A8)
+:: Uso: restore-windows.bat <ruta_al_archivo.sql.gz|sql.gz.enc>
 ::
 :: Requisitos:
 ::   - mariadb.exe disponible en el PATH o en content\bin\
-::   - La BD sgiu_db ya existe y está arrancada en el puerto 3307
-::   - El archivo .sql.gz debe ser el dump DESCIFRADO (sin .enc)
-::     (si el backup está cifrado como .sql.gz.enc, primero descifrar
-::      con la clave sgiu-backup.key usando EncryptionService o
-::      ejecutando el procedimiento documentado en guías de restauración)
+::   - La BD sgiu_db debe existir y estar arrancada en el puerto 3307
+::   - Si el backup viene como .sql.gz.enc, debe existir la clave maestra
+::     sgiu-backup.key (por defecto en %LOCALAPPDATA%\SGI-U\sgiu-backup.key)
 ::
-:: Validaciones de integridad (NIST SP 800-38D / FIPS 180-4):
-::   1. Valida que el archivo existe y tiene extensión .sql.gz
-::   2. Valida tamaño mínimo (> 15 KB para descartar volcados truncados)
-::   3. Valida checksum SHA-256 si existe archivo .sha256 acompañante
+:: Lo que hace este script:
+::   1. Valida que el archivo existe y tiene extension .sql.gz o .sql.gz.enc
+::   2. Verifica el SHA-256 contra el archivo .sha256 hermano (si existe)
+::   3. Si es .enc, lo descifra con el jar de SGI-U (--restore=...)
 ::   4. Descomprime el .gz a un .sql temporal
-::   5. Valida cabecera SQL
-::   6. Ejecuta mariadb.exe para restaurar contra sgiu_db
-::   7. Elimina el .sql temporal
+::   5. Ejecuta mariadb.exe para restaurar contra sgiu_db
+::   6. Elimina el .sql temporal
 :: =============================================================================
 
 setlocal enabledelayedexpansion
 
 echo.
 echo =====================================================
-echo   SGI-U Restauracion de Base de Datos
+echo   SGI-U Restauracion de Base de Datos (A7 + A8)
 echo =====================================================
 echo.
 
 :: ---- Parametros ----
 set "DUMP_FILE=%~1"
 if "%DUMP_FILE%"=="" (
-    echo [ERROR] Uso: restore-windows.bat ^<ruta_al_archivo.sql.gz^>
+    echo [ERROR] Uso: restore-windows.bat ^<ruta_al_archivo.sql.gz^ o .sql.gz.enc^>
     exit /b 1
 )
 
@@ -41,41 +38,17 @@ if not exist "%DUMP_FILE%" (
     exit /b 1
 )
 
-:: Verifica extension .sql.gz
+:: Verifica extension .sql.gz o .sql.gz.enc
 echo %DUMP_FILE% | findstr /i "\.sql\.gz$" >nul
 if errorlevel 1 (
-    echo [ERROR] El archivo debe tener extension .sql.gz
-    echo         Si es .sql.gz.enc, descifre primero con la clave sgiu-backup.key
-    exit /b 1
-)
-
-:: ---- Validar tamaño (> 15 KB = 15360 bytes) ----
-for %%F in ("%DUMP_FILE%") do set "FILE_SIZE=%%~zF"
-if %FILE_SIZE% LSS 15360 (
-    echo [ERROR] El archivo de backup es demasiado pequenio (%FILE_SIZE% bytes). Minimo requerido: 15360 bytes.
-    echo         Posible archivo corrupto, vacio o truncado.
-    exit /b 1
-)
-
-:: ---- Validar Checksum SHA-256 si existe archivo companion ----
-set "SHA_FILE=%DUMP_FILE%.sha256"
-if not exist "%SHA_FILE%" (
-    :: Verificar si existe con nombre alternativo .sha256
-    set "SHA_FILE=%~dpn1.sha256"
-)
-
-if exist "%SHA_FILE%" (
-    echo [INFO] Archivo de verificacion SHA-256 detectado: %SHA_FILE%
-    echo [INFO] Validando integridad criptografica ...
-    powershell -NoProfile -Command ^
-      "$actual = (Get-FileHash -Path '%DUMP_FILE%' -Algorithm SHA256).Hash.ToLower(); $content = (Get-Content '%SHA_FILE%').Trim(); $expected = ($content -split '\s+')[0].ToLower(); if ($actual -ne $expected) { Write-Host '[ERROR] CHECKSUM NO COINCIDE. Calculado:' $actual 'Esperado:' $expected; exit 2 } else { Write-Host '[OK] Checksum SHA-256 integro y verificado:' $actual }"
+    echo %DUMP_FILE% | findstr /i "\.sql\.gz\.enc$" >nul
     if errorlevel 1 (
-        echo [ERROR] Fallo de integridad: el volcado ha sido alterado o corrompido.
+        echo [ERROR] El archivo debe tener extension .sql.gz o .sql.gz.enc
         exit /b 1
     )
-) else (
-    echo [ADVERTENCIA] No se encontro archivo companion .sha256 para validacion previa.
 )
+
+set "SCRIPT_DIR=%~dp0"
 
 :: ---- Configuracion de BD ----
 set "DB_HOST=localhost"
@@ -86,14 +59,82 @@ set "DB_PASS=sgiu_1234"
 
 :: ---- Resolver ruta de mariadb.exe ----
 set "MARIADB_EXE=mariadb"
-set "SCRIPT_DIR=%~dp0"
 if exist "%SCRIPT_DIR%..\content\bin\mariadb.exe" (
     set "MARIADB_EXE=%SCRIPT_DIR%..\content\bin\mariadb.exe"
+)
+
+:: ---- PASO 1: Verificacion de integridad (SHA-256) ----
+echo.
+echo [PASO 1] Verificando SHA-256 de %DUMP_FILE% ...
+set "SHA_FILE=%DUMP_FILE%.sha256"
+if exist "%SHA_FILE%" (
+    powershell -NoProfile -Command ^
+      "$hash = (Get-FileHash -Algorithm SHA256 '%DUMP_FILE%').Hash.ToLower();" ^
+      "$expected = ((Get-Content '%SHA_FILE%' -First 1).Trim() -split '\s+')[0].ToLower();" ^
+      "if ($hash -ne $expected) { Write-Host '  SHA-256 DISTINTO: el archivo esta corrupto.'; exit 3 }" ^
+      "Write-Host ('  SHA-256 OK: ' + $hash)"
+    if errorlevel 3 (
+        echo [ERROR] El archivo NO coincide con su checksum. No se restauro nada.
+        echo         Vuelva a descargar el backup desde Backblaze B2.
+        exit /b 1
+    )
+    if errorlevel 1 (
+        echo [ERROR] No se pudo calcular el SHA-256.
+        exit /b 1
+    )
+    echo [OK] Integridad verificada.
+) else (
+    echo [AVISO] No existe %SHA_FILE%; se omite la verificacion de integridad.
+)
+
+:: ---- PASO 2: Descifrar .enc si hace falta ----
+echo %DUMP_FILE% | findstr /i "\.sql\.gz\.enc$" >nul
+if not errorlevel 1 (
+    echo.
+    echo [PASO 2] Archivo cifrado detectado. Descifrando con SGI-U...
+
+    :: Resolver el jar de la aplicacion (layout del instalador)
+    set "SGIU_JAR="
+    if exist "%SCRIPT_DIR%..\content\app\sgiu.jar" set "SGIU_JAR=%SCRIPT_DIR%..\content\app\sgiu.jar"
+    if not defined SGIU_JAR if exist "%SCRIPT_DIR%..\content\sgiu.jar" set "SGIU_JAR=%SCRIPT_DIR%..\content\sgiu.jar"
+    if not defined SGIU_JAR (
+        for /f "delims=" %%A in ('dir /b "%SCRIPT_DIR%..\content\app\*.jar" 2^>nul') do if not defined SGIU_JAR set "SGIU_JAR=%SCRIPT_DIR%..\content\app\%%A"
+    )
+    if not defined SGIU_JAR (
+        echo [ERROR] No se encontro el jar de SGI-U en content\app\
+        echo         Copie manualmente el backup a este equipo y ejecute:
+        echo         java -jar sgiu.jar --restore=ruta\del\archivo.sql.gz.enc
+        exit /b 1
+    )
+
+    :: Resolver java (JRE propio del instalador o del PATH)
+    set "JAVA_EXE=java"
+    if exist "%SCRIPT_DIR%..\content\java\bin\java.exe" set "JAVA_EXE=%SCRIPT_DIR%..\content\java\bin\java.exe"
+    if exist "%SCRIPT_DIR%..\content\bin\java.exe" set "JAVA_EXE=%SCRIPT_DIR%..\content\bin\java.exe"
+
+    "%JAVA_EXE%" -jar "%SGIU_JAR%" --restore="%DUMP_FILE%"
+    if errorlevel 1 (
+        echo [ERROR] El descifrado falló (clave incorrecta o archivo alterado).
+        echo         Verifique que sgiu-backup.key sea el de la MAQUINA que genero el backup.
+        exit /b 1
+    )
+
+    :: El .gz descifrado queda al lado del .enc
+    set "DUMP_FILE=%DUMP_FILE:~0,-4%"
+    if not exist "%DUMP_FILE%" (
+        echo [ERROR] No se genero el archivo descifrado esperado: %DUMP_FILE%
+        exit /b 1
+    )
+    echo [OK] Descifrado en %DUMP_FILE%
+) else (
+    echo.
+    echo [PASO 2] Archivo sin cifrar; se usa directamente.
 )
 
 :: ---- Archivos temporales ----
 set "TEMP_SQL=%TEMP%\sgiu_restore_%RANDOM%.sql"
 
+echo.
 echo [INFO] Archivo de backup : %DUMP_FILE%
 echo [INFO] Base de destino   : %DB_NAME% en %DB_HOST%:%DB_PORT%
 echo [INFO] Usuario           : %DB_USER%
@@ -111,7 +152,7 @@ if /i not "%CONFIRMAR%"=="SI" (
 
 :: ---- Descomprimir ----
 echo.
-echo [PASO 1] Descomprimiendo %DUMP_FILE% ...
+echo [PASO 3] Descomprimiendo %DUMP_FILE% ...
 powershell -NoProfile -Command ^
   "$in = [System.IO.File]::OpenRead('%DUMP_FILE%'); $gz = New-Object IO.Compression.GZipStream($in, [IO.Compression.CompressionMode]::Decompress); $out = [System.IO.File]::Create('%TEMP_SQL%'); $gz.CopyTo($out); $out.Close(); $gz.Close(); $in.Close()"
 if errorlevel 1 (
@@ -122,7 +163,7 @@ echo [OK] Descomprimido en %TEMP_SQL%
 
 :: ---- Verificar cabecera SQL ----
 echo.
-echo [PASO 2] Verificando cabecera SQL ...
+echo [PASO 4] Verificando cabecera SQL ...
 findstr /m "MariaDB dump" "%TEMP_SQL%" >nul 2>&1
 if errorlevel 1 (
     findstr /m "MySQL dump" "%TEMP_SQL%" >nul 2>&1
@@ -136,7 +177,7 @@ echo [OK] Cabecera SQL verificada.
 
 :: ---- Restaurar ----
 echo.
-echo [PASO 3] Restaurando en %DB_NAME% ...
+echo [PASO 5] Restaurando en %DB_NAME% ...
 "%MARIADB_EXE%" --host=%DB_HOST% --port=%DB_PORT% --user=%DB_USER% --password=%DB_PASS% %DB_NAME% < "%TEMP_SQL%"
 set "RESTORE_CODE=%errorlevel%"
 

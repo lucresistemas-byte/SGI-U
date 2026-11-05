@@ -78,4 +78,36 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Credenciales incorrectas"));
     }
+
+    // ------------------------------------------------------------------
+    // REG-04: el flujo autenticado de cambio de contraseña no se rompe con
+    // la nueva recuperación.
+    // ------------------------------------------------------------------
+
+    @Test
+    @org.springframework.security.test.context.support.WithMockUser(username = "user_reg_cambio")
+    void cambiarPassword_actualCorrecta_permiteLoginConLaNueva() throws Exception {
+        datos.crearUsuario("user_reg_cambio", "vieja123", true);
+
+        mockMvc.perform(post("/api/auth/cambiar-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"passwordActual\": \"vieja123\", \"passwordNueva\": \"nueva123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty());
+
+        mockMvc.perform(login("user_reg_cambio", "nueva123")).andExpect(status().isOk());
+        mockMvc.perform(login("user_reg_cambio", "vieja123")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @org.springframework.security.test.context.support.WithMockUser(username = "user_reg_cambio_mal")
+    void cambiarPassword_actualIncorrecta_devuelve400() throws Exception {
+        datos.crearUsuario("user_reg_cambio_mal", "vieja123", true);
+
+        mockMvc.perform(post("/api/auth/cambiar-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"passwordActual\": \"otra\", \"passwordNueva\": \"nueva123\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("La contraseña actual no es correcta"));
+    }
 }

@@ -309,6 +309,53 @@ Carpeta **Backups** · **Auth Bearer requerido**.
 
 ---
 
+### 4.13 Recuperación de contraseña offline (`/api/auth/recuperar-password`)
+
+Público, **sin** `Authorization`. Requiere la clave de recuperación de la instalación.
+
+- **Ubicación de la clave:** `%LOCALAPPDATA%\SGI-U\sgiu-recovery.key` (fallback `~/SGI-U/sgiu-recovery.key`). Se genera al primer arranque del backend. Contenido: 32 bytes aleatorios en Base64 (44 caracteres).
+- **Regla:** 5 intentos fallidos por usuario bloquean 15 minutos (HTTP 429). El contador es en memoria: se reinicia al reiniciar el backend.
+- **Errores:** `RECUPERACION_INVALIDA` (401 no se usa aquí: es 400 genérico), `PASSWORD_INVALIDA`, `DATOS_INCOMPLETOS`, `DEMASIADOS_INTENTOS`, `RECUPERACION_NO_DISPONIBLE`.
+
+```bash
+# Recuperación (clave leída del archivo)
+curl -i -X POST http://localhost:3000/api/auth/recuperar-password \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","claveRecuperacion":"PEGAR_CLAVE_ACA","passwordNueva":"NuevaClave123"}'
+```
+
+**Escenario A — recuperación exitosa:**
+1. Iniciar el backend y localizar `sgiu-recovery.key`; copiar su contenido.
+2. `POST /api/auth/recuperar-password` con usuario, clave y nueva contraseña → `200` con `{"mensaje","username"}` **sin token**.
+3. Login con la contraseña nueva → `200`; con la anterior → `401`.
+
+**Escenario B — clave incorrecta:**
+1. `POST` con una clave inventada → `400` `RECUPERACION_INVALIDA`.
+2. Login con la contraseña anterior → `200` (no cambió).
+
+**Escenario C — backend sin acceso al archivo:**
+1. Arrancar con `-DSGIU_RECOVERY_KEY_PATH=/ruta/inexistente/inaccesible` (o archivo vacío/corrupto).
+2. La app **arranca igual**; la recuperación responde `500 RECUPERACION_NO_DISPONIBLE`.
+3. El archivo dentro de un directorio no válido no se sobrescribe: hay que borrarlo para regenerar la clave.
+
+**Escenario D — límite de intentos:**
+1. Enviar 5 `POST` con claves incorrectas para el mismo usuario → `400`.
+2. El sexto intento, incluso con la clave correcta → `429 DEMASIADOS_INTENTOS`.
+
+**Escenario E — recuperación sin internet:**
+1. Con backend + MariaDB local en marcha, desconectar internet.
+2. Ejecutar la recuperación y el login → ambos funcionan (no hay servicios externos).
+
+**Escenario F — archivo corrupto:** escribir basura en `sgiu-recovery.key`, reiniciar y verificar que la recuperación no queda disponible y el archivo no se reemplaza.
+
+**Escenario G — permisos (Linux/macOS):** `ls -l sgiu-recovery.key` → `rw-------`; intentar leerlo desde otra cuenta del SO → acceso denegado.
+
+**Escenario H — contador en memoria:** bloquear un usuario con 5 fallos, reiniciar el backend y verificar que puede volver a intentar (limitación conocida: documentada, no es un bug nuevo).
+
+**Escenario I — JWT anterior:** loguearse, recuperar la contraseña y usar el token anterior en un endpoint protegido → sigue válido hasta su expiración (8 h). **No hay revocación de sesiones** al cambiar la contraseña (limitación documentada).
+
+---
+
 ## 5. Checklist de aceptación
 
 Marcá cada caso al ejecutarlo:
@@ -316,6 +363,12 @@ Marcá cada caso al ejecutarlo:
 **Auth**
 - [ ] A-01 login correcto devuelve token · A-02/A-03 devuelven 401
 - [ ] A-04 registro crea usuario · A-05 duplicado devuelve 400
+
+**Recuperación de contraseña**
+- [ ] REC-A recuperación exitosa 200 sin token, login con la nueva · REC-B clave incorrecta 400 y contraseña intacta
+- [ ] REC-C backend sin archivo → 500 RECUPERACION_NO_DISPONIBLE · REC-D sexto intento 429
+- [ ] REC-E funciona sin internet · REC-F archivo corrupto no se acepta ni se sobrescribe
+- [ ] REC-I el JWT anterior sigue válido (sin revocación, documentado)
 
 **Categorías**
 - [ ] CAT-01 lista · CAT-02 crea · CAT-03 409 duplicada · CAT-05 401 sin token
@@ -363,3 +416,5 @@ Marcá cada caso al ejecutarlo:
    ```bash
    docker compose down -v && docker compose up -d
    ```
+8. **Recuperación de contraseña:** la clave vive en `%LOCALAPPDATA%\SGI-U\sgiu-recovery.key` (fallback `~/SGI-U/`). NUNCA la versiones ni la subas a backups: es una clave maestra que resetea cualquier cuenta. Si se pierde, borrar el archivo y reiniciar el backend para generar una nueva.
+9. **No hay revocación de JWT:** cambiar la contraseña (por cualquiera de los flujos) no invalida tokens ya emitidos; siguen válidos hasta 8 h. Revocar sesiones requeriría `tokenVersion` + migración.

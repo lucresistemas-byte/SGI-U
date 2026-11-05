@@ -24,4 +24,8 @@ sgiu:
   backup:
     catchup:
       enabled: false
+  # Clave de recuperación fija para los tests (Base64 de 32 bytes por
+  # "0123456789abcdef0123456789abcdef"). Con clave configurada no se crea archivo.
+  recovery:
+    key: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 

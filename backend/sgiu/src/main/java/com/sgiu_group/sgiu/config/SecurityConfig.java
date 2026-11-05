@@ -39,7 +39,6 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // 1. CORS restringido a orígenes explícitos (sin comodín "*")
             .cors(cors -> cors.configurationSource(request -> {
                 var config = new org.springframework.web.cors.CorsConfiguration();
                 List<String> origins = Arrays.stream(allowedOrigins.split(","))
@@ -54,7 +53,6 @@ public class SecurityConfig {
             }))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            // Endurecimiento de cabeceras HTTP (OWASP Secure Headers)
             .headers(headers -> headers
                 .frameOptions(frame -> frame.deny())
                 .contentTypeOptions(content -> {})
@@ -67,15 +65,11 @@ public class SecurityConfig {
                 )
             )
             .authorizeHttpRequests(authz -> authz
-                // 2. Rutas públicas (login, documentación Swagger y marca de login)
-                .requestMatchers("/api/auth/login", "/v2/api-docs", "/swagger-ui/**").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/recuperar-password", "/v2/api-docs", "/swagger-ui/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/configuracion/marca").permitAll()
-                // Registro de usuarios: restringido a rol ADMIN
                 .requestMatchers("/api/auth/register").hasRole("ADMIN")
-                // 3. Todo lo demás requiere token JWT válido
                 .anyRequest().authenticated()
             )
-            // 4. Entry Point devuelve 401 en formato JSON
             .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
@@ -86,17 +80,11 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /**
-     * Bean para el codificador de contraseñas BCrypt.
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Bean para el AuthenticationManager.
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
