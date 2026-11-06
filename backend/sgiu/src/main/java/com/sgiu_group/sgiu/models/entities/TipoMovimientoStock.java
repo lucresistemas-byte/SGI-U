@@ -13,7 +13,9 @@ public enum TipoMovimientoStock {
     /** Sale lo que consumió una producción (ingredientes, insumos). */
     CONSUMO_PRODUCCION("Consumo de producción"),
     /** Sale lo vendido en el POS. */
-    VENTA("Venta");
+    VENTA("Venta"),
+    /** Reingreso de stock por anulación de venta (R-15). */
+    ANULACION_VENTA("Anulación de venta");
 
     private final String descripcion;
 

@@ -4,6 +4,7 @@ import com.sgiu_group.sgiu.models.dtos.VentaRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.LineaVentaDTO;
 import com.sgiu_group.sgiu.models.dtos.PagoVentaRequestDTO;
 import com.sgiu_group.sgiu.models.dtos.VentaResponseDTO;
+import com.sgiu_group.sgiu.models.dtos.VentaResumenDTO;
 import com.sgiu_group.sgiu.exceptions.PagoInvalidoException;
 import com.sgiu_group.sgiu.exceptions.PrecioInvalidoException;
 import com.sgiu_group.sgiu.models.entities.*;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,7 +30,6 @@ import java.util.Set;
 @Service
 public class VentaService {
 
-    // Definimos las dependencias como final (inmutables)
     private final VentaRepository ventaRepository;
     private final ArticuloStockRepository stockRepository;
     private final PagoVentaRepository pagoRepository;
@@ -40,7 +41,6 @@ public class VentaService {
     /** Cuánto dura congelado el precio de un carrito después de un cambio de precio. */
     private static final long HORAS_PRECIO_CONGELADO = 24;
 
-    // Inyección por constructor: No requiere @Autowired manual
     public VentaService(VentaRepository ventaRepository,
                         ArticuloStockRepository stockRepository,
                         PagoVentaRepository pagoRepository,
@@ -59,14 +59,11 @@ public class VentaService {
 
     /**
      * Sandra produce por tanda: la venta verifica y descuenta solo el stock
-     * del producto final. Los insumos se descuentan al producir, no al vender,
-     * así que la receta no interviene acá.
+     * del producto final. Los insumos se descuentan al producir, no al vender.
      */
     @Transactional
     public VentaResponseDTO procesarVenta(VentaRequestDTO request) {
-        // A2: idempotencia. Si este token ya registró una venta (reintento de
-        // red o del ReintentoStock), se devuelve la venta existente sin tocar
-        // stock ni caja otra vez.
+        // A2: idempotencia. Si este token ya registró una venta, se devuelve la existente
         String token = request.tokenIdempotencia() != null && !request.tokenIdempotencia().isBlank()
                 ? request.tokenIdempotencia().trim()
                 : null;
@@ -79,45 +76,54 @@ public class VentaService {
 
         Venta venta = new Venta();
         venta.setTokenIdempotencia(token);
-        // Setear valores requeridos por PR #13 para evitar errores de nulidad
-        venta.setIdSesionCaja(0); // Valor por defecto temporal
-        venta.setCreadoPorUsuario(0); // Valor por defecto temporal
+        venta.setIdSesionCaja(0);
+        venta.setCreadoPorUsuario(0);
         BigDecimal totalAcumulado = BigDecimal.ZERO;
 
-        // Fase 1: validación de stock y total de todas las líneas antes de tocar nada
-        Map<String, ArticuloStock> stockPorCodigo = new HashMap<>();
-        Map<LineaVentaDTO, BigDecimal> precioPorLinea = new HashMap<>();
+        // Fase 1: acumular cantidades por código de producto (R-14)
+        Map<String, Integer> cantidadesPorCodigo = new LinkedHashMap<>();
         for (LineaVentaDTO dto : request.lineas()) {
-            ArticuloStock stock = stockRepository.findByEspProducto_Codigo(dto.codigoProducto())
-                .orElseThrow(() -> new ProductoNoEncontradoException("Producto no encontrado: " + dto.codigoProducto()));
-            stockPorCodigo.put(dto.codigoProducto(), stock);
+            cantidadesPorCodigo.merge(dto.codigoProducto(), dto.cantidad(), Integer::sum);
+        }
+
+        Map<String, ArticuloStock> stockPorCodigo = new HashMap<>();
+        // Validar stock total acumulado de cada producto antes de cobrar (R-14)
+        for (Map.Entry<String, Integer> entry : cantidadesPorCodigo.entrySet()) {
+            String codigo = entry.getKey();
+            int cantidadTotalRequerida = entry.getValue();
+
+            ArticuloStock stock = stockRepository.findByEspProducto_Codigo(codigo)
+                    .orElseThrow(() -> new ProductoNoEncontradoException("Producto no encontrado: " + codigo));
+            stockPorCodigo.put(codigo, stock);
             validarVendible(stock.getEspProducto());
 
-            // RN02: Verificación de stock de producto final. La reventa +
-            // materia prima se vende por unidades enteras (1 caja = 100 g):
-            // lo suelto nunca se vende.
             EspProducto producto = stock.getEspProducto();
-            if (producto.stockParaVender(dto.cantidad()).compareTo(stock.getCantidad()) > 0) {
+            BigDecimal stockDisponible = stock.getCantidad();
+            BigDecimal necesarioEnUnidadBase = producto.stockParaVender(cantidadTotalRequerida);
+
+            if (necesarioEnUnidadBase.compareTo(stockDisponible) > 0) {
                 throw new StockInsuficienteException("Stock insuficiente para "
-                        + producto.getNombre() + " (código " + dto.codigoProducto()
-                        + "): disponible " + producto.unidadesDeVentaEn(stock.getCantidad())
-                        + ", solicitado " + dto.cantidad() + ".");
+                        + producto.getNombre() + " (código " + codigo
+                        + "): disponible " + producto.unidadesDeVentaEn(stockDisponible)
+                        + ", solicitado " + cantidadTotalRequerida + ".");
             }
-            // Precio de la BD (RN05), salvo el congelado en el carrito.
-            BigDecimal precio = precioDeLaLinea(producto, dto);
+        }
+
+        // Validar precios de cada línea y sumar total
+        Map<LineaVentaDTO, BigDecimal> precioPorLinea = new HashMap<>();
+        for (LineaVentaDTO dto : request.lineas()) {
+            ArticuloStock stock = stockPorCodigo.get(dto.codigoProducto());
+            BigDecimal precio = precioDeLaLinea(stock.getEspProducto(), dto);
             precioPorLinea.put(dto, precio);
             totalAcumulado = totalAcumulado.add(precio.multiply(new BigDecimal(dto.cantidad())));
         }
 
-        // Los pagos se validan antes de tocar el stock: si no cubren el
-        // total, no se modifica nada.
+        // Los pagos se validan antes de tocar el stock
         Cobro cobro = armarCobro(request, totalAcumulado);
 
         // Fase 2: armado de líneas de venta
         for (LineaVentaDTO dto : request.lineas()) {
             ArticuloStock stock = stockPorCodigo.get(dto.codigoProducto());
-
-            // Creamos la línea de venta
             LineaVenta linea = new LineaVenta(venta, stock.getEspProducto(), dto.cantidad());
             linea.setPrecioUnitario(precioPorLinea.get(dto));
             venta.addLinea(linea);
@@ -126,8 +132,7 @@ public class VentaService {
         venta.setTotal(totalAcumulado);
         Venta ventaGuardada = ventaRepository.save(venta);
 
-        // Descuento de inventario (en unidad base: 1 caja = 100 g), con un
-        // movimiento VENTA por línea en el historial de stock.
+        // Descuento de inventario en unidad base
         for (LineaVentaDTO dto : request.lineas()) {
             ArticuloStock stock = stockPorCodigo.get(dto.codigoProducto());
             EspProducto producto = stock.getEspProducto();
@@ -135,8 +140,7 @@ public class VentaService {
                     "Venta #" + ventaGuardada.getId(), null, ventaGuardada);
         }
 
-        // Una fila de pago y un movimiento por línea, así el balance y el
-        // dashboard se pueden desglosar por método.
+        // Registro de pagos y movimientos financieros
         List<VentaResponseDTO.PagoRegistradoDTO> registrados = new ArrayList<>();
         for (Map.Entry<MetodoPago, BigDecimal> linea : cobro.montos().entrySet()) {
             PagoVenta pago = pagoRepository.save(new PagoVenta(ventaGuardada, linea.getValue(), linea.getKey()));
@@ -155,23 +159,126 @@ public class VentaService {
     }
 
     /**
-     * A2: respuesta para una venta ya registrada con el mismo token de
-     * idempotencia (el vuelto se calcula como 0: la venta original ya cobró).
+     * R-15: Anulación total de venta.
+     * Revierte el stock (TipoMovimientoStock.ANULACION_VENTA), revierte los movimientos
+     * financieros de caja (EGRESO por anulación) y marca la venta como anulada.
      */
-    private VentaResponseDTO respuestaDeVentaExistente(Venta venta) {
-        List<VentaResponseDTO.PagoRegistradoDTO> registrados = new ArrayList<>();
-        for (PagoVenta pago : pagoRepository.findByVentaId(venta.getId())) {
-            registrados.add(new VentaResponseDTO.PagoRegistradoDTO(
-                    pago.getMetodoPago().getId(), pago.getMetodoPago().getNombre(), pago.getMonto()));
+    @Transactional
+    public VentaResumenDTO anularVenta(Long ventaId, String motivo, String username) {
+        Venta venta = ventaRepository.findById(ventaId)
+                .orElseThrow(() -> new IllegalArgumentException("Venta no encontrada con ID: " + ventaId));
+
+        if (Boolean.TRUE.equals(venta.getAnulada())) {
+            throw new IllegalStateException("La venta #" + ventaId + " ya fue anulada previamente el "
+                    + venta.getFechaHoraAnulacion() + " (Motivo: " + venta.getMotivoAnulacion() + ").");
         }
-        return new VentaResponseDTO(venta.getId(), venta.getTotal(), BigDecimal.ZERO, registrados);
+
+        String motivoFinal = (motivo != null && !motivo.isBlank()) ? motivo.trim() : "Anulación de venta #" + ventaId;
+        String usuarioFinal = (username != null && !username.isBlank()) ? username.trim() : "ADMIN";
+        LocalDateTime ahora = LocalDateTime.now();
+
+        // 1. Revertir inventario: devolver al stock la cantidad de cada línea
+        for (LineaVenta linea : venta.getLineas()) {
+            EspProducto producto = linea.getProducto();
+            ArticuloStock stock = stockRepository.findByEspProducto_Codigo(producto.getCodigo())
+                    .orElseThrow(() -> new IllegalStateException("Stock no encontrado para producto: " + producto.getCodigo()));
+
+            BigDecimal cantidadBaseDevuelta = producto.stockParaVender(linea.getCantidad());
+            stockService.mover(stock, TipoMovimientoStock.ANULACION_VENTA, cantidadBaseDevuelta,
+                    "Anulación Venta #" + ventaId + ": " + motivoFinal, null, venta);
+        }
+
+        // 2. Revertir movimientos financieros: generar EGRESO compensatorio por cada pago original
+        List<PagoVenta> pagos = pagoRepository.findByVentaId(ventaId);
+        for (PagoVenta pago : pagos) {
+            movFinancieroRepository.save(new MovFinanciero(
+                    TipoMovimiento.EGRESO,
+                    pago.getMonto(),
+                    pago.getMetodoPago(),
+                    "OTRO", // categoría general de egreso
+                    "Anulación de cobro - Venta #" + ventaId + " (" + motivoFinal + ")",
+                    ahora,
+                    null));
+        }
+
+        // 3. Marcar la venta como anulada
+        venta.setAnulada(true);
+        venta.setMotivoAnulacion(motivoFinal);
+        venta.setFechaHoraAnulacion(ahora);
+        venta.setAnuladoPorUsuario(usuarioFinal);
+        Venta guardada = ventaRepository.save(venta);
+
+        return mapearAResumen(guardada, pagos);
     }
 
     /**
-     * Precio que se cobra: el actual o, si el carrito trae otro, ese mismo
-     * siempre que el producto lo haya tenido hasta un cambio de las últimas
-     * 24 horas (el precio del carrito queda congelado). Si no, se rechaza.
+     * R-15: Listar ventas filtradas por fecha (por defecto: hoy).
      */
+    @Transactional(readOnly = true)
+    public List<VentaResumenDTO> listarVentasPorFecha(LocalDate desde, LocalDate hasta) {
+        LocalDate fechaInicio = (desde != null) ? desde : LocalDate.now();
+        LocalDate fechaFin = (hasta != null) ? hasta : fechaInicio.plusDays(1);
+
+        LocalDateTime inicio = fechaInicio.atStartOfDay();
+        LocalDateTime fin = fechaFin.atStartOfDay();
+
+        List<Venta> ventas = ventaRepository.findByFechaHoraGreaterThanEqualAndFechaHoraLessThanOrderByFechaHoraDesc(inicio, fin);
+        List<VentaResumenDTO> res = new ArrayList<>();
+        for (Venta v : ventas) {
+            List<PagoVenta> pagos = pagoRepository.findByVentaId(v.getId());
+            res.add(mapearAResumen(v, pagos));
+        }
+        return res;
+    }
+
+    private VentaResumenDTO mapearAResumen(Venta v, List<PagoVenta> pagos) {
+        List<VentaResumenDTO.LineaResumenDTO> lineasDTO = new ArrayList<>();
+        if (v.getLineas() != null) {
+            for (LineaVenta lv : v.getLineas()) {
+                BigDecimal subtotal = (lv.getPrecioUnitario() != null && lv.getCantidad() != null)
+                        ? lv.getPrecioUnitario().multiply(BigDecimal.valueOf(lv.getCantidad()))
+                        : BigDecimal.ZERO;
+                lineasDTO.add(new VentaResumenDTO.LineaResumenDTO(
+                        lv.getProducto() != null ? lv.getProducto().getCodigo() : "N/A",
+                        lv.getProducto() != null ? lv.getProducto().getNombre() : "N/A",
+                        lv.getCantidad(),
+                        lv.getPrecioUnitario(),
+                        subtotal));
+            }
+        }
+        List<VentaResumenDTO.PagoResumenDTO> pagosDTO = new ArrayList<>();
+        if (pagos != null) {
+            for (PagoVenta pv : pagos) {
+                pagosDTO.add(new VentaResumenDTO.PagoResumenDTO(
+                        pv.getMetodoPago().getId(),
+                        pv.getMetodoPago().getNombre(),
+                        pv.getMonto()));
+            }
+        }
+        return new VentaResumenDTO(
+                v.getId(),
+                v.getFechaHora(),
+                v.getTotal(),
+                v.getAnulada(),
+                v.getMotivoAnulacion(),
+                v.getFechaHoraAnulacion(),
+                v.getAnuladoPorUsuario(),
+                lineasDTO,
+                pagosDTO);
+    }
+
+    private VentaResponseDTO respuestaDeVentaExistente(Venta v) {
+        List<PagoVenta> pagos = pagoRepository.findByVentaId(v.getId());
+        List<VentaResponseDTO.PagoRegistradoDTO> registrados = new ArrayList<>();
+        for (PagoVenta p : pagos) {
+            registrados.add(new VentaResponseDTO.PagoRegistradoDTO(
+                    p.getMetodoPago().getId(),
+                    p.getMetodoPago().getNombre(),
+                    p.getMonto()));
+        }
+        return new VentaResponseDTO(v.getId(), v.getTotal(), BigDecimal.ZERO, registrados);
+    }
+
     private BigDecimal precioDeLaLinea(EspProducto producto, LineaVentaDTO dto) {
         BigDecimal actual = producto.getPrecioUnitario();
         if (dto.precioUnitario() == null || dto.precioUnitario().compareTo(actual) == 0) {
@@ -187,14 +294,8 @@ public class VentaService {
         return dto.precioUnitario().setScale(2, RoundingMode.HALF_UP);
     }
 
-    /** Lo que se registra por método (en orden) y el vuelto en efectivo. */
     private record Cobro(Map<MetodoPago, BigDecimal> montos, BigDecimal vuelto) {}
 
-    /**
-     * Pago mixto (D.4.1/D.4.2): las líneas tienen que cubrir el total; solo
-     * el efectivo puede pasarse (la diferencia es el vuelto y se registra lo
-     * que corresponde a la venta). Sin líneas, se cobra todo con un método.
-     */
     private Cobro armarCobro(VentaRequestDTO request, BigDecimal total) {
         Map<MetodoPago, BigDecimal> montos = new LinkedHashMap<>();
         if (request.pagos() == null || request.pagos().isEmpty()) {
@@ -230,8 +331,6 @@ public class VentaService {
                     + total + "). Falta $" + total.subtract(pagado) + ".");
         }
 
-        // El vuelto sale del efectivo: se registra solo lo que corresponde a
-        // la venta (y si el efectivo era todo vuelto, no se registra).
         BigDecimal vuelto = pagado.subtract(total);
         if (vuelto.signum() > 0) {
             MetodoPago efectivo = montos.keySet().stream().filter(MetodoPago::esEfectivo).findFirst().orElseThrow();
@@ -245,7 +344,6 @@ public class VentaService {
         return new Cobro(montos, vuelto);
     }
 
-    /** Solo se vende lo que el POS muestra (ver EspProducto.esVendibleEnPos). */
     private static void validarVendible(EspProducto producto) {
         if (producto.esVendibleEnPos()) {
             return;

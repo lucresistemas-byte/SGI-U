@@ -31,6 +31,19 @@ public class Venta extends BaseEntity {
     @Column(name = "token_idempotencia", length = 64)
     private String tokenIdempotencia;
 
+    /** R-15: Flag de anulación total de venta. */
+    @Column(name = "anulada", nullable = false)
+    private Boolean anulada = false;
+
+    @Column(name = "motivo_anulacion")
+    private String motivoAnulacion;
+
+    @Column(name = "fecha_hora_anulacion")
+    private LocalDateTime fechaHoraAnulacion;
+
+    @Column(name = "anulado_por_usuario", length = 100)
+    private String anuladoPorUsuario;
+
     // --- RELACIONES ---
 
     @OneToMany(
@@ -44,6 +57,7 @@ public class Venta extends BaseEntity {
         // Inicialización por defecto al crear la entidad
         this.fechaHora = LocalDateTime.now();
         this.total = BigDecimal.ZERO;
+        this.anulada = false;
     }
 
     // --- GETTERS Y SETTERS ---
@@ -86,6 +100,38 @@ public class Venta extends BaseEntity {
 
     public void setTokenIdempotencia(String tokenIdempotencia) {
         this.tokenIdempotencia = tokenIdempotencia;
+    }
+
+    public Boolean getAnulada() {
+        return anulada != null && anulada;
+    }
+
+    public void setAnulada(Boolean anulada) {
+        this.anulada = anulada;
+    }
+
+    public String getMotivoAnulacion() {
+        return motivoAnulacion;
+    }
+
+    public void setMotivoAnulacion(String motivoAnulacion) {
+        this.motivoAnulacion = motivoAnulacion;
+    }
+
+    public LocalDateTime getFechaHoraAnulacion() {
+        return fechaHoraAnulacion;
+    }
+
+    public void setFechaHoraAnulacion(LocalDateTime fechaHoraAnulacion) {
+        this.fechaHoraAnulacion = fechaHoraAnulacion;
+    }
+
+    public String getAnuladoPorUsuario() {
+        return anuladoPorUsuario;
+    }
+
+    public void setAnuladoPorUsuario(String anuladoPorUsuario) {
+        this.anuladoPorUsuario = anuladoPorUsuario;
     }
 
     public List<LineaVenta> getLineas() {

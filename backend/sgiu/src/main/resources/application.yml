@@ -1,6 +1,8 @@
 server:
   port: 3000
-  address: 0.0.0.0
+  # R-07: en producción el backend escucha únicamente en 127.0.0.1 (localhost).
+  # Evita exposición innecesaria a redes locales/Wi-Fi en el equipo POS de Sandra.
+  address: ${SERVER_ADDRESS:127.0.0.1}
 
 # A2: el secreto JWT no tiene default en el repo. Cada instalación genera el
 # suyo (InstallationSecrets) o lo recibe por variable de entorno.
@@ -45,9 +47,11 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MariaDBDialect
-        format_sql: true
+        format_sql: false
 
-    show-sql: true
+    # R-06: show-sql apagado en producción para evitar fuga de datos sensibles en logs;
+    # se activa únicamente en el perfil demo (application-demo.yml).
+    show-sql: false
 
   # Sin data.sql: los datos de ejemplo solo se cargan con el perfil "demo".
   sql:

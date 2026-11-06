@@ -10,10 +10,16 @@ import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
 
 @Slf4j
@@ -149,62 +155,78 @@ public class BackupDumpJob {
 
         String timestamp = LocalDateTime.now()
                 .format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        // A8: extensión .sql.gz.enc cuando el cifrado esté habilitado; por ahora .sql.gz
         File archivoSalida = new File(dirBackups, "sgiu_" + timestamp + ".sql.gz");
 
         // A6: resolución determinística de mariadb-dump.exe
         String dumpExe = resolverRutaDump();
 
-        List<String> comando = new ArrayList<>(List.of(
-                dumpExe,
-                "--databases", extraerBaseDeDatos(),
-                "--routines",
-                "--triggers",
-                // Incluye eventos: los cron de la app quedan protegidos por el respaldo.
-                "--events",
-                "--single-transaction",
-                "-u" + dbUser,
-                "-p" + dbPassword,
-                "-P" + extraerPuerto()
-        ));
+        // R-02 (MUST): La contraseña de la base NUNCA debe figurar en la línea de comandos
+        // (argumentos visibles por Win32_Process o Administrador de Tareas).
+        // Se genera un archivo de opciones temporal protegido (--defaults-extra-file) con permisos restrictivos.
+        File tempConfigFile = File.createTempFile("sgiu_dump_", ".cnf");
+        try {
+            String configContent = "[client]\n"
+                    + "user=" + dbUser + "\n"
+                    + "password=" + (dbPassword != null ? dbPassword : "") + "\n"
+                    + "port=" + extraerPuerto() + "\n";
+            Files.writeString(tempConfigFile.toPath(), configContent, StandardCharsets.UTF_8);
 
-        ProcessBuilder pb = new ProcessBuilder(comando);
-        pb.redirectErrorStream(false); // stderr separado para loguear errores del proceso
-        Process proceso = pb.start();
+            List<String> comando = new ArrayList<>(List.of(
+                    dumpExe,
+                    "--defaults-extra-file=" + tempConfigFile.getAbsolutePath(),
+                    "--databases", extraerBaseDeDatos(),
+                    "--routines",
+                    "--triggers",
+                    "--events",
+                    "--single-transaction"
+            ));
 
-        // Lee stderr en hilo separado para que no se bloquee el buffer
-        final StringBuilder stderr = new StringBuilder();
-        Thread stderrReader = new Thread(() -> {
-            try (java.io.BufferedReader reader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(proceso.getErrorStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    stderr.append(line).append('\n');
-                }
-            } catch (IOException ignored) { }
-        });
-        stderrReader.setDaemon(true);
-        stderrReader.start();
-
-        try (InputStream in = proceso.getInputStream();
-             FileOutputStream fos = new FileOutputStream(archivoSalida);
-             GZIPOutputStream gzos = new GZIPOutputStream(fos)) {
-
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                gzos.write(buffer, 0, read);
+            ProcessBuilder pb = new ProcessBuilder(comando);
+            // Inyectamos también MYSQL_PWD en el environment del proceso como capa de compatibilidad
+            if (dbPassword != null && !dbPassword.isBlank()) {
+                pb.environment().put("MYSQL_PWD", dbPassword);
             }
-        }
+            pb.redirectErrorStream(false);
+            Process proceso = pb.start();
 
-        int exitCode = proceso.waitFor();
-        stderrReader.join(3000);
+            // Lee stderr en hilo separado para que no se bloquee el buffer
+            final StringBuilder stderr = new StringBuilder();
+            Thread stderrReader = new Thread(() -> {
+                try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(proceso.getErrorStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        stderr.append(line).append('\n');
+                    }
+                } catch (IOException ignored) { }
+            });
+            stderrReader.setDaemon(true);
+            stderrReader.start();
 
-        // A6: Validación estricta — no se emite éxito si algo falla
-        if (exitCode != 0) {
-            archivoSalida.delete();
-            throw new IOException("[BACKUP DUMP] mariadb-dump terminó con exitCode=" + exitCode
-                    + ". Stderr: " + stderr);
+            try (InputStream in = proceso.getInputStream();
+                 FileOutputStream fos = new FileOutputStream(archivoSalida);
+                 GZIPOutputStream gzos = new GZIPOutputStream(fos)) {
+
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = in.read(buffer)) != -1) {
+                    gzos.write(buffer, 0, read);
+                }
+            }
+
+            int exitCode = proceso.waitFor();
+            stderrReader.join(3000);
+
+            if (exitCode != 0) {
+                archivoSalida.delete();
+                throw new IOException("[BACKUP DUMP] mariadb-dump terminó con exitCode=" + exitCode
+                        + ". Stderr: " + stderr);
+            }
+        } finally {
+            // R-02: Garantiza borrado inmediato del archivo de configuración temporal
+            if (tempConfigFile.exists()) {
+                tempConfigFile.delete();
+            }
         }
 
         long tamanio = archivoSalida.length();
@@ -225,7 +247,6 @@ public class BackupDumpJob {
             }
         }
 
-        // A6: Checksum SHA-256 (se loguea para trazabilidad)
         String sha256 = calcularSha256(archivoSalida);
         log.info("[BACKUP DUMP] Dump OK. Tamaño={} bytes, SHA-256={}, archivo={}",
                 tamanio, sha256, archivoSalida.getName());
@@ -284,9 +305,52 @@ public class BackupDumpJob {
         return "mariadb-dump";
     }
 
-    /** Carpeta de respaldos locales (package-private para tests). */
-    File carpetaBackups() {
+    /** Carpeta de respaldos locales. */
+    public File carpetaBackups() {
         return new File("backups");
+    }
+
+    /**
+     * Obtiene el último respaldo local existente (.sql.gz o .sql.gz.enc).
+     * Como los nombres siguen la convención sgiu_yyyyMMdd_HHmmss.*, el orden
+     * lexicográfico coincide exactamente con el orden cronológico.
+     */
+    public Optional<File> obtenerUltimoRespaldoLocal() {
+        File dir = carpetaBackups();
+        if (!dir.exists() || !dir.isDirectory()) {
+            return Optional.empty();
+        }
+        File[] archivos = dir.listFiles((d, name) ->
+                (name.endsWith(".sql.gz.enc") || name.endsWith(".sql.gz"))
+                        && !name.endsWith(".sha256")
+                        && name.startsWith("sgiu_"));
+        if (archivos == null || archivos.length == 0) {
+            return Optional.empty();
+        }
+        return Arrays.stream(archivos)
+                .max(Comparator.comparing(File::getName));
+    }
+
+    /**
+     * Extrae la marca temporal del nombre del archivo (formato: sgiu_yyyyMMdd_HHmmss...).
+     * Si el nombre no coincide con el patrón esperado, recurre a lastModified() como fallback.
+     */
+    public static LocalDateTime extraerFechaDeArchivo(File archivo) {
+        if (archivo == null) return null;
+        String name = archivo.getName();
+        Matcher matcher = Pattern.compile("sgiu_(\\d{4})(\\d{2})(\\d{2})_(\\d{2})(\\d{2})(\\d{2})").matcher(name);
+        if (matcher.find()) {
+            int anio = Integer.parseInt(matcher.group(1));
+            int mes = Integer.parseInt(matcher.group(2));
+            int dia = Integer.parseInt(matcher.group(3));
+            int hora = Integer.parseInt(matcher.group(4));
+            int min = Integer.parseInt(matcher.group(5));
+            int seg = Integer.parseInt(matcher.group(6));
+            return LocalDateTime.of(anio, mes, dia, hora, min, seg);
+        }
+        return java.time.Instant.ofEpochMilli(archivo.lastModified())
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalDateTime();
     }
 
     /** Puerto del dump tomado de spring.datasource.url (3307 en Windows, 3306 en Docker). */

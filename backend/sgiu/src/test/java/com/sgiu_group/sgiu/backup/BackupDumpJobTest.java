@@ -9,6 +9,8 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -28,7 +30,7 @@ class BackupDumpJobTest {
                 mock(ConfiguracionNegocioRepository.class),
                 mock(EncryptionService.class)) {
             @Override
-            File carpetaBackups() {
+            public File carpetaBackups() {
                 return carpeta;
             }
         };
@@ -139,5 +141,33 @@ class BackupDumpJobTest {
         ReflectionTestUtils.setField(job, "dbUrl", "jdbc:mariadb://db:3306/sgiu_db?useSSL=false");
         assertThat(job.extraerPuerto()).isEqualTo("3306");
         assertThat(job.extraerBaseDeDatos()).isEqualTo("sgiu_db");
+    }
+
+    // ------------------------------------------------------------------
+    //  R-11: Obtención de último respaldo y parseo de fecha
+    // ------------------------------------------------------------------
+
+    @Test
+    void obtenerUltimoRespaldoLocal_retornaElMasRecienteCronologicamente() throws Exception {
+        File f1 = tempDir.resolve("sgiu_20261101_033000.sql.gz.enc").toFile();
+        File f2 = tempDir.resolve("sgiu_20261105_033000.sql.gz.enc").toFile();
+        File sha = tempDir.resolve("sgiu_20261105_033000.sql.gz.enc.sha256").toFile();
+        Files.writeString(f1.toPath(), "f1");
+        Files.writeString(f2.toPath(), "f2");
+        Files.writeString(sha.toPath(), "sha");
+
+        BackupDumpJob job = jobConCarpeta(tempDir.toFile());
+        Optional<File> ultimo = job.obtenerUltimoRespaldoLocal();
+
+        assertThat(ultimo).isPresent();
+        assertThat(ultimo.get().getName()).isEqualTo("sgiu_20261105_033000.sql.gz.enc");
+    }
+
+    @Test
+    void extraerFechaDeArchivo_parseaTimestampCorrectamente() {
+        File archivo = new File("sgiu_20261106_143045.sql.gz.enc");
+        LocalDateTime fecha = BackupDumpJob.extraerFechaDeArchivo(archivo);
+
+        assertThat(fecha).isEqualTo(LocalDateTime.of(2026, 11, 6, 14, 30, 45));
     }
 }
