@@ -15,30 +15,30 @@ public interface PagoVentaRepository extends JpaRepository<PagoVenta, Long> {
     List<PagoVenta> findByVentaId(Long ventaId);
 
     /**
-     * Por método: nombre, cantidad de ventas que lo usaron y monto cobrado con
-     * él (en un pago mixto, cada método suma solo su parte).
+     * R-15: Por método: nombre, cantidad de ventas que lo usaron y monto cobrado con
+     * él (excluyendo ventas anuladas).
      */
     @Query("SELECT pv.metodoPago.nombre, COUNT(DISTINCT pv.venta.id), SUM(pv.monto) " +
            "FROM PagoVenta pv " +
-           "WHERE pv.venta.fechaHora >= :fechaDesde AND pv.venta.fechaHora < :fechaHasta " +
+           "WHERE pv.venta.anulada = false AND pv.venta.fechaHora >= :fechaDesde AND pv.venta.fechaHora < :fechaHasta " +
            "GROUP BY pv.metodoPago.id, pv.metodoPago.nombre, pv.metodoPago.orden " +
            "ORDER BY pv.metodoPago.orden")
     List<Object[]> findVentasAgrupadasPorMetodoPago(
             @Param("fechaDesde") LocalDateTime fechaDesde,
             @Param("fechaHasta") LocalDateTime fechaHasta);
 
-    /** Ventas con al menos un pago del método. */
+    /** Ventas con al menos un pago del método (excluyendo anuladas). */
     @Query("SELECT COUNT(DISTINCT pv.venta.id) FROM PagoVenta pv " +
-           "WHERE pv.venta.fechaHora >= :fechaDesde AND pv.venta.fechaHora < :fechaHasta " +
+           "WHERE pv.venta.anulada = false AND pv.venta.fechaHora >= :fechaDesde AND pv.venta.fechaHora < :fechaHasta " +
            "AND pv.metodoPago.id = :metodoPagoId")
     Long countVentasConMetodo(
             @Param("fechaDesde") LocalDateTime fechaDesde,
             @Param("fechaHasta") LocalDateTime fechaHasta,
             @Param("metodoPagoId") Long metodoPagoId);
 
-    /** Por venta del rango cobrada con el método: [ventaId, cobrado con él, total de la venta]. */
+    /** Por venta del rango cobrada con el método (excluyendo anuladas). */
     @Query("SELECT pv.venta.id, SUM(pv.monto), pv.venta.total FROM PagoVenta pv " +
-           "WHERE pv.venta.fechaHora >= :fechaDesde AND pv.venta.fechaHora < :fechaHasta " +
+           "WHERE pv.venta.anulada = false AND pv.venta.fechaHora >= :fechaDesde AND pv.venta.fechaHora < :fechaHasta " +
            "AND pv.metodoPago.id = :metodoPagoId " +
            "GROUP BY pv.venta.id, pv.venta.total")
     List<Object[]> findCobrosConMetodo(
@@ -46,9 +46,9 @@ public interface PagoVentaRepository extends JpaRepository<PagoVenta, Long> {
             @Param("fechaHasta") LocalDateTime fechaHasta,
             @Param("metodoPagoId") Long metodoPagoId);
 
-    /** Lo cobrado con el método en las ventas del rango. */
+    /** Lo cobrado con el método en las ventas del rango (excluyendo anuladas). */
     @Query("SELECT SUM(pv.monto) FROM PagoVenta pv " +
-           "WHERE pv.venta.fechaHora >= :fechaDesde AND pv.venta.fechaHora < :fechaHasta " +
+           "WHERE pv.venta.anulada = false AND pv.venta.fechaHora >= :fechaDesde AND pv.venta.fechaHora < :fechaHasta " +
            "AND pv.metodoPago.id = :metodoPagoId")
     BigDecimal sumMontoConMetodo(
             @Param("fechaDesde") LocalDateTime fechaDesde,

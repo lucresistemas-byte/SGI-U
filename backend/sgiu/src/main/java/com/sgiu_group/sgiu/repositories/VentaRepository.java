@@ -15,12 +15,17 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     /** A2: idempotencia de venta; si el token ya se usó, se devuelve la venta existente. */
     Optional<Venta> findByTokenIdempotencia(String tokenIdempotencia);
 
-    @Query("SELECT COUNT(v) FROM Venta v WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta")
+    /** R-15: Listar ventas por rango de fecha ordenadas descendentemente. */
+    List<Venta> findByFechaHoraGreaterThanEqualAndFechaHoraLessThanOrderByFechaHoraDesc(
+            LocalDateTime fechaDesde, LocalDateTime fechaHasta);
+
+    /** R-15: Solo cuentan las ventas NO anuladas para totales comerciales. */
+    @Query("SELECT COUNT(v) FROM Venta v WHERE v.anulada = false AND v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta")
     Long countVentasEnRango(@Param("fechaDesde") LocalDateTime fechaDesde, @Param("fechaHasta") LocalDateTime fechaHasta);
 
-    @Query("SELECT SUM(v.total) FROM Venta v WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta")
+    @Query("SELECT SUM(v.total) FROM Venta v WHERE v.anulada = false AND v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta")
     BigDecimal sumTotalVentasEnRango(@Param("fechaDesde") LocalDateTime fechaDesde, @Param("fechaHasta") LocalDateTime fechaHasta);
 
-    @Query("SELECT FUNCTION('DATE', v.fechaHora), COUNT(v), SUM(v.total) FROM Venta v WHERE v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta GROUP BY FUNCTION('DATE', v.fechaHora) ORDER BY FUNCTION('DATE', v.fechaHora)")
+    @Query("SELECT FUNCTION('DATE', v.fechaHora), COUNT(v), SUM(v.total) FROM Venta v WHERE v.anulada = false AND v.fechaHora >= :fechaDesde AND v.fechaHora < :fechaHasta GROUP BY FUNCTION('DATE', v.fechaHora) ORDER BY FUNCTION('DATE', v.fechaHora)")
     List<Object[]> findVentasAgrupadasPorDia(@Param("fechaDesde") LocalDateTime fechaDesde, @Param("fechaHasta") LocalDateTime fechaHasta);
 }

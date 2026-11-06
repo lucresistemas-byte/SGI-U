@@ -4,8 +4,10 @@ import com.sgiu_group.sgiu.exceptions.ProductoNoEncontradoException;
 import com.sgiu_group.sgiu.exceptions.StockInsuficienteException;
 import com.sgiu_group.sgiu.models.dtos.LineaVentaDTO;
 import com.sgiu_group.sgiu.models.dtos.VentaRequestDTO;
+import com.sgiu_group.sgiu.models.dtos.VentaResumenDTO;
 import com.sgiu_group.sgiu.models.entities.ArticuloStock;
 import com.sgiu_group.sgiu.models.entities.EspProducto;
+import com.sgiu_group.sgiu.models.entities.LineaVenta;
 import com.sgiu_group.sgiu.models.entities.MovFinanciero;
 import com.sgiu_group.sgiu.models.entities.PagoVenta;
 import com.sgiu_group.sgiu.models.entities.TipoMovimiento;
@@ -88,6 +90,21 @@ class VentaServiceTest {
         assertThatThrownBy(() -> ventaService.procesarVenta(request))
                 .isInstanceOf(StockInsuficienteException.class)
                 .hasMessageContaining("Stock insuficiente");
+    }
+
+    @Test
+    void procesarVenta_dosLineasMismoProductoSuperanStockAcumulado_lanzaExcepcionR14() {
+        // R-14: caso 3 + 3 con stock 4 (debe sumar 6 y rechazar con StockInsuficienteException)
+        ArticuloStock stock = stockDe(10.00, 4);
+        when(stockRepository.findByEspProducto_Codigo("P1")).thenReturn(Optional.of(stock));
+
+        VentaRequestDTO request = new VentaRequestDTO(null, List.of(
+                new LineaVentaDTO("P1", 3),
+                new LineaVentaDTO("P1", 3)));
+
+        assertThatThrownBy(() -> ventaService.procesarVenta(request))
+                .isInstanceOf(StockInsuficienteException.class)
+                .hasMessageContaining("disponible 4, solicitado 6");
     }
 
     @Test
@@ -187,5 +204,55 @@ class VentaServiceTest {
         assertThat(respuesta.total()).isEqualByComparingTo("100.00");
         verify(ventaRepository, never()).save(any(Venta.class));
         verify(stockRepository, never()).findByEspProducto_Codigo(any());
+    }
+
+    @Test
+    void anularVenta_exitosa_devuelveStockYRegistraEgresoR15() {
+        // R-15: anular venta revierte stock y revierte caja
+        EspProducto prod = new EspProducto("P1", "Producto Uno", new BigDecimal("10.00"));
+        ArticuloStock stock = new ArticuloStock();
+        stock.setEspProducto(prod);
+        stock.setCantidad(BigDecimal.valueOf(8));
+
+        Venta venta = new Venta();
+        ReflectionTestUtils.setField(venta, "id", 55L);
+        venta.setTotal(new BigDecimal("20.00"));
+        venta.addLinea(new LineaVenta(venta, prod, 2));
+
+        when(ventaRepository.findById(55L)).thenReturn(Optional.of(venta));
+        when(stockRepository.findByEspProducto_Codigo("P1")).thenReturn(Optional.of(stock));
+        when(pagoRepository.findByVentaId(55L)).thenReturn(List.of(
+                new PagoVenta(venta, new BigDecimal("20.00"), new com.sgiu_group.sgiu.models.entities.MetodoPago("Efectivo", true, 1))
+        ));
+        when(ventaRepository.save(any(Venta.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        VentaResumenDTO anulada = ventaService.anularVenta(55L, "Cliente devolvió el pedido", "admin_vicky");
+
+        assertThat(anulada.anulada()).isTrue();
+        assertThat(anulada.motivoAnulacion()).isEqualTo("Cliente devolvió el pedido");
+        assertThat(anulada.anuladoPorUsuario()).isEqualTo("admin_vicky");
+        // El stock vuelve de 8 a 10
+        assertThat(stock.getCantidad()).isEqualByComparingTo("10");
+
+        // Se registra egreso compensatorio en caja
+        ArgumentCaptor<MovFinanciero> movCaptor = ArgumentCaptor.forClass(MovFinanciero.class);
+        verify(movFinancieroRepository).save(movCaptor.capture());
+        MovFinanciero egreso = movCaptor.getValue();
+        assertThat(egreso.getTipo()).isEqualTo(TipoMovimiento.EGRESO);
+        assertThat(egreso.getMonto()).isEqualByComparingTo("20.00");
+    }
+
+    @Test
+    void anularVenta_yaAnulada_lanzaExcepcion() {
+        Venta venta = new Venta();
+        ReflectionTestUtils.setField(venta, "id", 66L);
+        venta.setAnulada(true);
+        venta.setMotivoAnulacion("Anulada previa");
+
+        when(ventaRepository.findById(66L)).thenReturn(Optional.of(venta));
+
+        assertThatThrownBy(() -> ventaService.anularVenta(66L, "Nuevo intento", "admin"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ya fue anulada previamente");
     }
 }
